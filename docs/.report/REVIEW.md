@@ -138,3 +138,16 @@ if (feature('CONTEXT_COLLAPSE')) {  // ✅
 ---
 
 **审校结论**: ✅ 通过 — 报告准确，可用于后续实现参考
+## Unit 6 — 07-what-are-tools.md
+
+- **Status**: PASS
+- **Reviewer**:self
+- **Checklist**:
+  - [x] 结构与原文章节一致，增加了 `### Rust 实现中的核心抽象` / `### 核心四要素（Rust 映射）` / `### 源码追踪` 等 source-mapping 子章节
+  - [x] 行号锚点使用 `#LXX-LYY` 格式
+  - [x] 目录末尾含源码索引表
+  - [x] 所有提到的源码文件均存在于当前代码库中
+- **Notes**:
+  - 行号基于 `rust/crates/tools/src/lib.rs`、`rust/crates/runtime/src/conversation.rs`、`runtime/src/bash.rs`、`runtime/src/file_ops.rs`、`runtime/src/permissions.rs`、`runtime/src/hooks.rs`、`runtime/src/mcp_tool_bridge.rs` 等文件最新内容手工标定
+  - 关于 `run_repl` 的锚点参考了 `main.rs` 中 `run_repl` 函数定义行，精确到 REPL 启动循环区域
+
