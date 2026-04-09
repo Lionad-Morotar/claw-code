@@ -27,3 +27,24 @@
      - `companionReact.ts` 调用 Anthropic OAuth API 生成宠物反应（需 accessToken）
      - 2026 年 4 月 1-7 日为 teaser window，仅在此期间显示彩虹色 `/buddy` 启动提示
   5. 源码索引表覆盖 36 处精确锚点，状态全部为 ✅。
+
+---
+
+## 28-three-tier-gating.md
+
+- **评定**：Pass
+- **修正总数**：1 处
+- **issue 1**：Warning，源码索引 `lib.rs#L2090-L2106` 修正为 `L2095-L2108`。`struct TodoItem` 实际从第 2095 行开始，`enum TodoStatus` 实际位于第 2104 行，原引用范围起点与终点均存在偏差。
+
+### 内容评定
+
+报告准确还原了原始文档中三层门禁系统（构建时 `feature()`、运行时 GrowthBook、身份 `USER_TYPE`）的核心架构，并将原始 TypeScript 上游实现映射到 `claw-code` 的 Rust 参考数据与工具系统：
+- **TodoWrite 状态枚举**：映射到 `tools/src/lib.rs#L2095-L2108`，展示了 `pending` / `in_progress` / `completed` 三门控状态；
+- **Proactive 模式标记**：映射到 `tools/src/lib.rs#L645` 的 `"enum": ["normal", "proactive"]`，解释了 `normal` vs `proactive` 与原始 `USER_TYPE` 门控的对应关系；
+- **Buddy 系统**：映射到 `src/reference_data/subsystems/buddy.json`，说明该功能在 Rust 实现中仅作为存档数据保留；
+- **GrowthBook 集成点**：映射到 `services.json` 和 `types.json` 中的 `growthbook.ts` 与 `growthbook_experiment_event.ts` 引用；
+- **Debug 模式命令**：映射到 `commands_snapshot.json` 中的 `debug-tool-call`，属于内部构建 (`ant`) 常用诊断工具。
+
+文档技术准确、结构清晰、源码锚点丰富且可验证，**达到对外发布标准**。
+
+*审校完成。*
