@@ -556,9 +556,9 @@
       "title": "Proactive",
       "url": "https://ccb.agent-aura.top/docs/features/proactive",
       "output_file": "docs/.report/44-proactive.md",
-      "status": "running",
+      "status": "completed",
       "assigned_at": "2026-04-09T12:25:00+08:00",
-      "completed_at": null,
+      "completed_at": "2026-04-09T12:00:00Z",
       "pr_url": null,
       "review_issues": 0
     },
