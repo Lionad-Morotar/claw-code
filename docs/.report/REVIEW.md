@@ -1172,3 +1172,89 @@
 *审校完成。*
 
 ---
+
+## 28-three-tier-gating.md
+
+- **评定**：Pass
+- **修正总数**：1 处
+- **issue 1**：Warning，原文：源码索引 `lib.rs#L2090-L2106`，修正：`lib.rs#L2095-L2108`。`struct TodoItem` 实际从第 2095 行开始，`enum TodoStatus` 实际位于第 2104 行，原引用范围起点与终点均存在偏差。
+
+### 内容评定
+
+报告准确还原了原始文档中三层门禁系统（构建时 `feature()`、运行时 GrowthBook、身份 `USER_TYPE`）的核心架构，并将原始 TypeScript 上游实现映射到 `claw-code` 的 Rust 参考数据与工具系统：
+- **TodoWrite 状态枚举**：映射到 `tools/src/lib.rs#L2095-L2108`，展示了 `pending` / `in_progress` / `completed` 三门控状态；
+- **Proactive 模式标记**：映射到 `tools/src/lib.rs#L645` 的 `"enum": ["normal", "proactive"]`，解释了 `normal` vs `proactive` 与原始 `USER_TYPE` 门控的对应关系；
+- **Buddy 系统**：映射到 `src/reference_data/subsystems/buddy.json`，说明该功能在 Rust 实现中仅作为存档数据保留；
+- **GrowthBook 集成点**：映射到 `services.json` 和 `types.json` 中的 `growthbook.ts` 与 `growthbook_experiment_event.ts` 引用；
+- **Debug 模式命令**：映射到 `commands_snapshot.json` 中的 `debug-tool-call`，属于内部构建 (`ant`) 常用诊断工具。
+
+文档技术准确、结构清晰、源码锚点丰富且可验证，**达到对外发布标准**。
+
+*审校完成。*
+
+## Unit 45: 45-ultraplan
+
+**审校日期**: 2026-04-09  
+**审校人**: Claude Code Agent
+
+### 审查结果
+
+| 检查项 | 状态 |
+|--------|------|
+| 原始页面已完整抓取 | ✅ |
+| 源码定位准确 (packages/ccb/src) | ✅ |
+| 行号锚点精确 (#LXX-LYY) | ✅ |
+| 架构分解完整 | ✅ |
+| 数据流描述准确 | ✅ |
+| 文件索引完整 | ✅ |
+| 无敏感信息泄露 | ✅ |
+
+### 修正与补充
+
+1. **行号精确性确认**: 所有引用行号均通过 `grep -n` / `Read` 在 `packages/ccb/src` 中二次验证，锚点有效。
+2. **状态修正**: 原文档称 `src/commands/ultraplan/` 为空目录，实际源码为单文件 `src/commands/ultraplan.tsx`，已在技术报告中修正并说明。
+3. **对话框组件**: 原文仅标记为 "布线"，报告中补充了精确源码位置及行为说明 (`UltraplanLaunchDialog.tsx` 和 `UltraplanChoiceDialog.tsx`)。
+4. **数据流细化**: 补充了 `preExpansionInput` 的检测时机、关键字替换 (`replaceUltraplanKeyword`) 和 `processSlashCommand` 重定向链路。
+5. **事件追踪补充**: 补充了完整的 analytics 事件列表与 feature flags 关系。
+
+### 输出文件
+
+- `docs/.report/45-ultraplan.md`
+
+### 内容评定
+
+报告完整覆盖了 ULTRAPLAN 的关键字检测、`ExitPlanModeScanner` 状态机、`/ultraplan` 命令处理器、REPL 对话框集成、RemoteAgentTask 轮询机制及彩虹高亮反馈，源码锚点精确，架构图与数据流描述与源码一致，**达到对外发布标准**。
+
+*审校完成。*
+
+---
+
+# Unit 38 Review — Fork Subagent
+
+**Reviewed**: 2026-04-09
+**Subject**: docs/.report/38-fork-subagent.md
+**Status**: Approved
+
+## Corrections Made
+
+None — source anchors and logic verified against current packages/ccb HEAD.
+
+## Verification Checklist
+
+- [x] All line-range anchors (#L32-L39, #L60-L71, etc.) resolve correctly
+- [x] Code paths (forkSubagent.ts, AgentTool.tsx, runAgent.ts) match the described flow
+- [x] No speculative claims; every architectural statement is backed by a source link
+- [x] Terminology consistent with codebase (FORK_AGENT, useExactTools, isForkSubagentEnabled)
+
+## Notable Findings
+
+| Discovery | Significance |
+|-----------|--------------|
+| Recursive fork guard uses both querySource and message scanning | Anti-compact resilience |
+| useExactTools bypasses resolveAgentTools | Ensures byte-identical tool blocks for cache |
+| renderedSystemPrompt is threaded, not recomputed | Prevents GrowthBook state drift |
+| FORK_PLACEHOLDER_RESULT is identical across children | Maximizes prompt-cache sharing |
+
+## Action
+
+Proceed to commit/push.
