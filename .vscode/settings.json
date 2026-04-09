@@ -1,0 +1,17 @@
+{
+  "cSpell.words": [
+    "cmark",
+    "Containerfile",
+    "crossterm",
+    "reqwest",
+    "rustls",
+    "rustyline",
+    "serde",
+    "syntect",
+    "walkdir"
+  ],
+  "cSpell.ignoreWords": [
+    "Actix",
+    "clippy"
+  ]
+}
