@@ -361,9 +361,9 @@
       "title": "88 \u4e2a Feature Flags - \u6784\u5efa\u65f6\u7279\u6027\u95e8\u63a7\u5168\u89e3",
       "url": "https://ccb.agent-aura.top/docs/internals/feature-flags",
       "output_file": "docs/.report/29-feature-flags.md",
-      "status": "running",
+      "status": "completed",
       "assigned_at": "2026-04-09T12:20:00+08:00",
-      "completed_at": null,
+      "completed_at": "2026-04-09T12:00:00Z",
       "pr_url": null,
       "review_issues": 0
     },
