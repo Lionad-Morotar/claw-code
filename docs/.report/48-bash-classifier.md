@@ -25,16 +25,16 @@ BASH_CLASSIFIER 使用 LLM 对 bash 命令进行意图分类（允许/拒绝/询
 
 | 模块 | 文件 | 状态 | 说明 |
 |------|------|------|------|
-| Bash 分类器 | `src/utils/permissions/bashClassifier.ts` | Stub | 所有函数返回空操作。注释："ANT-ONLY" |
-| YOLO 分类器 | `src/utils/permissions/yoloClassifier.ts` | 完整 | 1496 行，两阶段 XML 分类器 |
-| 审批信号 | `src/utils/classifierApprovals.ts` | 完整 | Map + 信号管理分类器决策 |
-| 权限 UI | `src/components/permissions/BashPermissionRequest.tsx` | 布线 | 分类器状态显示、审核选项 |
+| Bash 分类器 | `packages/ccb/src/utils/permissions/bashClassifier.ts` | Stub | 所有函数返回空操作。注释："ANT-ONLY" |
+| YOLO 分类器 | `packages/ccb/src/utils/permissions/yoloClassifier.ts` | 完整 | 1495 行，两阶段 XML 分类器 |
+| 审批信号 | `packages/ccb/src/utils/classifierApprovals.ts` | 完整 | Map + 信号管理分类器决策 |
+| 权限 UI | `packages/ccb/src/components/permissions/BashPermissionRequest/BashPermissionRequest.tsx` | 布线 | 分类器状态显示、审核选项 |
 | 权限管道 | `src/hooks/toolPermission/handlers/*.ts` | 布线 | 分类器结果路由到决策 |
 | API beta 标头 | `src/services/api/withRetry.ts` | 布线 | 启用时发送 bash_classifier beta |
 
 ### 2.2 参考实现：yoloClassifier.ts
 
-**文件**: `src/utils/permissions/yoloClassifier.ts`（1496 行）  
+**文件**: `packages/ccb/src/utils/permissions/yoloClassifier.ts`（1495 行）  
 这是已实现的完整分类器，可作为 `bashClassifier.ts` 的参考：
 
 **两阶段分类**:
@@ -108,12 +108,12 @@ FEATURE_BASH_CLASSIFIER=1 FEATURE_TREE_SITTER_BASH=1 bun run dev
 
 | 文件 | 行数 | 职责 |
 |------|------|------|
-| `src/utils/permissions/bashClassifier.ts` | — | Bash 分类器（stub，ANT-ONLY） |
-| `src/utils/permissions/yoloClassifier.ts` | 1496 | YOLO 分类器（完整参考实现） |
-| `src/utils/classifierApprovals.ts` | — | 分类器审批信号管理 |
-| `src/components/permissions/BashPermissionRequest.tsx:261-469` | — | 分类器 UI |
-| `src/hooks/toolPermission/handlers/interactiveHandler.ts` | — | 交互式权限处理 |
-| `src/services/api/withRetry.ts:81` | — | API beta 标头 |
+| `packages/ccb/src/utils/permissions/bashClassifier.ts` | — | Bash 分类器（stub，ANT-ONLY） |
+| `packages/ccb/src/utils/permissions/yoloClassifier.ts` | 1495 | YOLO 分类器（完整参考实现） |
+| `packages/ccb/src/utils/classifierApprovals.ts` | — | 分类器审批信号管理 |
+| `packages/ccb/src/components/permissions/BashPermissionRequest/BashPermissionRequest.tsx` | — | 分类器 UI |
+| `packages/ccb/src/hooks/toolPermission/handlers/interactiveHandler.ts` | — | 交互式权限处理 |
+| `packages/ccb/src/services/api/withRetry.ts:81` | — | API beta 标头 |
 
 ---
 
@@ -182,7 +182,7 @@ pub enum CommandIntent {
 }
 ```
 
-**实现位置**: [`bash_validation.rs:529-584`](/rust/crates/runtime/src/bash_validation.rs#L529-L584)
+**实现位置**: [`bash_validation.rs:533-584`](/rust/crates/runtime/src/bash_validation.rs#L533-L584)
 
 ### 7.3 验证流水线
 
@@ -204,7 +204,7 @@ bash 命令
 4. validate_paths() — 路径验证
 ```
 
-**实现位置**: [`bash_validation.rs:590-615`](/rust/crates/runtime/src/bash_validation.rs#L590-L615)
+**实现位置**: [`bash_validation.rs:594-615`](/rust/crates/runtime/src/bash_validation.rs#L594-L615)
 
 ### 7.4 命令语义分类表
 
@@ -215,7 +215,7 @@ bash 命令
 | **进程命令** | `kill`, `pkill`, `ps`, `top`, `htop` | [`bash_validation.rs:485-488`](/rust/crates/runtime/src/bash_validation.rs#L485-L488) |
 | **包管理** | `apt`, `brew`, `pip`, `npm`, `cargo`, `yarn` | [`bash_validation.rs:491-494`](/rust/crates/runtime/src/bash_validation.rs#L491-L494) |
 | **系统管理** | `sudo`, `mount`, `systemctl`, `crontab` | [`bash_validation.rs:497-527`](/rust/crates/runtime/src/bash_validation.rs#L497-L527) |
-| **破坏性命令** | `rm`, `shred`, `wipefs` | [`bash_validation.rs:235`](/rust/crates/runtime/src/bash_validation.rs#L235) |
+| **破坏性命令** | `shred`, `wipefs` | [`bash_validation.rs:235`](/rust/crates/runtime/src/bash_validation.rs#L235) |
 
 ### 7.5 工具集成
 
@@ -249,8 +249,8 @@ PermissionPolicy::authorize(tool_name, input, prompter)
 ```
 
 **实现位置**:
-- [`tools/src/lib.rs:1184-1186`](/rust/crates/tools/src/lib.rs#L1184-L1186) - bash 工具调度
-- [`tools/src/lib.rs:1791-1797`](/rust/crates/tools/src/lib.rs#L1791-L1797) - run_bash 执行
+- [`tools/src/lib.rs:1183-1186`](/rust/crates/tools/src/lib.rs#L1183-L1186) — bash 工具调度
+- [`tools/src/lib.rs:1791-1794`](/rust/crates/tools/src/lib.rs#L1791-L1794) — run_bash 执行
 
 ---
 
@@ -270,7 +270,7 @@ PermissionPolicy::authorize(tool_name, input, prompter)
 ## 参考资料
 
 - 原始文档：<https://ccb.agent-aura.top/docs/features/bash-classifier>
-- 上游实现参考：`yoloClassifier.ts`（1496 行完整分类器）
+- 上游实现参考：`yoloClassifier.ts`（1495 行完整分类器）
 - claw-code 实现：
   - [`rust/crates/runtime/src/bash_validation.rs`](/rust/crates/runtime/src/bash_validation.rs)
   - [`rust/crates/runtime/src/permissions.rs`](/rust/crates/runtime/src/permissions.rs)

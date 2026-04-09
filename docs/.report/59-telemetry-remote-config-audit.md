@@ -246,8 +246,8 @@ Rust CLI 当前未实现独立的 Datadog 导出器；遥测统一由 CCB 宿主
 - 请求生命周期打点:
   - started [#L410-L417](rust/crates/api/src/providers/anthropic.rs#L410-L417)
   - succeeded [#L421-L430](rust/crates/api/src/providers/anthropic.rs#L421-L430)
-  - failed [#L545-L557](rust/crates/api/src/providers/anthropic.rs#L545-L557)
-- `message_usage` analytics 在响应成功后记录 [#L314-L339](rust/crates/api/src/providers/anthropic.rs#L314-L339)
+  - failed [#L551-L561](rust/crates/api/src/providers/anthropic.rs#L551-L561)
+- `message_usage` analytics 在响应成功后记录 [#L314-L332](rust/crates/api/src/providers/anthropic.rs#L314-L332)
 
 ### 14.3 ConversationRuntime 的 Session Trace
 

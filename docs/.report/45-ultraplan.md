@@ -26,16 +26,16 @@ ULTRAPLAN 是 Claude Code 的增强计划模式，在用户输入中检测 "ultr
 
 | 模块 | 文件 | 行数 | 状态 |
 |------|------|------|------|
-| 命令处理器 | `src/commands/ultraplan.tsx` | 472 | ✅ 完整 |
-| CCR 会话 | `src/utils/ultraplan/ccrSession.ts` | 350 | ✅ 完整 |
-| 关键字检测 | `src/utils/ultraplan/keyword.ts` | 128 | ✅ 完整 |
-| 嵌入式提示 | `src/utils/ultraplan/prompt.txt` | 1 | ✅ 完整 |
-| REPL 对话框 | `src/screens/REPL.tsx` | — | ✅ 布线 |
-| 关键字高亮 | `src/components/PromptInput/PromptInput.tsx` | — | ✅ 布线 |
+| 命令处理器 | `packages/ccb/src/commands/ultraplan.tsx` | 474 | ✅ 完整 |
+| CCR 会话 | `packages/ccb/src/utils/ultraplan/ccrSession.ts` | 349 | ✅ 完整 |
+| 关键字检测 | `packages/ccb/src/utils/ultraplan/keyword.ts` | 127 | ✅ 完整 |
+| 嵌入式提示 | `packages/ccb/src/utils/ultraplan/prompt.txt` | 1 | ✅ 完整 |
+| REPL 对话框 | `packages/ccb/src/screens/REPL.tsx` | — | ✅ 布线 |
+| 关键字高亮 | `packages/ccb/src/components/PromptInput/PromptInput.tsx` | — | ✅ 布线 |
 
 ### 2.2 关键字检测 — 智能过滤
 
-**文件**: `src/utils/ultraplan/keyword.ts` [#L1-L128](src/utils/ultraplan/keyword.ts)
+**文件**: `packages/ccb/src/utils/ultraplan/keyword.ts` [#L1-L127](packages/ccb/src/utils/ultraplan/keyword.ts)
 
 ```typescript
 // 核心检测函数 — 排除引号内、路径中的 "ultraplan"
@@ -72,7 +72,7 @@ export function findUltraplanTriggerPositions(text: string): TriggerPosition[] {
 
 ### 2.3 CCR 远程会话 — ExitPlanModeScanner
 
-**文件**: `src/utils/ultraplan/ccrSession.ts` [#L1-L350](src/utils/ultraplan/ccrSession.ts)
+**文件**: `packages/ccb/src/utils/ultraplan/ccrSession.ts` [#L1-L349](packages/ccb/src/utils/ultraplan/ccrSession.ts)
 
 `ExitPlanModeScanner` 类实现完整的事件状态机：
 
@@ -116,7 +116,7 @@ export class ExitPlanModeScanner {
 }
 ```
 
-**轮询函数** `pollForApprovedExitPlanMode` [#L198-L306](src/utils/ultraplan/ccrSession.ts#L198-L306):
+**轮询函数** `pollForApprovedExitPlanMode` [#L198-L306](packages/ccb/src/utils/ultraplan/ccrSession.ts#L198-L306):
 
 ```typescript
 export async function pollForApprovedExitPlanMode(
@@ -176,7 +176,7 @@ export async function pollForApprovedExitPlanMode(
          │
          ▼
 processUserInput 检测 "ultraplan" 关键字
-[src/utils/processUserInput/processUserInput.ts#L467-L493]
+[packages/ccb/src/utils/processUserInput/processUserInput.ts#L467-L493]
          │
          ▼
 重定向到 /ultraplan 命令
@@ -187,14 +187,14 @@ processUserInput 检测 "ultraplan" 关键字
                 │
                 ▼
          ExitPlanModeScanner 轮询 (3 秒间隔)
-         [src/utils/ultraplan/ccrSession.ts#L198-L306]
+         [packages/ccb/src/utils/ultraplan/ccrSession.ts#L198-L306]
                 │
                 ▼
          用户在远程审批 → 本地收到结果
                 │
                 ▼
          UltraplanChoiceDialog 选择执行方式
-         [src/components/ultraplan/UltraplanChoiceDialog.tsx]
+         [packages/ccb/src/components/ultraplan/UltraplanChoiceDialog.tsx]
 ```
 
 ---
@@ -203,9 +203,9 @@ processUserInput 检测 "ultraplan" 关键字
 
 ### 3.1 命令处理器 — `/ultraplan`
 
-**文件**: `src/commands/ultraplan.tsx` [#L1-L474](src/commands/ultraplan.tsx)
+**文件**: `packages/ccb/src/commands/ultraplan.tsx` [#L1-L474](packages/ccb/src/commands/ultraplan.tsx)
 
-**核心函数** `launchUltraplan` [#L258-L317](src/commands/ultraplan.tsx#L258-L317):
+**核心函数** `launchUltraplan` [#L258-L317](packages/ccb/src/commands/ultraplan.tsx#L258-L317):
 
 ```typescript
 export async function launchUltraplan(opts: {
@@ -236,7 +236,7 @@ export async function launchUltraplan(opts: {
 }
 ```
 
-**模型选择** [#L42-L44](src/commands/ultraplan.tsx#L42-L44):
+**模型选择** [#L42-L44](packages/ccb/src/commands/ultraplan.tsx#L42-L44):
 
 ```typescript
 function getUltraplanModel(): string {
@@ -251,7 +251,7 @@ function getUltraplanModel(): string {
 
 #### UltraplanLaunchDialog — 启动前确认
 
-**文件**: `src/components/ultraplan/UltraplanLaunchDialog.tsx` [#L1-L154](src/components/ultraplan/UltraplanLaunchDialog.tsx)
+**文件**: `packages/ccb/src/components/ultraplan/UltraplanLaunchDialog.tsx` [#L1-L153](packages/ccb/src/components/ultraplan/UltraplanLaunchDialog.tsx)
 
 用户选择是否启动 ultraplan 会话：
 - **Run ultraplan** — 禁用 remote control 并启动 CCR 会话
@@ -259,7 +259,7 @@ function getUltraplanModel(): string {
 
 #### UltraplanChoiceDialog — 计划审批后选择
 
-**文件**: `src/components/ultraplan/UltraplanChoiceDialog.tsx` [#L1-L244](src/components/ultraplan/UltraplanChoiceDialog.tsx)
+**文件**: `packages/ccb/src/components/ultraplan/UltraplanChoiceDialog.tsx` [#L1-L244](packages/ccb/src/components/ultraplan/UltraplanChoiceDialog.tsx)
 
 用户选择计划执行方式：
 - **Implement here** — 在当前会话注入计划执行
@@ -292,7 +292,7 @@ const handleChoice = async (choice: 'here' | 'fresh' | 'cancel') => {
 
 ### 3.3 输入框高亮 — 彩虹动画
 
-**文件**: `src/components/PromptInput/PromptInput.tsx`
+**文件**: `packages/ccb/src/components/PromptInput/PromptInput.tsx`
 
 关键字检测和高亮逻辑：
 
@@ -336,7 +336,7 @@ useEffect(() => {
 
 ### 3.4 processUserInput 集成
 
-**文件**: `src/utils/processUserInput/processUserInput.ts` [#L467-L493](src/utils/processUserInput/processUserInput.ts#L467-L493)
+**文件**: `packages/ccb/src/utils/processUserInput/processUserInput.ts` [#L467-L493](packages/ccb/src/utils/processUserInput/processUserInput.ts#L467-L493)
 
 关键字检测和重定向逻辑：
 
@@ -372,7 +372,7 @@ if (
 
 ### 3.5 AppState 状态管理
 
-**文件**: `src/state/AppStateStore.ts` [#L428-L443](src/state/AppStateStore.ts#L428-L443)
+**文件**: `packages/ccb/src/state/AppStateStore.ts` [#L428-L443](packages/ccb/src/state/AppStateStore.ts#L428-L443)
 
 Ultraplan 相关状态：
 
@@ -394,7 +394,7 @@ interface AppState {
 
 ### 3.6 RemoteAgentTask 集成
 
-**文件**: `src/tasks/RemoteAgentTask/RemoteAgentTask.tsx`
+**文件**: `packages/ccb/src/tasks/RemoteAgentTask/RemoteAgentTask.tsx`
 
 Ultraplan 任务状态扩展：
 
@@ -407,7 +407,7 @@ export type RemoteAgentTaskState = TaskStateBase & {
 }
 ```
 
-轮询特殊处理 [#L773-L780](src/tasks/RemoteAgentTask/RemoteAgentTask.tsx#L773-L780):
+轮询特殊处理 [#L773-L780](packages/ccb/src/tasks/RemoteAgentTask/RemoteAgentTask.tsx#L773-L780):
 
 ```typescript
 // Ultraplan: result(success) 在每个 CCR turn 后触发，不能用于完成判断
@@ -476,17 +476,17 @@ FEATURE_ULTRAPLAN=1 bun run dev
 
 | 文件 | 行数 | 职责 |
 |------|------|------|
-| `src/commands/ultraplan.tsx` | 472 | 斜杠命令处理器 |
-| `src/utils/ultraplan/ccrSession.ts` | 350 | CCR 远程会话管理 + ExitPlanModeScanner |
-| `src/utils/ultraplan/keyword.ts` | 128 | 关键字检测和替换 |
-| `src/utils/ultraplan/prompt.txt` | 1 | 嵌入式提示 |
-| `src/utils/processUserInput/processUserInput.ts` | ~600 | 关键字重定向 (#L467-L493) |
-| `src/components/PromptInput/PromptInput.tsx` | ~2600 | 彩虹高亮 |
-| `src/components/ultraplan/UltraplanLaunchDialog.tsx` | 154 | 启动前对话框 |
-| `src/components/ultraplan/UltraplanChoiceDialog.tsx` | 244 | 计划审批后对话框 |
-| `src/screens/REPL.tsx` | ~5900 | 对话框渲染集成 |
-| `src/state/AppStateStore.ts` | ~450 | 状态定义 |
-| `src/tasks/RemoteAgentTask/RemoteAgentTask.tsx` | 1102 | 远程任务集成 |
+| `packages/ccb/src/commands/ultraplan.tsx` | 474 | 斜杠命令处理器 |
+| `packages/ccb/src/utils/ultraplan/ccrSession.ts` | 349 | CCR 远程会话管理 + ExitPlanModeScanner |
+| `packages/ccb/src/utils/ultraplan/keyword.ts` | 127 | 关键字检测和替换 |
+| `packages/ccb/src/utils/ultraplan/prompt.txt` | 1 | 嵌入式提示 |
+| `packages/ccb/src/utils/processUserInput/processUserInput.ts` | 605 | 关键字重定向 (#L467-L493) |
+| `packages/ccb/src/components/PromptInput/PromptInput.tsx` | 3175 | 彩虹高亮 |
+| `packages/ccb/src/components/ultraplan/UltraplanLaunchDialog.tsx` | 153 | 启动前对话框 |
+| `packages/ccb/src/components/ultraplan/UltraplanChoiceDialog.tsx` | 244 | 计划审批后对话框 |
+| `packages/ccb/src/screens/REPL.tsx` | 6194 | 对话框渲染集成 |
+| `packages/ccb/src/state/AppStateStore.ts` | 569 | 状态定义 |
+| `packages/ccb/src/tasks/RemoteAgentTask/RemoteAgentTask.tsx` | 1102 | 远程任务集成 |
 
 ---
 

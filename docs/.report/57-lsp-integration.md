@@ -29,7 +29,7 @@ The claw-code codebase implements a comprehensive Language Server Protocol (LSP)
 │                    tools/src/lib.rs                             │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
 │  │   ToolSpec      │  │   run_lsp()     │  │   LspInput      │ │
-│  │   "LSP"         │──│   #L1606-L1622  │  │   #L2303-L2313  │ │
+│  │   "LSP"         │──│   #L1600-L1620  │  │   #L2302-L2312  │ │
 │  └─────────────────┘  └────────┬────────┘  └─────────────────┘ │
 └─────────────────────────────────┼────────────────────────────────┘
                                   │
@@ -147,7 +147,7 @@ Ok(serde_json::json!({
 
 ### 2. LSP Tool Interface (`rust/crates/tools/src/lib.rs`)
 
-#### Tool Definition (#L1056-L1072)
+#### Tool Definition (#L1052-L1071)
 
 ```rust
 ToolSpec {
@@ -169,7 +169,7 @@ ToolSpec {
 }
 ```
 
-#### Input Structure (#L2303-L2313)
+#### Input Structure (#L2302-L2312)
 
 ```rust
 #[derive(Debug, Deserialize)]
@@ -186,11 +186,11 @@ struct LspInput {
 }
 ```
 
-#### Execution Handler (#L1606-L1622)
+#### Execution Handler (#L1600-L1620)
 
 ```rust
 fn run_lsp(input: LspInput) -> Result<String, String> {
-    let registry = global_lsp_registry();  // #L35-L39: static OnceLock<LspRegistry>
+    let registry = global_lsp_registry();  // #L35-L42: static OnceLock<LspRegistry>
     let action = &input.action;
     let path = input.path.as_deref();
     let line = input.line;
@@ -312,7 +312,7 @@ pub fn spawn_mcp_stdio_process(bootstrap: &McpClientBootstrap) -> io::Result<Mcp
 
 ### Global Registry Pattern
 
-**tools/src/lib.rs** (#L35-L39):
+**tools/src/lib.rs** (#L35-L42):
 ```rust
 fn global_lsp_registry() -> &'static LspRegistry {
     use std::sync::OnceLock;
@@ -379,10 +379,10 @@ To complete the LSP integration, the following components would need implementat
 | LspRegistry | `rust/crates/runtime/src/lsp_client.rs` | #L110-L112 |
 | LspRegistry::dispatch | `rust/crates/runtime/src/lsp_client.rs` | #L236-L296 |
 | LspRegistry tests | `rust/crates/runtime/src/lsp_client.rs` | #L299-L747 |
-| global_lsp_registry | `rust/crates/tools/src/lib.rs` | #L35-L39 |
-| LSP ToolSpec | `rust/crates/tools/src/lib.rs` | #L1056-L1072 |
-| LspInput struct | `rust/crates/tools/src/lib.rs` | #L2303-L2313 |
-| run_lsp handler | `rust/crates/tools/src/lib.rs` | #L1606-L1622 |
+| global_lsp_registry | `rust/crates/tools/src/lib.rs` | #L35-L42 |
+| LSP ToolSpec | `rust/crates/tools/src/lib.rs` | #L1052-L1071 |
+| LspInput struct | `rust/crates/tools/src/lib.rs` | #L2302-L2312 |
+| run_lsp handler | `rust/crates/tools/src/lib.rs` | #L1600-L1620 |
 | Tool dispatch | `rust/crates/tools/src/lib.rs` | #L1254 |
 | McpStdioProcess | `rust/crates/runtime/src/mcp_stdio.rs` | #L1143-L1148 |
 | read_frame | `rust/crates/runtime/src/mcp_stdio.rs` | #L1215-L1247 |

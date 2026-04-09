@@ -8,10 +8,10 @@
 
 ## 1. 功能概述
 
-Context Collapse 让模型在上下文窗口接近上限时，自动将旧消息折叠为压缩摘要，释放 token 空间。它不是简单截断，而是通过在后台调用 LLM 生成摘要来保留关键信息。
+Context Collapse 的设计目标是在上下文窗口接近上限时，自动将旧消息折叠为压缩摘要以释放 token 空间。但当前实现仅停留在**接口与布线层面**：核心折叠引擎为空函数，`HISTORY_SNIP` 的手动标记工具也尚未落地。报告接下来梳理的是已铺设的集成点与持久化结构，实际 summarization 功能仍待开发。
 
-- **`CONTEXT_COLLAPSE`**: 上下文折叠引擎（自动折叠）
-- **`HISTORY_SNIP`**: SnipTool — 手动标记消息进行折叠/修剪
+- **`CONTEXT_COLLAPSE`**: 上下文折叠引擎（自动折叠）— **当前为 Stub**
+- **`HISTORY_SNIP`**: SnipTool — 手动标记消息进行折叠/修剪 — **当前为 Stub**
 
 ---
 
@@ -39,7 +39,7 @@ export interface CollapseResult { messages: Message[] }
 export interface DrainResult { committed: number; messages: Message[] }
 ```
 
-所有导出函数均为空操作（恒等/返回默认值）：
+当前所有导出函数均为空操作（恒等/返回默认值）：
 - `isContextCollapseEnabled()` → `false`  `#L43`
 - `applyCollapsesIfNeeded(messages, ...)` → 透传 `messages`  `#L47-L51`
 - `recoverFromOverflow(messages, ...)` → `{ committed: 0, messages }`  `#L59-L62`
@@ -65,8 +65,8 @@ const contextCollapse = feature('CONTEXT_COLLAPSE')
   : null
 ```
 
-**溢出检测处的折叠应用**  
-在消息即将发送给 API 之前，先应用自动折叠：
+**溢出检测处的折叠调用**  
+在消息即将发送给 API 之前，代码尝试调用自动折叠（当前为恒等透传）：
 
 ```ts
 // packages/ccb/src/query.ts#L436-L446
@@ -80,10 +80,10 @@ if (feature('CONTEXT_COLLAPSE') && contextCollapse) {
 }
 ```
 
-> 注释解释了设计要点：折叠后的视图是一个**读取时投影**（read-time projection），摘要消息存在于 collapse store 而非 REPL 消息数组中，因此能跨 turn 持久化。
+> 设计思路（源码注释）：折叠后的视图计划采用**读取时投影**（read-time projection），摘要消息存在于 collapse store 而非 REPL 消息数组中，以便跨 turn 持久化。但当前尚无实际实现。
 
 **413 (Prompt Too Long) 恢复路径**  
-当 API 返回 413 时，折叠系统尝试紧急释放（drain staged collapses）：
+当 API 返回 413 时，折叠系统尝试紧急释放（drain staged collapses，当前始终返回 `committed: 0`）：
 
 ```ts
 // packages/ccb/src/query.ts#L1089-L1108
@@ -181,7 +181,7 @@ const snipProjection = feature('HISTORY_SNIP')
 `packages/ccb/src/services/compact/autoCompact.ts` 中，如果 `CONTEXT_COLLAPSE` 已启用且处于激活状态，则主动抑制 proactive autocompact（避免两者竞争同一个 headroom）：
 
 ```ts
-// packages/ccb/src/services/compact/autoCompact.ts#L201-L226
+// packages/ccb/src/services/compact/autoCompact.ts#L215-L225
 if (feature('CONTEXT_COLAPSE')) {
   const { isContextCollapseEnabled } =
     require('../contextCollapse/index.js') as typeof import('../contextCollapse/index.js')

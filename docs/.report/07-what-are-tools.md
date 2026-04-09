@@ -11,7 +11,7 @@
 
 ### Rust 实现中的核心抽象
 
-在 `claw-code` 中，"AI 的双手"被抽象为一个极简的 `ToolExecutor` trait，定义在 [`runtime/src/conversation.rs#L48-L52`](/rust/crates/runtime/src/conversation.rs#L48-L52)：
+在 `claw-code` 中，"AI 的双手"被抽象为一个极简的 `ToolExecutor` trait，定义在 [`runtime/src/conversation.rs#L57-L59`](/rust/crates/runtime/src/conversation.rs#L57-L59)：
 
 ```rust
 pub trait ToolExecutor {
@@ -32,7 +32,7 @@ pub trait ToolExecutor {
 
 ### 核心四要素（Rust 映射）
 
-`ToolSpec` 定义在 [`tools/src/lib.rs#L107-L114`](/rust/crates/tools/src/lib.rs#L107-L114) 附近：
+`ToolSpec` 定义在 [`tools/src/lib.rs#L100-L107`](/rust/crates/tools/src/lib.rs#L100-L107) 附近：
 
 ```rust
 pub struct ToolSpec {
@@ -50,13 +50,13 @@ pub struct ToolSpec {
 | **input schema** | `input_schema` | JSON Schema（`serde_json::Value`），定义参数类型 |
 | **call / execute** | `execute_tool(name, input)` | 巨大的 match 分发器 |
 
-与 TypeScript 版本不同，Rust 实现没有采用"每个工具一个对象"的 OO 风格，而是把所有内置工具集中在 [`tools/src/lib.rs#L1126-L1280`](/rust/crates/tools/src/lib.rs#L1126-L1280) 的 `execute_tool_with_enforcer` 函数里，通过模式匹配（`match name`）统一分发。这种设计避免了 trait object 的虚函数开销，也更适合 Rust 的所有权模型。
+与 TypeScript 版本不同，Rust 实现没有采用"每个工具一个对象"的 OO 风格，而是把所有内置工具集中在 [`tools/src/lib.rs#L1178-L1267`](/rust/crates/tools/src/lib.rs#L1178-L1267) 的 `execute_tool_with_enforcer` 函数里，通过模式匹配（`match name`）统一分发。这种设计避免了 trait object 的虚函数开销，也更适合 Rust 的所有权模型。
 
 ### 注册与发现
 
 Rust 实现中没有 `aliases`、`searchHint`、`shouldDefer` 等单独的字段，但实现了等价的机制：
 
-- **别名**：`GlobalToolRegistry::normalize_allowed_tools`（[`tools/src/lib.rs#L232-L267`](/rust/crates/tools/src/lib.rs#L232-L267)）内置了别名映射：
+- **别名**：`GlobalToolRegistry::normalize_allowed_tools`（[`tools/src/lib.rs#L192-L244`](/rust/crates/tools/src/lib.rs#L192-L244)）内置了别名映射：
   ```rust
   for (alias, canonical) in [
       ("read", "read_file"),
@@ -66,12 +66,12 @@ Rust 实现中没有 `aliases`、`searchHint`、`shouldDefer` 等单独的字段
       ("grep", "grep_search"),
   ]
   ```
-- **延迟加载 / ToolSearch**：`deferred_tool_specs()` 提供可搜索但默认不注册的工具规格，通过 `run_tool_search` 动态发现（[`tools/src/lib.rs#L2143-L2145`](/rust/crates/tools/src/lib.rs#L2143-L2145)）。
+- **延迟加载 / ToolSearch**：`deferred_tool_specs()` 提供可搜索但默认不注册的工具规格，通过 `run_tool_search` 动态发现（[`tools/src/lib.rs#L2000-L2002`](/rust/crates/tools/src/lib.rs#L2000-L2002)）。
 - **运行时开关**：某些工具通过在 `execute_tool_with_enforcer` 中直接返回错误来实现平台限制（如 PowerShell 在 Unix 上可用但语义简化）。
 
 ### 安全与权限
 
-Rust 中每个 `ToolSpec` 都绑定了一个 `required_permission: PermissionMode`，这与 TypeScript 中的 `isReadOnly()`、`isDestructive()` 等字段等价，但粒度更粗、更明确。`PermissionMode` 定义在 [`runtime/src/permissions.rs#L9-L15`](/rust/crates/runtime/src/permissions.rs#L9-L15)：
+Rust 中每个 `ToolSpec` 都绑定了一个 `required_permission: PermissionMode`，这与 TypeScript 中的 `isReadOnly()`、`isDestructive()` 等字段等价，但粒度更粗、更明确。`PermissionMode` 定义在 [`runtime/src/permissions.rs#L7-L15`](/rust/crates/runtime/src/permissions.rs#L7-L15)：
 
 ```rust
 pub enum PermissionMode {
@@ -87,7 +87,7 @@ pub enum PermissionMode {
 - `WorkspaceWrite`：可修改工作区内文件（`write_file`、`edit_file`、`TodoWrite`）。
 - `DangerFullAccess`：可执行任意命令（`bash`、`Agent`、`REPL`）。
 
-在执行前，`ConversationRuntime` 会调用 `permission_policy.authorize_with_context(...)`，其逻辑见 [`runtime/src/permissions.rs#L175-L292`](/rust/crates/runtime/src/permissions.rs#L175-L292)。如果当前会话模式低于工具所需权限，会拒绝或提示用户确认。
+在执行前，`ConversationRuntime` 会调用 `permission_policy.authorize_with_context(...)`，其逻辑见 [`runtime/src/permissions.rs#L173-L292`](/rust/crates/runtime/src/permissions.rs#L173-L292)。如果当前会话模式低于工具所需权限，会拒绝或提示用户确认。
 
 ### 输出与结果
 
@@ -95,7 +95,7 @@ TypeScript 版本有 `maxResultSizeChars` 和结果持久化机制。Rust 实现
 
 - **Bash 输出截断**：`bash.rs` 中设置了 `MAX_OUTPUT_BYTES = 16_384`（[`runtime/src/bash.rs#L289`](/rust/crates/runtime/src/bash.rs#L289)），超长输出会被截断并附加标记。
 - **WebFetch 截断**：`tools/src/lib.rs` 的 `run_remote_trigger` 对 HTTP 响应体超过 8192 字节时截断。
-- **文件读取**：`file_ops.rs` 中设置了 `MAX_READ_SIZE = 10 * 1024 * 1024`（10 MB）和 `MAX_WRITE_SIZE = 10 * 1024 * 1024`（[`runtime/src/file_ops.rs#L13-L16`](/rust/crates/runtime/src/file_ops.rs#L13-L16)），超限直接返回错误而非持久化到磁盘。
+- **文件读取**：`file_ops.rs` 中设置了 `MAX_READ_SIZE = 10 * 1024 * 1024`（10 MB）和 `MAX_WRITE_SIZE = 10 * 1024 * 1024`（[`runtime/src/file_ops.rs#L12-L16`](/rust/crates/runtime/src/file_ops.rs#L12-L16)），超限直接返回错误而非持久化到磁盘。
 
 Rust 实现目前**没有**单独的结果持久化文件（如 `toolResultStorage.ts`），而是通过直接截断或报错来控制输出预算。
 
@@ -103,7 +103,7 @@ Rust 实现目前**没有**单独的结果持久化文件（如 `toolResultStora
 
 ## 工具注册：getTools() 的分层组装
 
-原文描述 TypeScript 的 `getAllBaseTools()` 按固定工具、条件工具、Feature-flag 工具、Ant-only 工具分层组装。Rust 实现的分层在 [`tools/src/lib.rs#L193-L228`](/rust/crates/tools/src/lib.rs#L193-L228) 的 `GlobalToolRegistry` 构造函数和 [`tools/src/lib.rs#L183-L191`](/rust/crates/tools/src/lib.rs#L183-L191) 的 `mvp_tool_specs()` 中体现：
+原文描述 TypeScript 的 `getAllBaseTools()` 按固定工具、条件工具、Feature-flag 工具、Ant-only 工具分层组装。Rust 实现的分层在 [`tools/src/lib.rs#L133-L184`](/rust/crates/tools/src/lib.rs#L133-L184) 的 `GlobalToolRegistry` 构造函数和 [`tools/src/lib.rs#L125-L131`](/rust/crates/tools/src/lib.rs#L125-L131) 的 `mvp_tool_specs()` 中体现：
 
 ### 内置固定工具
 
@@ -132,11 +132,11 @@ pub fn with_runtime_tools(
 ) -> Result<Self, String> { ... }
 ```
 
-这两个方法都会检查名称冲突：插件工具不能与内置工具重名，运行时工具也不能与已有工具重名（[`tools/src/lib.rs#L193-L228`](/rust/crates/tools/src/lib.rs#L193-L228)）。
+这两个方法都会检查名称冲突：插件工具不能与内置工具重名，运行时工具也不能与已有工具重名（[`tools/src/lib.rs#L133-L184`](/rust/crates/tools/src/lib.rs#L133-L184)）。
 
 ### 权限过滤
 
-`GlobalToolRegistry::definitions` 方法（[`tools/src/lib.rs#L269-L289`](/rust/crates/tools/src/lib.rs#L269-L289)）在返回工具定义列表时，会根据 `--allowedTools`（或配置中的允许列表）过滤：
+`GlobalToolRegistry::definitions` 方法（[`tools/src/lib.rs#L247-L278`](/rust/crates/tools/src/lib.rs#L247-L278)）在返回工具定义列表时，会根据 `--allowedTools`（或配置中的允许列表）过滤：
 
 ```rust
 pub fn definitions(&self, allowed_tools: Option<&BTreeSet<String>>) -> Vec<ToolDefinition> {
@@ -153,7 +153,7 @@ pub fn definitions(&self, allowed_tools: Option<&BTreeSet<String>>) -> Vec<ToolD
 
 ## 工具调用的完整链路
 
-原文描述了 TypeScript 中从 AI 发出 `tool_use` 到结果回传的 10 步链路。Rust 中的对应链路在 `ConversationRuntime::run_turn` 中完全展开，核心逻辑位于 [`runtime/src/conversation.rs#L296-L450`](/rust/crates/runtime/src/conversation.rs#L296-L450)。
+原文描述了 TypeScript 中从 AI 发出 `tool_use` 到结果回传的 10 步链路。Rust 中的对应链路在 `ConversationRuntime::run_turn` 中完全展开，核心逻辑位于 [`runtime/src/conversation.rs#L296-L484`](/rust/crates/runtime/src/conversation.rs#L296-L484)。
 
 ### 源码追踪
 
@@ -215,8 +215,8 @@ pub fn run_turn(
 
 与 TypeScript 版本相比，Rust 实现把 **hooks** 嵌入了链路更深层的位置：
 
-- **PreToolUse**：在权限检查之前运行，hook 可以修改输入、覆盖权限决策，甚至直接取消执行（[`runtime/src/conversation.rs#L334-L338`](/rust/crates/runtime/src/conversation.rs#L334-L338)）。
-- **PostToolUse / PostToolUseFailure**：在工具执行之后运行，结果会拼接到最终输出中（[`runtime/src/conversation.rs#L370-L384`](/rust/crates/runtime/src/conversation.rs#L370-L384)）。
+- **PreToolUse**：在权限检查之前运行，hook 可以修改输入、覆盖权限决策，甚至直接取消执行（[`runtime/src/conversation.rs#L370-L372`](/rust/crates/runtime/src/conversation.rs#L370-L372)）。
+- **PostToolUse / PostToolUseFailure**：在工具执行之后运行，结果会拼接到最终输出中（[`runtime/src/conversation.rs#L433-L439`](/rust/crates/runtime/src/conversation.rs#L433-L439)）。
 
 Hook 的具体实现见 [`runtime/src/hooks.rs`](/rust/crates/runtime/src/hooks.rs)。HookRunner 支持通过 shell 脚本拦截工具调用，返回 JSON 结构来决定 `Allow`/`Deny`/`Ask`，甚至修改 `updated_input`。
 
@@ -226,7 +226,7 @@ Hook 的具体实现见 [`runtime/src/hooks.rs`](/rust/crates/runtime/src/hooks.
 
 ### Bash 命令执行工具
 
-Bash 的输入输出结构定义在 [`runtime/src/bash.rs#L18-L67`](/rust/crates/runtime/src/bash.rs#L18-L67)：
+Bash 的输入输出结构定义在 [`runtime/src/bash.rs#L17-L67`](/rust/crates/runtime/src/bash.rs#L17-L67)：
 
 ```rust
 pub struct BashCommandInput {
@@ -253,7 +253,7 @@ pub struct BashCommandOutput {
 }
 ```
 
-执行入口 `execute_bash`（[`runtime/src/bash.rs#L70-L103`](/rust/crates/runtime/src/bash.rs#L70-L103)）会根据 `run_in_background` 决定是后台 spawn 还是同步等待；同步路径会走到 `execute_bash_async`，使用 `tokio::process::Command` 执行，并支持基于毫秒的超时控制。
+执行入口 `execute_bash`（[`runtime/src/bash.rs#L69-L103`](/rust/crates/runtime/src/bash.rs#L69-L103)）会根据 `run_in_background` 决定是后台 spawn 还是同步等待；同步路径会走到 `execute_bash_async`，使用 `tokio::process::Command` 执行，并支持基于毫秒的超时控制。
 
 沙箱方面，`prepare_tokio_command`（[`runtime/src/bash.rs#L212-L237`](/rust/crates/runtime/src/bash.rs#L212-L237)）会先检查 Linux 下的沙箱启动器（`build_linux_sandbox_command`），如果没有则降级到普通 `sh -lc`，但会根据 `SandboxStatus` 重定向 `HOME` 和 `TMPDIR` 到工作区下的隔离目录。
 
@@ -263,7 +263,7 @@ pub struct BashCommandOutput {
 
 #### Read
 
-`read_file` 函数（[`runtime/src/file_ops.rs#L175-L221`](/rust/crates/runtime/src/file_ops.rs#L175-L221)）：
+`read_file` 函数（[`runtime/src/file_ops.rs#L174-L221`](/rust/crates/runtime/src/file_ops.rs#L174-L221)）：
 
 - 先将路径规范化为绝对路径。
 - 检查文件大小是否超过 `MAX_READ_SIZE`（10MB），超限则返回 `InvalidData` 错误。
@@ -276,7 +276,7 @@ pub fn read_file(path: &str, offset: Option<usize>, limit: Option<usize>) -> io:
 
 #### Write
 
-`write_file`（[`runtime/src/file_ops.rs#L224-L255`](/rust/crates/runtime/src/file_ops.rs#L224-L255)）：
+`write_file`（[`runtime/src/file_ops.rs#L223-L255`](/rust/crates/runtime/src/file_ops.rs#L223-L255)）：
 
 - 内容大小检查（`MAX_WRITE_SIZE` = 10MB）。
 - 自动创建父目录。
@@ -284,7 +284,7 @@ pub fn read_file(path: &str, offset: Option<usize>, limit: Option<usize>) -> io:
 
 #### Edit
 
-`edit_file`（[`runtime/src/file_ops.rs#L258-L296`](/rust/crates/runtime/src/file_ops.rs#L258-L296)）：
+`edit_file`（[`runtime/src/file_ops.rs#L257-L296`](/rust/crates/runtime/src/file_ops.rs#L257-L296)）：
 
 - 使用字符串级别的 `replacen`（默认替换 1 次）或 `replace`（`replace_all = true`）。
 - 若 `old_string` 在文件中不存在，返回 `NotFound` 错误。
@@ -292,11 +292,11 @@ pub fn read_file(path: &str, offset: Option<usize>, limit: Option<usize>) -> io:
 
 #### Glob
 
-`glob_search`（[`runtime/src/file_ops.rs#L299-L340`](/rust/crates/runtime/src/file_ops.rs#L299-L340)）使用 `glob::glob` 解析模式，按修改时间降序排列，最多返回 100 个文件，超长的结果会标记 `truncated: true`。
+`glob_search`（[`runtime/src/file_ops.rs#L298-L340`](/rust/crates/runtime/src/file_ops.rs#L298-L340)）使用 `glob::glob` 解析模式，按修改时间降序排列，最多返回 100 个文件，超长的结果会标记 `truncated: true`。
 
 #### Grep
 
-`grep_search`（[`runtime/src/file_ops.rs#L343-L450`](/rust/crates/runtime/src/file_ops.rs#L343-L450)）使用 `regex::RegexBuilder` 编译模式，配合 `walkdir::WalkDir` 遍历文件。支持：
+`grep_search`（[`runtime/src/file_ops.rs#L342-L450`](/rust/crates/runtime/src/file_ops.rs#L342-L450)）使用 `regex::RegexBuilder` 编译模式，配合 `walkdir::WalkDir` 遍历文件。支持：
 
 - `output_mode`：`files_with_matches`（默认）、`content`、`count`
 - `glob` 过滤器、`file_type` 后缀过滤
@@ -377,7 +377,7 @@ else if let Some(prompt) = prompter.as_mut() {
 3. 再查 `ask_rules`，命中则强制进入 prompt（即使当前模式足够高）。
 4. 最后比较 `current_mode >= required_mode`，满足则允许。
 
-规则语法支持 `tool_name(pattern)` 形式，例如 `bash(git:*)` 表示匹配 Bash 工具中 `command` 或 `path` 以 `git` 为前缀的输入。规则解析器在 [`runtime/src/permissions.rs#L350-L402`](/rust/crates/runtime/src/permissions.rs#L350-L402) 中实现。
+规则语法支持 `tool_name(pattern)` 形式，例如 `bash(git:*)` 表示匹配 Bash 工具中 `command` 或 `path` 以 `git` 为前缀的输入。规则解析器在 [`runtime/src/permissions.rs#L349-L402`](/rust/crates/runtime/src/permissions.rs#L349-L402) 中实现。
 
 ### Hook 生命周期
 
@@ -405,33 +405,33 @@ Hook 的三种退出码语义（[`runtime/src/hooks.rs#L440-L455`](/rust/crates/
 
 | 源码位置 | 描述 |
 | --- | --- |
-| [`runtime/src/conversation.rs#L48-L52`](/rust/crates/runtime/src/conversation.rs#L48-L52) | `ToolExecutor` trait 定义 |
-| [`runtime/src/conversation.rs#L296-L450`](/rust/crates/runtime/src/conversation.rs#L296-L450) | `ConversationRuntime::run_turn`，完整的 tool use → tool result 循环 |
-| [`runtime/src/conversation.rs#L334-L338`](/rust/crates/runtime/src/conversation.rs#L334-L338) | PreToolUse hook 调用点 |
-| [`runtime/src/conversation.rs#L370-L384`](/rust/crates/runtime/src/conversation.rs#L370-L384) | PostToolUse / PostToolUseFailure hook 调用点 |
-| [`tools/src/lib.rs#L107-L114`](/rust/crates/tools/src/lib.rs#L107-L114) | `ToolSpec` 结构体（name / description / input_schema / required_permission） |
-| [`tools/src/lib.rs#L183-L191`](/rust/crates/tools/src/lib.rs#L183-L191) | `GlobalToolRegistry::builtin()` 构造器 |
-| [`tools/src/lib.rs#L193-L228`](/rust/crates/tools/src/lib.rs#L193-L228) | `GlobalToolRegistry::with_plugin_tools` / `with_runtime_tools` 注册与去重 |
-| [`tools/src/lib.rs#L232-L267`](/rust/crates/tools/src/lib.rs#L232-L267) | `normalize_allowed_tools`，包含 read/write/edit/glob/grep 别名映射 |
-| [`tools/src/lib.rs#L269-L289`](/rust/crates/tools/src/lib.rs#L269-L289) | `definitions()` 方法：按 allowed_tools 过滤后返回 `ToolDefinition` 列表 |
-| [`tools/src/lib.rs#L309-L357`](/rust/crates/tools/src/lib.rs#L309-L357) | `mvp_tool_specs()` 的开头部分：bash / read_file / write_file / edit_file / glob_search / grep_search / WebFetch / WebSearch / TodoWrite 等 |
-| [`tools/src/lib.rs#L1126-L1280`](/rust/crates/tools/src/lib.rs#L1126-L1280) | `execute_tool_with_enforcer`：40+ 工具的统一 match 分发器 |
-| [`tools/src/lib.rs#L2143-L2145`](/rust/crates/tools/src/lib.rs#L2143-L2145) | `run_tool_search` 入口 |
-| [`runtime/src/bash.rs#L18-L67`](/rust/crates/runtime/src/bash.rs#L18-L67) | `BashCommandInput` / `BashCommandOutput` |
-| [`runtime/src/bash.rs#L70-L103`](/rust/crates/runtime/src/bash.rs#L70-L103) | `execute_bash` 同步入口 |
+| [`runtime/src/conversation.rs#L57-L59`](/rust/crates/runtime/src/conversation.rs#L57-L59) | `ToolExecutor` trait 定义 |
+| [`runtime/src/conversation.rs#L296-L484`](/rust/crates/runtime/src/conversation.rs#L296-L484) | `ConversationRuntime::run_turn`，完整的 tool use → tool result 循环 |
+| [`runtime/src/conversation.rs#L370-L372`](/rust/crates/runtime/src/conversation.rs#L370-L372) | PreToolUse hook 调用点 |
+| [`runtime/src/conversation.rs#L433-L439`](/rust/crates/runtime/src/conversation.rs#L433-L439) | PostToolUse / PostToolUseFailure hook 调用点 |
+| [`tools/src/lib.rs#L100-L107`](/rust/crates/tools/src/lib.rs#L100-L107) | `ToolSpec` 结构体（name / description / input_schema / required_permission） |
+| [`tools/src/lib.rs#L125-L131`](/rust/crates/tools/src/lib.rs#L125-L131) | `GlobalToolRegistry::builtin()` 构造器 |
+| [`tools/src/lib.rs#L133-L184`](/rust/crates/tools/src/lib.rs#L133-L184) | `GlobalToolRegistry::with_plugin_tools` / `with_runtime_tools` 注册与去重 |
+| [`tools/src/lib.rs#L192-L244`](/rust/crates/tools/src/lib.rs#L192-L244) | `normalize_allowed_tools`，包含 read/write/edit/glob/grep 别名映射 |
+| [`tools/src/lib.rs#L247-L278`](/rust/crates/tools/src/lib.rs#L247-L278) | `definitions()` 方法：按 allowed_tools 过滤后返回 `ToolDefinition` 列表 |
+| [`tools/src/lib.rs#L385-...`](/rust/crates/tools/src/lib.rs#L385) | `mvp_tool_specs()` 的开头部分：bash / read_file / write_file / edit_file / glob_search / grep_search / WebFetch / WebSearch / TodoWrite 等 |
+| [`tools/src/lib.rs#L1178-L1267`](/rust/crates/tools/src/lib.rs#L1178-L1267) | `execute_tool_with_enforcer`：40+ 工具的统一 match 分发器 |
+| [`tools/src/lib.rs#L2000-L2002`](/rust/crates/tools/src/lib.rs#L2000-L2002) | `run_tool_search` 入口 |
+| [`runtime/src/bash.rs#L17-L67`](/rust/crates/runtime/src/bash.rs#L17-L67) | `BashCommandInput` / `BashCommandOutput` |
+| [`runtime/src/bash.rs#L69-L103`](/rust/crates/runtime/src/bash.rs#L69-L103) | `execute_bash` 同步入口 |
 | [`runtime/src/bash.rs#L212-L237`](/rust/crates/runtime/src/bash.rs#L212-L237) | `prepare_tokio_command`：沙箱启动器检查与普通 shell 回退 |
 | [`runtime/src/bash.rs#L289`](/rust/crates/runtime/src/bash.rs#L289) | `MAX_OUTPUT_BYTES = 16_384`（bash 输出截断阈值） |
-| [`runtime/src/file_ops.rs#L13-L16`](/rust/crates/runtime/src/file_ops.rs#L13-L16) | `MAX_READ_SIZE` / `MAX_WRITE_SIZE`（10MB） |
-| [`runtime/src/file_ops.rs#L175-L221`](/rust/crates/runtime/src/file_ops.rs#L175-L221) | `read_file` 实现 |
-| [`runtime/src/file_ops.rs#L224-L255`](/rust/crates/runtime/src/file_ops.rs#L224-L255) | `write_file` 实现 |
-| [`runtime/src/file_ops.rs#L258-L296`](/rust/crates/runtime/src/file_ops.rs#L258-L296) | `edit_file` 实现 |
-| [`runtime/src/file_ops.rs#L299-L340`](/rust/crates/runtime/src/file_ops.rs#L299-L340) | `glob_search` 实现 |
-| [`runtime/src/file_ops.rs#L343-L450`](/rust/crates/runtime/src/file_ops.rs#L343-L450) | `grep_search` 实现 |
-| [`runtime/src/permissions.rs#L9-L15`](/rust/crates/runtime/src/permissions.rs#L9-L15) | `PermissionMode` 五级权限枚举 |
-| [`runtime/src/permissions.rs#L175-L292`](/rust/crates/runtime/src/permissions.rs#L175-L292) | `PermissionPolicy::authorize_with_context` |
-| [`runtime/src/permissions.rs#L350-L402`](/rust/crates/runtime/src/permissions.rs#L350-L402) | 权限规则解析器 `PermissionRule::parse` |
+| [`runtime/src/file_ops.rs#L12-L16`](/rust/crates/runtime/src/file_ops.rs#L12-L16) | `MAX_READ_SIZE` / `MAX_WRITE_SIZE`（10MB） |
+| [`runtime/src/file_ops.rs#L174-L221`](/rust/crates/runtime/src/file_ops.rs#L174-L221) | `read_file` 实现 |
+| [`runtime/src/file_ops.rs#L223-L255`](/rust/crates/runtime/src/file_ops.rs#L223-L255) | `write_file` 实现 |
+| [`runtime/src/file_ops.rs#L257-L296`](/rust/crates/runtime/src/file_ops.rs#L257-L296) | `edit_file` 实现 |
+| [`runtime/src/file_ops.rs#L298-L340`](/rust/crates/runtime/src/file_ops.rs#L298-L340) | `glob_search` 实现 |
+| [`runtime/src/file_ops.rs#L342-L450`](/rust/crates/runtime/src/file_ops.rs#L342-L450) | `grep_search` 实现 |
+| [`runtime/src/permissions.rs#L7-L15`](/rust/crates/runtime/src/permissions.rs#L7-L15) | `PermissionMode` 五级权限枚举 |
+| [`runtime/src/permissions.rs#L173-L292`](/rust/crates/runtime/src/permissions.rs#L173-L292) | `PermissionPolicy::authorize_with_context` |
+| [`runtime/src/permissions.rs#L349-L402`](/rust/crates/runtime/src/permissions.rs#L349-L402) | 权限规则解析器 `PermissionRule::parse` |
 | [`runtime/src/hooks.rs#L18-L23`](/rust/crates/runtime/src/hooks.rs#L18-L23) | `HookEvent` 枚举 |
 | [`runtime/src/hooks.rs#L440-L455`](/rust/crates/runtime/src/hooks.rs#L440-L455) | hook 脚本退出码语义：0 = Allow, 2 = Deny, 其他 = Failed |
 | [`runtime/src/mcp_tool_bridge.rs#L240-L278`](/rust/crates/runtime/src/mcp_tool_bridge.rs#L240-L278) | `McpToolRegistry::call_tool`：跨线程 MCP JSON-RPC 调用 |
-| [`rusty-claude-cli/src/main.rs#L165-L235`](/rust/crates/rusty-claude-cli/src/main.rs#L165-L235) | CLI 入口 `run()`，按 `CliAction` 分发 Prompt / Repl 等模式 |
-| [`rusty-claude-cli/src/main.rs#L2886-L2925`](/rust/crates/rusty-claude-cli/src/main.rs#L2886-L2925) | `run_repl`：REPL 启动，创建 `LiveCli` 并进入 `run_turn` 循环 |
+| [`rusty-claude-cli/src/main.rs#L168-L240`](/rust/crates/rusty-claude-cli/src/main.rs#L168-L240) | CLI 入口 `run()`，按 `CliAction` 分发 Prompt / Repl 等模式 |
+| [`rusty-claude-cli/src/main.rs#L2789-L2838`](/rust/crates/rusty-claude-cli/src/main.rs#L2789-L2838) | `run_repl`：REPL 启动，创建 `LiveCli` 并进入 `run_turn` 循环 |

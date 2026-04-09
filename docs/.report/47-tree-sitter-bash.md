@@ -85,6 +85,10 @@ checkSemantics(commands)
 | AST 分析辅助 | `src/utils/bash/treeSitterAnalysis.ts` | 507 | 引号上下文、复合结构、危险模式提取 |
 | 权限检查入口 | `src/tools/BashTool/bashPermissions.ts` | ~140 | 集成 AST 结果到权限决策 |
 
+### claw-code Rust 实现
+
+在 `rust/crates/runtime/src/` 中，Bash 验证由 `bash_validation.rs`（1005 行）和 `permissions.rs`（684 行）实现。
+
 ### 3.2 Bash 解析器
 
 **文件**: `src/utils/bash/bashParser.ts`（4437 行）
@@ -221,15 +225,15 @@ pub fn validate_command(command: &str, mode: PermissionMode, workspace: &Path) -
     // 1. 模式级验证（包含只读检查）
     let result = validate_mode(command, mode);
     if result != ValidationResult::Allow { return result; }
-    
+
     // 2. sed 专用验证
     let result = validate_sed(command, mode);
     if result != ValidationResult::Allow { return result; }
-    
+
     // 3. 危险命令警告
     let result = check_destructive(command);
     if result != ValidationResult::Allow { return result; }
-    
+
     // 4. 路径验证
     validate_paths(command, workspace)
 }
@@ -240,8 +244,8 @@ pub fn validate_command(command: &str, mode: PermissionMode, workspace: &Path) -
 权限策略引擎 `permissions.rs` 集成 Bash 验证：
 
 - **PermissionMode** 枚举（#L8-L14）：`ReadOnly`、`WorkspaceWrite`、`DangerFullAccess`、`Prompt`、`Allow`
-- **PermissionPolicy::authorize_with_context()**（#L174-L286）：执行规则匹配
-- 工具需求映射（#L517-L676）：`bash` 工具需要特定权限级别
+- **PermissionPolicy::authorize_with_context()**（#L173-L292）：执行规则匹配与权限升级判定
+- 工具需求映射（#L119-L162）：`with_tool_requirement` 注册各工具所需权限级别
 
 示例（#L576-L584）：
 ```rust
@@ -268,13 +272,6 @@ assert_eq!(
 ---
 
 ## 八、总结
-
-TREE_SITTER_BASH 功能通过 AST 解析提供 Bash 命令的深层语义分析，实现 fail-closed 安全模型。claw-code 的 Rust 实现（`bash_validation.rs`）在保持与 TypeScript 原版相同验证逻辑的同时，利用 Rust 的类型安全和性能优势，提供了：
-
-1. **强类型验证结果**：`ValidationResult` 枚举（`Allow`/`Block`/`Warn`）
-2. **命令意图分类**：7 种语义分类用于审计和日志
-3. **权限模式集成**：与 `PermissionPolicy` 深度集成
-4. **完整测试覆盖**：40+ 单元测试验证各种边界情况
 
 ---
 

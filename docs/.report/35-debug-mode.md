@@ -21,7 +21,7 @@
 
 ### 源码位置
 
- SlashCommand 定义：[`commands/src/lib.rs#L1075`](/rust/crates/commands/src/lib.rs#L1075)
+ SlashCommand 定义：[`commands/src/lib.rs#L1276`](/rust/crates/commands/src/lib.rs#L1276)
 
 ```rust
 pub enum SlashCommand {
@@ -31,7 +31,7 @@ pub enum SlashCommand {
 }
 ```
 
-解析逻辑：[`commands/src/lib.rs#L1274-L1277`](/rust/crates/commands/src/lib.rs#L1274-L1277)
+解析逻辑：[`commands/src/lib.rs#L1274-L1276`](/rust/crates/commands/src/lib.rs#L1274-L1276)
 
 ```rust
 "debug-tool-call" => {
@@ -44,9 +44,9 @@ pub enum SlashCommand {
 
 ### CLI 执行入口
 
-在 `rusty-claude-cli` 的 REPL 循环中，当检测到 `SlashCommand::DebugToolCall` 时，调用 [`main.rs#L3589`](/rust/crates/rusty-claude-cli/src/main.rs#L3589)：`self.run_debug_tool_call(None)?`。
+在 `rusty-claude-cli` 的 REPL 循环中，当检测到 `SlashCommand::DebugToolCall` 时，调用 [`main.rs#L3615`](/rust/crates/rusty-claude-cli/src/main.rs#L3615)：`self.run_debug_tool_call(None)?`。
 
-具体实现位于 [`main.rs#L4330-L4334`](/rust/crates/rusty-claude-cli/src/main.rs#L4330-L4334)：
+具体实现位于 [`main.rs#L4356-L4358`](/rust/crates/rusty-claude-cli/src/main.rs#L4356-L4358)：
 
 ```rust
 fn run_debug_tool_call(&self, args: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
@@ -58,7 +58,7 @@ fn run_debug_tool_call(&self, args: Option<&str>) -> Result<(), Box<dyn std::err
 
 ### 报告渲染逻辑
 
-核心函数 `render_last_tool_debug_report` 位于 [`main.rs#L5219-L5262`](/rust/crates/rusty-claude-cli/src/main.rs#L5219-L5262)：
+核心函数 `render_last_tool_debug_report` 位于 [`main.rs#L5245-L5295`](/rust/crates/rusty-claude-cli/src/main.rs#L5245-L5295)：
 
 ```rust
 fn render_last_tool_debug_report(session: &Session) -> Result<String, Box<dyn std::error::Error>> {
@@ -104,7 +104,7 @@ fn render_last_tool_debug_report(session: &Session) -> Result<String, Box<dyn st
 
 ### 核心类型
 
-`TelemetryEvent` 枚举：[`telemetry/src/lib.rs#L170-L203`](/rust/crates/telemetry/src/lib.rs#L170-L203)
+`TelemetryEvent` 枚举：[`telemetry/src/lib.rs#L171-L204`](/rust/crates/telemetry/src/lib.rs#L171-L204)
 
 ```rust
 pub enum TelemetryEvent {
@@ -116,7 +116,7 @@ pub enum TelemetryEvent {
 }
 ```
 
-`SessionTracer`：[`telemetry/src/lib.rs#L279-L406`](/rust/crates/telemetry/src/lib.rs#L279-L406)
+`SessionTracer`：[`telemetry/src/lib.rs#L280-L407`](/rust/crates/telemetry/src/lib.rs#L280-L407)
 
 ```rust
 pub struct SessionTracer {
@@ -131,7 +131,7 @@ pub struct SessionTracer {
 ### Sink 实现
 
 - `MemoryTelemetrySink`：测试用，内存中保存事件列表。
-- `JsonlTelemetrySink`：生产用，每条事件一行 JSON，append 到文件。参见 [`telemetry/src/lib.rs#L233-L277`](/rust/crates/telemetry/src/lib.rs#L233-L277)。
+- `JsonlTelemetrySink`：生产用，每条事件一行 JSON，append 到文件。参见 [`telemetry/src/lib.rs#L233-L278`](/rust/crates/telemetry/src/lib.rs#L233-L278)。
 
 ### 生命周期挂载点
 
@@ -139,14 +139,14 @@ pub struct SessionTracer {
 
 | 方法 | 位置 | 记录时机 |
 |------|------|----------|
-| `record_turn_started` | `conversation.rs#L547-L556` | 用户输入被接收 |
-| `record_assistant_iteration` | `conversation.rs#L565-L579` | 每次 assistant 响应解析完成 |
-| `record_tool_started` | `conversation.rs#L583-L593` | 工具执行前 |
-| `record_tool_finished` | `conversation.rs#L597-L614` | 工具执行后 |
-| `record_turn_completed` | `conversation.rs#L618-L639` | 整轮对话正常结束 |
-| `record_turn_failed` | `conversation.rs#L643-L650` | 整轮对话因错误中断 |
+| `record_turn_started` | `conversation.rs#L550-L561` | 用户输入被接收 |
+| `record_assistant_iteration` | `conversation.rs#L563-L584` | 每次 assistant 响应解析完成 |
+| `record_tool_started` | `conversation.rs#L586-L598` | 工具执行前 |
+| `record_tool_finished` | `conversation.rs#L600-L619` | 工具执行后 |
+| `record_turn_completed` | `conversation.rs#L621-L644` | 整轮对话正常结束 |
+| `record_turn_failed` | `conversation.rs#L646-L655` | 整轮对话因错误中断 |
 
-例如 `record_tool_started` 的源码（[`conversation.rs#L583-L593`](/rust/crates/runtime/src/conversation.rs#L583-L593)）：
+例如 `record_tool_started` 的源码（[`conversation.rs#L586-L598`](/rust/crates/runtime/src/conversation.rs#L586-L598)）：
 
 ```rust
 fn record_tool_started(&self, iteration: usize, tool_name: &str) {
@@ -168,7 +168,7 @@ fn record_tool_started(&self, iteration: usize, tool_name: &str) {
 
 ### 错误渲染中的 Trace 字段
 
-在 [`main.rs#L6732-L6735`](/rust/crates/rusty-claude-cli/src/main.rs#L6732-L6735) 附近：
+在 [`main.rs#L6765-L6768`](/rust/crates/rusty-claude-cli/src/main.rs#L6765-L6768) 附近：
 
 ```rust
 if let Some(request_id) = error.request_id() {

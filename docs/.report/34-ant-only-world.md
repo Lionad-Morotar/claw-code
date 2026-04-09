@@ -93,7 +93,7 @@ claw-code 当前已实现 **67 / 141** 个上游斜杠命令条目（参见 [`PA
 
 - [`rusty-claude-cli/src/input.rs`](/rust/crates/rusty-claude-cli/src/input.rs) — 输入捕获与斜杠命令识别
 - [`rusty-claude-cli/src/main.rs`](/rust/crates/rusty-claude-cli/src/main.rs) — CLI 入口与 `CliAction` 分发
-- [`commands/src/lib.rs#L4500-L4600`](/rust/crates/commands/src/lib.rs#L4500-L4600) 附近 — 消息组装与工具调用分发
+- [`commands/src/lib.rs#L3873-L3920`](/rust/crates/commands/src/lib.rs#L3873-L3920) 附近 — 消息组装与工具调用分发
 
 ---
 
@@ -114,7 +114,7 @@ pub struct AnthropicRequestProfile {
 }
 ```
 
-源码位置：[`rust/crates/telemetry/src/lib.rs#L52-L58`](/rust/crates/telemetry/src/lib.rs#L52-L58)
+源码位置：[`rust/crates/telemetry/src/lib.rs#L54-L63`](/rust/crates/telemetry/src/lib.rs#L54-L63)
 
 默认构造时注入了两个 public beta：
 
@@ -125,7 +125,7 @@ betas: vec![
 ],
 ```
 
-源码位置：[`telemetry/src/lib.rs#L69-L72`](/rust/crates/telemetry/src/lib.rs#L69-L72)
+源码位置：[`telemetry/src/lib.rs#L64-L68`](/rust/crates/telemetry/src/lib.rs#L64-L68)
 
 `AnthropicClient` 提供 `with_beta(...)` 链式 API 以追加额外 beta：
 
@@ -136,7 +136,7 @@ pub fn with_beta(mut self, beta: impl Into<String>) -> Self {
 }
 ```
 
-源码位置：[`api/src/providers/anthropic.rs#L227-L230`](/rust/crates/api/src/providers/anthropic.rs#L227-L230)
+源码位置：[`api/src/providers/anthropic.rs#L227-L231`](/rust/crates/api/src/providers/anthropic.rs#L227-L231)
 
 发送请求时，header 通过 `request_profile.header_pairs()` 注入：
 
@@ -146,7 +146,7 @@ for (header_name, header_value) in self.request_profile.header_pairs() {
 }
 ```
 
-源码位置：[`api/src/providers/anthropic.rs#L483-L485`](/rust/crates/api/src/providers/anthropic.rs#L483-L485)
+源码位置：[`api/src/providers/anthropic.rs#L483-L486`](/rust/crates/api/src/providers/anthropic.rs#L483-L486)
 
 ### Beta Body 字段剥离
 
@@ -156,8 +156,10 @@ for (header_name, header_value) in self.request_profile.header_pairs() {
 fn strip_unsupported_beta_body_fields(body: &mut Value) {
     if let Some(object) = body.as_object_mut() {
         object.remove("betas");
+        // These fields are OpenAI-compatible only; Anthropic rejects them.
         object.remove("frequency_penalty");
         object.remove("presence_penalty");
+        // Anthropic uses "stop_sequences" not "stop". Convert if present.
         if let Some(stop_val) = object.remove("stop") {
             if stop_val.as_array().map_or(false, |a| !a.is_empty()) {
                 object.insert("stop_sequences".to_string(), stop_val);
@@ -167,7 +169,7 @@ fn strip_unsupported_beta_body_fields(body: &mut Value) {
 }
 ```
 
-源码位置：[`api/src/providers/anthropic.rs#L1011-L1024`](/rust/crates/api/src/providers/anthropic.rs#L1011-L1024)
+源码位置：[`api/src/providers/anthropic.rs#L1011-L1023`](/rust/crates/api/src/providers/anthropic.rs#L1011-L1023)
 
 该函数同时清理 OpenAI 兼容字段（`frequency_penalty`、`presence_penalty`、`stop`）并做键名转换，保证 Anthropic 原生端点的兼容性。
 
@@ -180,7 +182,7 @@ body.get("betas").is_none(),
 "betas must travel via the anthropic-beta header, not the request body"
 ```
 
-源码位置：[`api/tests/client_integration.rs#L101-L102`](/rust/crates/api/tests/client_integration.rs#L101-L102)
+源码位置：[`api/tests/client_integration.rs#L102`](/rust/crates/api/tests/client_integration.rs#L102)
 
 ---
 
@@ -229,7 +231,7 @@ Rust 代码中对环境变量的读取更加收敛。`AnthropicClient` 通过 `r
 - `ANTHROPIC_API_KEY`
 - `ANTHROPIC_AUTH_TOKEN`
 
-源码位置：[`api/src/providers/anthropic.rs#L646-L651`](/rust/crates/api/src/providers/anthropic.rs#L646-L651)
+源码位置：[`api/src/providers/anthropic.rs#L621-L631`](/rust/crates/api/src/providers/anthropic.rs#L621-L631)
 
 此外，`http_client.rs` 支持部分通过环境变量覆盖请求行为：
 
@@ -276,7 +278,7 @@ Rust 代码中对环境变量的读取更加收敛。`AnthropicClient` 通过 `r
 
 **准确性核对**
 - [x] 源码锚点已逐一手动核对，行号与当前 `research` 分支一致
-- [x] `telemetry/src/lib.rs#L52-L58`、`L69-L72` 行号确认无误
+- [x] `telemetry/src/lib.rs#L52-L59`、`L69-L72` 行号确认无误
 - [x] `api/src/providers/anthropic.rs#L227-L230`、`L483-L485`、`L1011-L1024` 行号确认无误
 - [x] `api/tests/client_integration.rs#L101-L102` 行号确认无误
 - [x] PARITY.md 引用内容与仓库 snapshot 一致

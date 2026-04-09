@@ -14,7 +14,7 @@
 
 ### 源码映射：`ConversationRuntime` 的状态机与 `Session`
 
-`ConversationRuntime` 定义于 [`runtime/src/conversation.rs#L126-L150`](/rust/crates/runtime/src/conversation.rs#L126-L150)。它内部持有：
+`ConversationRuntime` 定义于 [`runtime/src/conversation.rs#L126-L188`](/rust/crates/runtime/src/conversation.rs#L126-L188)。它内部持有：
 
 - `session: Session` —— 完整对话历史，跨 turn 累积
 - `api_client: C` —— 满足 `ApiClient` trait 的流式模型客户端
@@ -24,7 +24,7 @@
 - `system_prompt: Vec<String>` —— 每次 turn 重新注入的 system prompt
 - `hook_runner: HookRunner` —— 生命周期 hooks
 
-而真正持久化的消息历史存储在 [`runtime/src/session.rs#L89-L100`](/rust/crates/runtime/src/session.rs#L89-L100) 的 `Session` 结构体中：
+而真正持久化的消息历史存储在 [`runtime/src/session.rs#L89-L99`](/rust/crates/runtime/src/session.rs#L89-L99) 的 `Session` 结构体中：
 
 ```rust
 pub struct Session {
@@ -41,7 +41,7 @@ pub struct Session {
 }
 ```
 
-注意 `messages: Vec<ConversationMessage>` 是会话级状态。每次 `run_turn` 结束时，新的用户消息、assistant 消息和 tool result 都已经追加到 `session.messages` 中。下一 turn 开始时，`ApiRequest` 直接 `clone()` 整个 `messages` 列表送入模型（[`conversation.rs#L319-L325`](/rust/crates/runtime/src/conversation.rs#L319-L325)）。这就是“多轮”的物理实现：所有历史消息作为上下文重新提交。
+注意 `messages: Vec<ConversationMessage>` 是会话级状态。每次 `run_turn` 结束时，新的用户消息、assistant 消息和 tool result 都已经追加到 `session.messages` 中。下一 turn 开始时，`ApiRequest` 直接 `clone()` 整个 `messages` 列表送入模型（[`conversation.rs#L321-L324`](/rust/crates/runtime/src/conversation.rs#L321-L324)）。这就是“多轮”的物理实现：所有历史消息作为上下文重新提交。
 
 ---
 
@@ -131,7 +131,7 @@ impl SessionStore {
 
 ### 源码映射：Transcript 写入器
 
-`Session` 的追加写入逻辑在 [`runtime/src/session.rs#L195-L240`](/rust/crates/runtime/src/session.rs#L195-L240)：`push_message` 成功后会调用 `append_persisted_message()`：
+`Session` 的追加写入逻辑在 [`runtime/src/session.rs#L517-L531`](/rust/crates/runtime/src/session.rs#L517-L531)：`push_message` 成功后会调用 `append_persisted_message()`：
 
 ```rust
 fn append_persisted_message(&self, message: &ConversationMessage) -> Result<(), SessionError> {
@@ -167,7 +167,7 @@ fn append_persisted_message(&self, message: &ConversationMessage) -> Result<(), 
 - 以 `"messages"` 为顶层键的完整 JSON 对象（旧格式兼容）
 - JSONL 格式：逐行按 `type` 字段解析，拼回 `Session`
 
-解析逻辑在 `from_jsonl()`（[`session.rs#L388-L430`](/rust/crates/runtime/src/session.rs#L388-L430)），对 `session_meta`、`message`、`compaction`、`prompt_history` 四种记录类型作状态机还原：
+解析逻辑在 `from_jsonl()`（[`session.rs#L388-L403`](/rust/crates/runtime/src/session.rs#L388-L403)），对 `session_meta`、`message`、`compaction`、`prompt_history` 四种记录类型作状态机还原：
 
 ```rust
 match type_ {
@@ -179,7 +179,7 @@ match type_ {
 }
 ```
 
-恢复流程最终由 `LiveCli::resume_session()`（[`rusty-claude-cli/src/main.rs#L3940-L3970`](/rust/crates/rusty-claude-cli/src/main.rs#L3940-L3970)）调用：加载 JSONL 文件 → 重建 `Session` → 通过 `build_runtime()` 创建新的 `ConversationRuntime` → 将 `LiveCli` 的当前 `session` handle 指向恢复的文件。
+恢复流程最终由 `LiveCli::resume_session()`（[`rusty-claude-cli/src/main.rs#L3966-L4004`](/rust/crates/rusty-claude-cli/src/main.rs#L3966-L4004)）调用：加载 JSONL 文件 → 重建 `Session` → 通过 `build_runtime()` 创建新的 `ConversationRuntime` → 将 `LiveCli` 的当前 `session` handle 指向恢复的文件。
 
 ---
 
@@ -208,7 +208,7 @@ pub struct UsageCostEstimate {
 }
 ```
 
-每个 API 响应中的 `usage` 字段在 `build_assistant_message()`（[`conversation.rs#L733-L777`](/rust/crates/runtime/src/conversation.rs#L733-L777)）被提取。随后 `run_turn` 通过 `self.usage_tracker.record(usage)` 累加到会话总量（[`conversation.rs#L335-L338`](/rust/crates/runtime/src/conversation.rs#L335-L338)）。
+每个 API 响应中的 `usage` 字段在 `build_assistant_message()`（[`conversation.rs#L676-L714`](/rust/crates/runtime/src/conversation.rs#L676-L714)）被提取。随后 `run_turn` 通过 `self.usage_tracker.record(usage)` 累加到会话总量（[`conversation.rs#L342`](/rust/crates/runtime/src/conversation.rs#L342)）。
 
 ### 源码映射：累计层 — `UsageTracker`
 
@@ -237,7 +237,7 @@ pub fn pricing_for_model(model: &str) -> Option<ModelPricing> {
 }
 ```
 
-CLI 在 REPL 中通过 `/cost` 命令调用 `LiveCli::print_cost()`（[`main.rs#L3935-L3939`](/rust/crates/rusty-claude-cli/src/main.rs#L3935-L3939)），或者在每次 JSON 输出中附加 `estimated_cost`（[`main.rs#L3585-L3594`](/rust/crates/rusty-claude-cli/src/main.rs#L3585-L3594)）。
+CLI 在 REPL 中通过 `/cost` 命令调用 `LiveCli::print_cost()`（[`main.rs#L3961-L3965`](/rust/crates/rusty-claude-cli/src/main.rs#L3961-L3965)），或者在每次 JSON 输出中附加 `estimated_cost`（[`main.rs#L3565-L3572`](/rust/crates/rusty-claude-cli/src/main.rs#L3565-L3572)）。
 
 ### 预算熔断
 
@@ -251,7 +251,7 @@ CLI 在 REPL 中通过 `/cost` 命令调用 `LiveCli::print_cost()`（[`main.rs#
 
 ### 源码映射：`/model` 命令的实现
 
-REPL 中的 `/model sonnet` 由 `LiveCli::set_model()` 处理（[`rusty-claude-cli/src/main.rs#L3805-L3845`](/rust/crates/rusty-claude-cli/src/main.rs#L3805-L3845)）：
+REPL 中的 `/model sonnet` 由 `LiveCli::set_model()` 处理（[`rusty-claude-cli/src/main.rs#L3831-L3878`](/rust/crates/rusty-claude-cli/src/main.rs#L3831-L3878)）：
 
 ```rust
 fn set_model(&mut self, model: Option<String>) -> Result<bool, Box<dyn std::error::Error>> {
@@ -288,7 +288,7 @@ fn set_model(&mut self, model: Option<String>) -> Result<bool, Box<dyn std::erro
 
 ### 源码映射：自动压缩触发
 
-阈值默认为 100,000 input tokens，可通过环境变量 `CLAUDE_CODE_AUTO_COMPACT_INPUT_TOKENS` 覆盖（[`conversation.rs#L552-L570`](/rust/crates/runtime/src/conversation.rs#L552-L570)）。触发逻辑在 `maybe_auto_compact()`（[`conversation.rs#L548-L568`](/rust/crates/runtime/src/conversation.rs#L548-L568)）：
+阈值默认为 100,000 input tokens，可通过环境变量 `CLAUDE_CODE_AUTO_COMPACT_INPUT_TOKENS` 覆盖（[`conversation.rs#L660-L675`](/rust/crates/runtime/src/conversation.rs#L660-L675)）。触发逻辑在 `maybe_auto_compact()`（[`conversation.rs#L525-L548`](/rust/crates/runtime/src/conversation.rs#L525-L548)）：
 
 ```rust
 fn maybe_auto_compact(&mut self) -> Option<AutoCompactionEvent> {
@@ -352,7 +352,7 @@ Conversation summary:
 
 每次 turn 的 `system_prompt` 由 `SystemPromptBuilder` 组装。虽然 `ConversationRuntime` 持有 `system_prompt` 字段，但实际内容通常由上层 `LiveCli` 在初始化时通过 `build_system_prompt()` → `load_system_prompt()` 生成。
 
-`load_system_prompt()` 定义于 [`runtime/src/prompt.rs#L432-L450`](/rust/crates/runtime/src/prompt.rs#L432-L450)：
+`load_system_prompt()` 定义于 [`runtime/src/prompt.rs#L432-L446`](/rust/crates/runtime/src/prompt.rs#L432-L446)：
 
 ```rust
 pub fn load_system_prompt(
@@ -386,7 +386,7 @@ pub fn load_system_prompt(
 
 ### 源码映射：`fork` 与 `clear`
 
-`Session::fork()` 定义于 [`runtime/src/session.rs#L251-L265`](/rust/crates/runtime/src/session.rs#L251-L265)：
+`Session::fork()` 定义于 [`runtime/src/session.rs#L251-L267`](/rust/crates/runtime/src/session.rs#L251-L267)：
 
 ```rust
 pub fn fork(&self, branch_name: Option<String>) -> Self {
@@ -411,7 +411,7 @@ pub fn fork(&self, branch_name: Option<String>) -> Self {
 
 Fork 后的会话继承原有消息历史和 prompt 历史，但拥有新的 `session_id` 和 `created_at_ms`，并通过 `SessionFork` 记录亲缘关系。`SessionStore::fork_session()` 会为新 session 分配持久化路径并立即保存（[`session_control.rs#L218-L238`](/rust/crates/runtime/src/session_control.rs#L218-L238)）。
 
-`/clear --confirm` 的逻辑在 `LiveCli::clear_session()`（[`main.rs#L3900-L3925`](/rust/crates/rusty-claude-cli/src/main.rs#L3900-L3925)）：创建全新 `Session` → 新 `session_id` → 新持久化文件 → 保留当前 model / permission mode。旧会话文件仍然保留在 `.claw/sessions/` 中，可通过 `--resume` 重新加载。
+`/clear --confirm` 的逻辑在 `LiveCli::clear_session()`（[`main.rs#L3926-L3960`](/rust/crates/rusty-claude-cli/src/main.rs#L3926-L3960)）：创建全新 `Session` → 新 `session_id` → 新持久化文件 → 保留当前 model / permission mode。旧会话文件仍然保留在 `.claw/sessions/` 中，可通过 `--resume` 重新加载。
 
 ---
 

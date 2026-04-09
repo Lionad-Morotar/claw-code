@@ -404,7 +404,7 @@ pub enum PermissionMode {
 
 ### 权限策略的判定流程
 
-`PermissionPolicy::authorize_with_context`（[`permissions.rs#L175-L292`](/rust/crates/runtime/src/permissions.rs#L175-L292)）的判定顺序如下：
+`PermissionPolicy::authorize_with_context`（[`permissions.rs#L174-L292`](/rust/crates/runtime/src/permissions.rs#L174-L292)）的判定顺序如下：
 
 1. **deny 规则短接**：若输入匹配 `deny_rules`，直接拒绝。
 2. **hook override**：若 hooks 注入了 `Deny` / `Ask` / `Allow`，按 override 处理。
@@ -461,7 +461,7 @@ pub struct BashCommandInput {
 }
 ```
 
-当 `filesystem_mode` 被设为 `WorkspaceOnly` 时，Linux 环境下会触发 `build_linux_sandbox_command` 构建一个受限命名空间，将 `$HOME` 和 `$TMPDIR` 重映射到工作区子目录内（`.sandbox-home` 和 `.sandbox-tmp`）。参见 [`bash.rs#L239-L242`](/rust/crates/runtime/src/bash.rs#L239-L242)。
+当 `filesystem_mode` 被设为 `WorkspaceOnly` 时，Linux 环境下会触发 `build_linux_sandbox_command` 构建一个受限命名空间，将 `$HOME` 和 `$TMPDIR` 重映射到工作区子目录内（`.sandbox-home` 和 `.sandbox-tmp`）。参见 [`bash.rs#L185-L207`](/rust/crates/runtime/src/bash.rs#L185-L207)。
 
 ---
 

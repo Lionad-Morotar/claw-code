@@ -4,11 +4,13 @@
 **源码仓库**: `packages/ccb/` (子项目)  
 **Feature Flag**: `FEATURE_TOKEN_BUDGET=1`
 
+> 注：本章引用的源码路径若无特别说明，均相对于 `packages/ccb/`。
+
 ---
 
 ## 一、功能概述
 
-TOKEN_BUDGET 允许用户在 prompt 中通过简写语法（如 `+500k`）或自然语言（如 `spend 2M tokens`）指定一个 output token 预算目标。系统会在模型输出未达预算阈值前自动继续发送 nudge 消息，无需用户手动按回车。该功能适用于大规模代码重构、批量生成等长耗时任务。
+TOKEN_BUDGET 允许用户在 prompt 中通过简写语法（如 `+500k`）或自然语言（如 `spend 2M tokens`）指定一个 output token 预算目标。当模型单轮输出尚未用完预算时，系统会在后台自动追加 nudge 消息以提示继续工作，减少用户手动输入的次数。该功能适用于大规模代码重构、批量生成等需要长输出的任务。
 
 ---
 
@@ -200,7 +202,7 @@ if (feature('TOKEN_BUDGET')) {
 
 ### API task_budget 区分
 
-`query.ts` L193-L197 和 L699-L703 还存在一个**独立的** `taskBudget` 字段（`output_config.task_budget`），属于 Anthropic API Beta 功能（`task-budgets-2026-03-13`），用于让 API 端侧感知剩余预算。该字段与 `+500k` 的 token budget auto-continue 功能是**不同层面**的机制，但名称容易混淆。`taskBudget` 通过 `configureTaskBudgetParams` 注入到 API 请求中（见 `src/services/api/claude.ts` L455-L483）。
+`query.ts` L193–L197 和 L699–L703 还存在一个**独立的** `taskBudget` 字段（`output_config.task_budget`），属于 Anthropic API Beta 功能（`task-budgets-2026-03-13`），用于让 API 端侧感知剩余预算。该字段与 `+500k` 的 token budget auto-continue 是不同层面的机制，名称相近但职责不重叠。`taskBudget` 通过 `configureTaskBudgetParams` 注入到 API 请求中（见 `src/services/api/claude.ts` L455–L483）。
 
 ---
 

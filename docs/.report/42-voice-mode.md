@@ -120,7 +120,7 @@ WebSocket 连接到 Anthropic STT 端点
 2. **SoX（Sound eXchange）**: 回退方案，Linux/macOS
 3. **arecord（ALSA）**: Linux 专用回退
 
-源码位置：`packages/ccb/src/services/voice.ts#L183-L212`
+源码位置：`packages/ccb/src/services/voice.ts#L335-L396`
 
 ```typescript
 export async function startRecording(
@@ -161,6 +161,9 @@ export async function startRecording(
 // the api.anthropic.com listener. We target that host instead of claude.ai
 // because the claude.ai CF zone uses TLS fingerprinting and challenges
 // non-browser clients. Same private-api pod, same OAuth Bearer auth.
+//
+// Do not try to use this with api_key auth — the voice_stream endpoint
+// only accepts OAuth Bearer tokens.
 ```
 
 ### 4.2 GrowthBook 负向门控
@@ -175,7 +178,8 @@ export async function startRecording(
  * `tengu_amber_quartz_disabled` GrowthBook flag is flipped on (emergency
  * off). Default `false` means a missing/stale disk cache reads as "not
  * killed" — so fresh installs get voice working immediately without
- * waiting for GrowthBook init.
+ * waiting for GrowthBook init. Use this for deciding whether voice mode
+ * should be *visible* (e.g., command registration, config UI).
  */
 ```
 
@@ -189,7 +193,13 @@ export async function startRecording(
 /**
  * Combines user intent (settings.voiceEnabled) with auth + GB kill-switch.
  * Only the auth half is memoized on authVersion — it's the expensive one
- * (cold getClaudeAIOAuthTokens memoize → sync `security` spawn, ~60ms/call).
+ * (cold getClaudeAIOAuthTokens memoize → sync `security` spawn, ~60ms/call,
+ * ~180ms total in profile v5 when token refresh cleared the cache mid-session).
+ * GB is a cheap cached-map lookup and stays outside the memo so a mid-session
+ * kill-switch flip still takes effect on the next render.
+ *
+ * authVersion bumps on /login only. Background token refresh leaves it alone
+ * (user is still authed), so the auth memo stays correct without re-eval.
  */
 ```
 
@@ -251,7 +261,7 @@ WebSocket 使用 JSON 控制消息和二进制音频帧：
 - **发送**: `KeepAlive`、`CloseStream` + 二进制音频数据
 - **接收**: `TranscriptText`、`TranscriptEndpoint`、`TranscriptError`
 
-源码位置：`packages/ccb/src/services/voiceStreamSTT.ts#L74-L94`
+源码位置：`packages/ccb/src/services/voiceStreamSTT.ts#L75-L88`
 
 ```typescript
 type VoiceStreamTranscriptText = {
@@ -283,39 +293,58 @@ export const FINALIZE_TIMEOUTS_MS = {
 }
 ```
 
-源码位置：`packages/ccb/src/services/voiceStreamSTT.ts#L239-L304`
+源码位置：`packages/ccb/src/services/voiceStreamSTT.ts#L239-L305`
 
 ```typescript
-finalize(): Promise<FinalizeSource> {
-  return new Promise<FinalizeSource>(resolve => {
-    const safetyTimer = setTimeout(() => resolveFinalize?.('safety_timeout'), 5000)
-    const noDataTimer = setTimeout(() => resolveFinalize?.('no_data_timeout'), 1500)
-    
-    resolveFinalize = (source: FinalizeSource) => {
-      clearTimeout(safetyTimer)
-      clearTimeout(noDataTimer)
-      // Promote any unreported interim text to final
-      if (lastTranscriptText) {
-        callbacks.onTranscript(lastTranscriptText, true)
+  function finalize(): Promise<FinalizeSource> {
+    return new Promise<FinalizeSource>((resolve) => {
+      const safetyTimer = setTimeout(() => {
+        logForDebugging('[voice] finalize safety timeout')
+        resolveFinalize?.('safety_timeout')
+      }, FINALIZE_TIMEOUTS_MS.safety)
+
+      const noDataTimer = setTimeout(() => {
+        logForDebugging('[voice] finalize no-data timeout')
+        resolveFinalize?.('no_data_timeout')
+      }, FINALIZE_TIMEOUTS_MS.noData)
+
+      resolveFinalize = (source: FinalizeSource) => {
+        const rf = resolveFinalize
+        resolveFinalize = null
+        clearTimeout(safetyTimer)
+        clearTimeout(noDataTimer)
+
+        // Promote any unreported interim text to final before resolving.
+        if (lastTranscriptText) {
+          callbacks.onTranscript(lastTranscriptText, true)
+          lastTranscriptText = ''
+        }
+
+        // Squelch redundant resolves
+        if (rf) {
+          resolve(source)
+        }
       }
-      resolve(source)
-    }
-    
-    setTimeout(() => {
-      finalized = true
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(CLOSE_STREAM_MSG)
-      }
-    }, 0)
-  })
-}
+
+      setTimeout(() => {
+        finalized = true
+        if (ws.readyState === WebSocket.OPEN) {
+          logForDebugging('[voice] sending CloseStream')
+          ws.send(CLOSE_STREAM_MSG)
+        } else if (ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+          // Already closed: resolve immediately with ws_already_closed
+          resolveFinalize?.('ws_already_closed')
+        }
+      }, 0)
+    })
+  }
 ```
 
 ### 5.4 静默丢弃重放
 
 ~1% 的会话会遇到 sticky-broken CE pod，接受音频但返回零转录。系统自动重放音频缓冲区。
 
-源码位置：`packages/ccb/src/hooks/useVoice.ts#L385-L450`
+源码位置：`packages/ccb/src/hooks/useVoice.ts#L379-L454`
 
 ```typescript
 // Silent-drop replay: server accepted audio, mic captured signal,
@@ -345,7 +374,7 @@ if (
 
 ### 6.1 握持检测逻辑
 
-源码位置：`packages/ccb/src/hooks/useVoiceIntegration.tsx#L426-L500`
+源码位置：`packages/ccb/src/hooks/useVoiceIntegration.tsx#L506-L688`
 
 ```typescript
 const handleKeyDown = (e: KeyboardEvent): void => {
@@ -384,17 +413,26 @@ const handleKeyDown = (e: KeyboardEvent): void => {
 
 ### 6.2 关键常量
 
-源码位置：`packages/ccb/src/hooks/useVoiceIntegration.tsx#L40-L46`
+源码位置：`packages/ccb/src/hooks/useVoiceIntegration.tsx#L44-L59`
 
 ```typescript
-const RAPID_KEY_GAP_MS = 120       // 快速按键间隔
-const HOLD_THRESHOLD = 5           // 握持激活阈值
-const WARMUP_THRESHOLD = 2         // 暖场显示阈值
+// Maximum gap (ms) between key presses to count as held (auto-repeat).
+// Terminal auto-repeat fires every 30-80ms; 120ms covers jitter while
+// excluding normal typing speed (100-300ms between keystrokes).
+const RAPID_KEY_GAP_MS = 120
+
+// Number of rapid consecutive key events required to activate voice.
+// Only applies to bare-char bindings (space, v, etc.) where a single press
+// could be normal typing. Modifier combos activate on the first press.
+const HOLD_THRESHOLD = 5
+
+// Number of rapid key events to start showing warmup feedback.
+const WARMUP_THRESHOLD = 2
 ```
 
 ### 6.3 释放检测
 
-源码位置：`packages/ccb/src/hooks/useVoice.ts#L1028-L1095`
+源码位置：`packages/ccb/src/hooks/useVoice.ts#L1022`
 
 ```typescript
 const handleKeyEvent = useCallback((fallbackMs = REPEAT_FALLBACK_MS): void => {
@@ -424,11 +462,19 @@ const handleKeyEvent = useCallback((fallbackMs = REPEAT_FALLBACK_MS): void => {
 }, [enabled, focusMode, cleanup])
 ```
 
-源码位置：`packages/ccb/src/hooks/useVoice.ts#L140-L146`
+源码位置：`packages/ccb/src/hooks/useVoice.ts#L160-L171`
 
 ```typescript
-const RELEASE_TIMEOUT_MS = 200     // 按键释放检测超时
-const REPEAT_FALLBACK_MS = 600    // OS 初始重复延迟 fallback
+// Gap (ms) between auto-repeat key events that signals key release.
+// Terminal auto-repeat typically fires every 30-80ms; 200ms comfortably
+// covers jitter while still feeling responsive.
+const RELEASE_TIMEOUT_MS = 200
+
+// Fallback (ms) to arm the release timer if no auto-repeat is seen.
+// macOS default key repeat delay is ~500ms; 600ms gives headroom.
+// If the user tapped and released before auto-repeat started, this
+// ensures the release timer gets armed and recording stops.
+const REPEAT_FALLBACK_MS = 600
 ```
 
 ---
@@ -437,42 +483,91 @@ const REPEAT_FALLBACK_MS = 600    // OS 初始重复延迟 fallback
 
 Focus 模式下，录音由终端焦点驱动而非按键：
 
-源码位置：`packages/ccb/src/hooks/useVoice.ts#L543-L604`
+源码位置：`packages/ccb/src/hooks/useVoice.ts#L576-L630`
 
 ```typescript
-// Focus-driven recording: start on focus, stop on blur
 useEffect(() => {
-  if (!enabled || !focusMode) return
-  
-  if (isFocused && stateRef.current === 'idle') {
-    focusTriggeredRef.current = true
-    void startRecordingSession()
-    armFocusSilenceTimer()
-  } else if (!isFocused) {
-    silenceTimedOutRef.current = false
-    if (stateRef.current === 'recording') {
-      finishRecording()
+    if (!enabled || !focusMode) {
+      if (focusTriggeredRef.current && stateRef.current === 'recording') {
+        logForDebugging(
+          '[voice] Focus mode disabled during recording, finishing',
+        )
+        finishRecording()
+      }
+      return
     }
-  }
-}, [enabled, focusMode, isFocused])
+    let cancelled = false
+    if (
+      isFocused &&
+      stateRef.current === 'idle' &&
+      !silenceTimedOutRef.current
+    ) {
+      const beginFocusRecording = (): void => {
+        if (
+          cancelled ||
+          stateRef.current !== 'idle' ||
+          silenceTimedOutRef.current
+        )
+          return
+        logForDebugging('[voice] Focus gained, starting recording session')
+        focusTriggeredRef.current = true
+        void startRecordingSession()
+        armFocusSilenceTimer()
+      }
+      if (voiceModule) {
+        beginFocusRecording()
+      } else {
+        void import('../services/voice.js').then(mod => {
+          voiceModule = mod
+          beginFocusRecording()
+        })
+      }
+    } else if (!isFocused) {
+      silenceTimedOutRef.current = false
+      if (stateRef.current === 'recording') {
+        finishRecording()
+      }
+    }
+  }, [enabled, focusMode, isFocused])
 ```
 
 静默超时自动结束：
 
-源码位置：`packages/ccb/src/hooks/useVoice.ts#L517-L541`
+源码位置：`packages/ccb/src/hooks/useVoice.ts#L542-L570`
 
 ```typescript
 function armFocusSilenceTimer(): void {
-  focusSilenceTimerRef.current = setTimeout(() => {
-    if (stateRef.current === 'recording' && focusTriggeredRef.current) {
-      silenceTimedOutRef.current = true
-      finishRecording()
+    if (focusSilenceTimerRef.current) {
+      clearTimeout(focusSilenceTimerRef.current)
     }
-  }, FOCUS_SILENCE_TIMEOUT_MS)
-}
+    focusSilenceTimerRef.current = setTimeout(
+      (
+        focusSilenceTimerRef,
+        stateRef,
+        focusTriggeredRef,
+        silenceTimedOutRef,
+        finishRecording,
+      ) => {
+        focusSilenceTimerRef.current = null
+        if (stateRef.current === 'recording' && focusTriggeredRef.current) {
+          logForDebugging(
+            '[voice] Focus silence timeout — tearing down session',
+          )
+          silenceTimedOutRef.current = true
+          finishRecording()
+        }
+      },
+      FOCUS_SILENCE_TIMEOUT_MS,
+      focusSilenceTimerRef,
+      stateRef,
+      focusTriggeredRef,
+      silenceTimedOutRef,
+      finishRecording,
+    )
+  }
 ```
 
-源码位置：`packages/ccb/src/hooks/useVoice.ts#L150`
+源码位置：`packages/ccb/src/hooks/useVoice.ts#L177`
 
 ```typescript
 const FOCUS_SILENCE_TIMEOUT_MS = 5_000
@@ -482,7 +577,7 @@ const FOCUS_SILENCE_TIMEOUT_MS = 5_000
 
 ## 八、语言支持
 
-源码位置：`packages/ccb/src/hooks/useVoice.ts#L44-L117`
+源码位置：`packages/ccb/src/hooks/useVoice.ts#L42-L134`
 
 ```typescript
 const LANGUAGE_NAME_TO_CODE: Record<string, string> = {
@@ -557,35 +652,61 @@ export const call: LocalCommandCall = async () => {
 
 ### 10.1  interim 转录显示
 
-源码位置：`packages/ccb/src/hooks/useVoiceIntegration.tsx#L268-L302`
+源码位置：`packages/ccb/src/hooks/useVoiceIntegration.tsx#L271-L303`
 
 ```typescript
 useEffect(() => {
-  if (voicePrefixRef.current === null) return
-  const prefix = voicePrefixRef.current
-  const suffix = voiceSuffixRef.current
-  const newValue = prefix + ' ' + voiceInterimTranscript + ' ' + suffix
-  const cursorPos = prefix.length + 1 + voiceInterimTranscript.length
-  insertTextRef.current.setInputWithCursor(newValue, cursorPos)
-  lastSetInputRef.current = newValue
-}, [voiceInterimTranscript, setInputValueRaw, inputValueRef, insertTextRef])
+    if (!feature('VOICE_MODE')) return
+    if (voicePrefixRef.current === null) return
+    const prefix = voicePrefixRef.current
+    const suffix = voiceSuffixRef.current
+    if (inputValueRef.current !== lastSetInputRef.current) return
+    const needsSpace =
+      prefix.length > 0 &&
+      !/\s$/.test(prefix) &&
+      voiceInterimTranscript.length > 0
+    const needsTrailingSpace = suffix.length > 0 && !/^\s/.test(suffix)
+    const leadingSpace = needsSpace ? ' ' : ''
+    const trailingSpace = needsTrailingSpace ? ' ' : ''
+    const newValue =
+      prefix + leadingSpace + voiceInterimTranscript + trailingSpace + suffix
+    const cursorPos =
+      prefix.length + leadingSpace.length + voiceInterimTranscript.length
+    if (insertTextRef.current) {
+      insertTextRef.current.setInputWithCursor(newValue, cursorPos)
+    } else {
+      setInputValueRaw(newValue)
+    }
+    lastSetInputRef.current = newValue
+  }, [voiceInterimTranscript, setInputValueRaw, inputValueRef, insertTextRef])
 ```
 
 ### 10.2 最终转录注入
 
-源码位置：`packages/ccb/src/hooks/useVoiceIntegration.tsx#L304-L341`
+源码位置：`packages/ccb/src/hooks/useVoiceIntegration.tsx#L305-L339`
 
 ```typescript
-const handleVoiceTranscript = useCallback((text: string) => {
-  const prefix = voicePrefixRef.current
-  if (prefix === null) return
-  const suffix = voiceSuffixRef.current
-  const newInput = prefix + ' ' + text + ' ' + suffix
-  const cursorPos = prefix.length + 1 + text.length
-  insertTextRef.current.setInputWithCursor(newInput, cursorPos)
-  lastSetInputRef.current = newInput
-  voicePrefixRef.current = prefix + ' ' + text
-}, [setInputValueRaw, inputValueRef, insertTextRef])
+  const handleVoiceTranscript = useCallback(
+    (text: string, isFinal: boolean) => {
+      if (!isFinal) return
+      const prefix = voicePrefixRef.current
+      if (prefix === null) return
+      const suffix = voiceSuffixRef.current
+      const needsSpace = prefix.length > 0 && !/\s$/.test(prefix)
+      const needsTrailingSpace = suffix.length > 0 && !/^\s/.test(suffix)
+      const newInput =
+        prefix + (needsSpace ? ' ' : '') + text + (needsTrailingSpace ? ' ' : '') + suffix
+      const cursorPos = prefix.length + (needsSpace ? 1 : 0) + text.length
+      if (insertTextRef.current) {
+        insertTextRef.current.setInputWithCursor(newInput, cursorPos)
+      } else {
+        setInputValueRaw(newInput)
+      }
+      lastSetInputRef.current = newInput
+      voicePrefixRef.current = prefix + (needsSpace ? ' ' : '') + text
+    },
+    [setInputValueRaw, inputValueRef, insertTextRef],
+  )
 ```
 
 ### 10.3 VoiceModeNotice
@@ -594,14 +715,25 @@ const handleVoiceTranscript = useCallback((text: string) => {
 
 ```typescript
 function VoiceModeNoticeInner(): React.ReactNode {
-  const [show] = useState(() =>
-    isVoiceModeEnabled() &&
-    getInitialSettings().voiceEnabled !== true &&
-    (getGlobalConfig().voiceNoticeSeenCount ?? 0) < MAX_SHOW_COUNT
+  const [show] = useState(
+    () =>
+      isVoiceModeEnabled() &&
+      getInitialSettings().voiceEnabled !== true &&
+      (getGlobalConfig().voiceNoticeSeenCount ?? 0) < MAX_SHOW_COUNT &&
+      !shouldShowOpus1mMergeNotice(),
   )
-  
+
+  useEffect(() => {
+    if (!show) return
+    const newCount = (getGlobalConfig().voiceNoticeSeenCount ?? 0) + 1
+    saveGlobalConfig(prev => {
+      if ((prev.voiceNoticeSeenCount ?? 0) >= newCount) return prev
+      return { ...prev, voiceNoticeSeenCount: newCount }
+    })
+  }, [show])
+
   if (!show) return null
-  
+
   return (
     <Box paddingLeft={2}>
       <AnimatedAsterisk />
@@ -647,11 +779,11 @@ function VoiceModeNoticeInner(): React.ReactNode {
 源码位置：`packages/ccb/src/context/voice.tsx#L9-L15`
 
 ```typescript
-type VoiceState = {
+export type VoiceState = {
   voiceState: 'idle' | 'recording' | 'processing'
   voiceError: string | null
   voiceInterimTranscript: string
-  voiceAudioLevels: number[]  // 16 个音频电平条
+  voiceAudioLevels: number[]
   voiceWarmingUp: boolean
 }
 ```
@@ -659,26 +791,26 @@ type VoiceState = {
 源码位置：`packages/ccb/src/services/voiceStreamSTT.ts#L51-L72`
 
 ```typescript
-type VoiceStreamCallbacks = {
+export type VoiceStreamCallbacks = {
   onTranscript: (text: string, isFinal: boolean) => void
   onError: (error: string, opts?: { fatal?: boolean }) => void
   onClose: () => void
   onReady: (connection: VoiceStreamConnection) => void
 }
 
-type VoiceStreamConnection = {
-  send: (audioChunk: Buffer) => void
-  finalize: () => Promise<FinalizeSource>
-  close: () => void
-  isConnected: () => boolean
-}
-
-type FinalizeSource =
+export type FinalizeSource =
   | 'post_closestream_endpoint'
   | 'no_data_timeout'
   | 'safety_timeout'
   | 'ws_close'
   | 'ws_already_closed'
+
+export type VoiceStreamConnection = {
+  send: (audioChunk: Buffer) => void
+  finalize: () => Promise<FinalizeSource>
+  close: () => void
+  isConnected: () => boolean
+}
 ```
 
 ---
@@ -688,11 +820,11 @@ type FinalizeSource =
 源码位置：`packages/ccb/src/hooks/useVoice.ts`
 
 ```typescript
-logEvent('tengu_voice_recording_started', {...})      // L717
-logEvent('tengu_voice_recording_completed', {...})    // L478
-logEvent('tengu_voice_silent_drop_replay', {...})     // L395
-logEvent('tengu_voice_stream_early_retry', {...})     // L873
-logEvent('tengu_voice_toggled', {enabled: true/false}) // L124
+logEvent('tengu_voice_recording_started', {...})      // L749
+logEvent('tengu_voice_recording_completed', {...})    // L471
+logEvent('tengu_voice_silent_drop_replay', {...})     // L393
+logEvent('tengu_voice_stream_early_retry', {...})     // L876
+logEvent('tengu_voice_toggled', {enabled: true/false}) // packages/ccb/src/commands/voice/voice.ts#L124
 ```
 
 ---

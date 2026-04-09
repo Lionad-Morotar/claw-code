@@ -241,7 +241,7 @@ registerMCPSkillBuilders({
 
 ### 3.6 技能构建原语 — `src/skills/loadSkillsDir.ts`
 
-#### `parseSkillFrontmatterFields()` — `#L138-180`
+#### `parseSkillFrontmatterFields()` — `#L183-259`
 
 ```ts
 export function parseSkillFrontmatterFields(
@@ -260,7 +260,7 @@ export function parseSkillFrontmatterFields(
 
 该函数是 MCP skill 和本地 file-based skill 共享的 frontmatter 解析入口。它将 `description`、`allowed-tools`、`when_to_use`、`disable-model-invocation` 等 frontmatter 字段统一归一化为 `Command` 所需的结构化字段。
 
-#### `createSkillCommand()` — `#L183-259`
+#### `createSkillCommand()` — `#L270-404`
 
 ```ts
 export function createSkillCommand({ skillName, displayName, description, ... }): Command {
@@ -319,25 +319,7 @@ FEATURE_MCP_SKILLS=1 bun run dev
 | `src/services/mcp/useManageMCPConnections.ts` | 实时刷新（list_changed 通知） | `#L22-26`, `#L682-694`, `#L718-738` |
 | `src/skills/mcpSkills.ts` | 核心转换逻辑（stub） | `#L1-7` |
 | `src/skills/mcpSkillBuilders.ts` | 循环依赖规避与技能构建器注册 | `#L1-44` |
-| `src/skills/loadSkillsDir.ts` | `createSkillCommand` / `parseSkillFrontmatterFields` 定义与注册 | `#L138-180`, `#L183-259`, `#L804-819`, `#L1083-1086` |
+| `src/skills/loadSkillsDir.ts` | `createSkillCommand` / `parseSkillFrontmatterFields` 定义与注册 | `#L183-259`, `#L270-404`, `#L1083-1086` |
 
 ---
-
-## REVIEW.md
-
-### 审校记录
-
-| 项目 | 结果 |
-|------|------|
-| 行号精确性 | 已逐行核对 `client.ts`、`useManageMCPConnections.ts`、`commands.ts`、`loadSkillsDir.ts`、`mcpSkills.ts`、`mcpSkillBuilders.ts`、`SkillTool.ts` 的对应源码，锚点准确 |
-| 数据流正确性 | 与原始文档一致；补充了 `#L2346-2358` 重连路径与 `#L1390-1396` onClose 清理的独立锚点 |
-| 循环依赖说明 | 完整引用了 `mcpSkillBuilders.ts` 内关于 Bun bundling 与 dependency-cruiser 的长注释 |
-| 安全隔离 | 明确记录了 `loadedFrom !== 'mcp'` 的 shell 执行跳过机制 |
-| 待办缺口 | 明确指出 `src/skills/mcpSkills.ts` 仍为 stub，并给出实现约束清单 |
-
-### 修正项
-
-1. **补充遗漏锚点**：原始文档未列出的 `client.ts` onClose 缓存清理（`#L1390-1396`）与 reconnect pipeline（`#L2346-2358`）已补充到 3.2 节。
-2. **细化 SkillTool 集成**：原始文档仅在 `commands.ts` 层面讨论过滤，本报告补充了 `SkillTool.ts #L81-94` 中 `getAllCommands` 显式拼接 MCP skills 的机制。
-3. **去冗余**：保留原始文档的核心文件索引，但将“文件索引”与“源码锚点解析”合并为同一章节体系，避免重复罗列。
 

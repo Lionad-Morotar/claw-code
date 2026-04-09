@@ -82,7 +82,7 @@ ToolSpec {
 
 ### 快速启发式：PermissionEnforcer
 
-[`runtime/src/permission_enforcer.rs#L159-L238`](/rust/crates/runtime/src/permission_enforcer.rs#L159-L238)：
+[`runtime/src/permission_enforcer.rs#L159-L222`](/rust/crates/runtime/src/permission_enforcer.rs#L159-L222)：
 
 ```rust
 fn is_read_only_command(command: &str) -> bool {
@@ -110,7 +110,7 @@ fn is_read_only_command(command: &str) -> bool {
 
 该函数不仅检查首命令 token，还会主动拦截含有 `-i`（交互式 Python）、`--in-place`（sed 就地编辑）以及重定向符 `>` / `>>` 的命令。这对应了原文中“重定向即写操作”的安全直觉。
 
-测试用例在 [`permission_enforcer.rs#L334-L338`](/rust/crates/runtime/src/permission_enforcer.rs#L334-L338) 明确验证：
+测试用例在 [`permission_enforcer.rs#L339-L341`](/rust/crates/runtime/src/permission_enforcer.rs#L339-L341) 明确验证：
 
 ```rust
 assert!(!is_read_only_command("rm file.txt"));
@@ -120,7 +120,7 @@ assert!(!is_read_only_command("sed -i 's/a/b/' file"));
 
 ### 完整验证管线：bash_validation
 
-[`runtime/src/bash_validation.rs#L99-L160`](/rust/crates/runtime/src/bash_validation.rs#L99-L160) 的 `validate_read_only()` 实现了更严格的策略：
+[`runtime/src/bash_validation.rs#L99-L131`](/rust/crates/runtime/src/bash_validation.rs#L99-L131) 的 `validate_read_only()` 实现了更严格的策略：
 
 - 显式列出 `WRITE_COMMANDS`：`cp`, `mv`, `rm`, `mkdir`, `touch`, `tee`, `dd` ...
 - 显式列出 `STATE_MODIFYING_COMMANDS`：`apt`, `brew`, `npm`, `cargo`, `docker`, `systemctl`, `kill`, `reboot` ...
@@ -155,7 +155,7 @@ fn validate_git_read_only(command: &str) -> ValidationResult {
 
 ### CommandIntent 语义分类
 
-[`runtime/src/bash_validation.rs#L529-L584`](/rust/crates/runtime/src/bash_validation.rs#L529-L584) 定义了 `classify_command()`：
+[`runtime/src/bash_validation.rs#L529-L570`](/rust/crates/runtime/src/bash_validation.rs#L529-L570) 定义了 `classify_command()`：
 
 ```rust
 pub enum CommandIntent {
@@ -220,7 +220,7 @@ Bash 命令的超时由 `BashCommandInput.timeout` 显式指定， otherwise 走
 
 ### 源码映射：tokio::time::timeout
 
-[`runtime/src/bash.rs#L105-L137`](/rust/crates/runtime/src/bash.rs#L105-L137)：
+[`runtime/src/bash.rs#L105-L127`](/rust/crates/runtime/src/bash.rs#L105-L127)：
 
 ```rust
 async fn execute_bash_async(
@@ -264,7 +264,7 @@ async fn execute_bash_async(
 
 ### 已预留的字段
 
-[`runtime/src/bash.rs#L19-L67`](/rust/crates/runtime/src/bash.rs#L19-L67)：
+[`runtime/src/bash.rs#L19-L63`](/rust/crates/runtime/src/bash.rs#L19-L63)：
 
 ```rust
 pub struct BashCommandInput {
@@ -290,7 +290,7 @@ pub struct BashCommandOutput {
 
 ### 手动后台化实现
 
-[`runtime/src/bash.rs#L74-L98`](/rust/crates/runtime/src/bash.rs#L74-L98)：
+[`runtime/src/bash.rs#L74-L93`](/rust/crates/runtime/src/bash.rs#L74-L93)：
 
 ```rust
 if input.run_in_background.unwrap_or(false) {
@@ -343,7 +343,7 @@ fn truncate_output(s: &str) -> String {
 
 截断发生在字节层面（而非字符层面），但会正确回退到上一个 UTF-8 字符边界，避免产生非法 UTF-8。截断标记`[output truncated — exceeded 16384 bytes]` 与上游文案完全一致，便于模型识别并决定下一步行动。
 
-CLI 渲染层在展示时还会做第二次截断（按显示行数），但不会影响实际返回给模型的内容。参见 [`rusty-claude-cli/src/main.rs#L7093-L7115`](/rust/crates/rusty-claude-cli/src/main.rs#L7093-L7115)。
+CLI 渲染层在展示时还会做第二次截断（按显示行数），但不会影响实际返回给模型的内容。参见 [`rusty-claude-cli/src/main.rs#L7142-L7157`](/rust/crates/rusty-claude-cli/src/main.rs#L7142-L7157)。
 
 ---
 
@@ -375,7 +375,7 @@ pub enum FilesystemIsolationMode {
 
 ### 运行时沙箱状态解析
 
-[`runtime/src/sandbox.rs#L162-L208`](/rust/crates/runtime/src/sandbox.rs#L162-L208) 的 `resolve_sandbox_status_for_request()`：
+[`runtime/src/sandbox.rs#L162-L203`](/rust/crates/runtime/src/sandbox.rs#L162-L203) 的 `resolve_sandbox_status_for_request()`：
 
 ```rust
 pub fn resolve_sandbox_status_for_request(request: &SandboxRequest, cwd: &Path) -> SandboxStatus {
@@ -394,7 +394,7 @@ pub fn resolve_sandbox_status_for_request(request: &SandboxRequest, cwd: &Path) 
 
 ### Linux 沙箱命令构建
 
-[`runtime/src/sandbox.rs#L211-L262`](/rust/crates/runtime/src/sandbox.rs#L211-L262)：
+[`runtime/src/sandbox.rs#L211-L255`](/rust/crates/runtime/src/sandbox.rs#L211-L255)：
 
 ```rust
 pub fn build_linux_sandbox_command(command: &str, cwd: &Path, status: &SandboxStatus) -> Option<LinuxSandboxCommand> {
@@ -449,7 +449,7 @@ pub fn build_linux_sandbox_command(command: &str, cwd: &Path, status: &SandboxSt
 | 安全审计 | 规则匹配 `read_file(/path)` 精确 | 需提取 `command` 字段做字符串匹配 |
 | 边界检查 | `file_ops.rs` 显式校验工作区逃逸 | 依赖沙箱和权限两道防线 |
 
-在 [`permission_enforcer.rs#L38-L67`](/rust/crates/runtime/src/permission_enforcer.rs#L38-L67) 中，`check()` 的核心逻辑：
+在 [`permission_enforcer.rs#L38-L56`](/rust/crates/runtime/src/permission_enforcer.rs#L38-L56) 中，`check()` 的核心逻辑：
 
 ```rust
 pub fn check(&self, tool_name: &str, input: &str) -> EnforcementResult {
@@ -461,7 +461,7 @@ pub fn check(&self, tool_name: &str, input: &str) -> EnforcementResult {
 }
 ```
 
-而 `check_bash()` 在 [`permission_enforcer.rs#L111-L139`](/rust/crates/runtime/src/permission_enforcer.rs#L111-L139) 中显式拒绝 Prompt 模式：
+而 `check_bash()` 在 [`permission_enforcer.rs#L111-L131`](/rust/crates/runtime/src/permission_enforcer.rs#L111-L131) 中显式拒绝 Prompt 模式：
 
 ```rust
 pub fn check_bash(&self, command: &str) -> EnforcementResult {
@@ -489,7 +489,7 @@ pub fn check_bash(&self, command: &str) -> EnforcementResult {
 
 ### CLI 渲染层的进度适配
 
-[`rusty-claude-cli/src/main.rs#L6140-L6160`](/rust/crates/rusty-claude-cli/src/main.rs#L6140-L6160) 的 `describe_tool_progress`：
+[`rusty-claude-cli/src/main.rs#L6169-L6184`](/rust/crates/rusty-claude-cli/src/main.rs#L6169-L6184) 的 `describe_tool_progress`：
 
 ```rust
 fn describe_tool_progress(name: &str, input: &str) -> String {

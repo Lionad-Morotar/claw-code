@@ -59,7 +59,7 @@ fn run_web_fetch(input: WebFetchInput) -> Result<String, String> {
 }
 ```
 
-#### 2.1.4 核心执行逻辑 (L2556-L2587)
+#### 2.1.4 核心执行逻辑 (L2556-L2588)
 
 ```rust
 fn execute_web_fetch(input: &WebFetchInput) -> Result<WebFetchOutput, String> {
@@ -97,7 +97,7 @@ fn execute_web_fetch(input: &WebFetchInput) -> Result<WebFetchOutput, String> {
 }
 ```
 
-#### 2.1.5 URL 规范化 (L2653-L2669)
+#### 2.1.5 URL 规范化 (L2653-L2666)
 
 ```rust
 fn normalize_fetch_url(url: &str) -> Result<String, String> {
@@ -255,7 +255,7 @@ fn run_web_search(input: WebSearchInput) -> Result<String, String> {
 }
 ```
 
-#### 2.2.4 核心执行逻辑 (L2589-L2644)
+#### 2.2.4 核心执行逻辑 (L2590-L2642)
 
 ```rust
 fn execute_web_search(input: &WebSearchInput) -> Result<WebSearchOutput, String> {
@@ -320,7 +320,7 @@ fn execute_web_search(input: &WebSearchInput) -> Result<WebSearchOutput, String>
 - 自动去重
 - 最多返回 8 条结果
 
-#### 2.2.5 搜索 URL 构建 (L2672-L2680)
+#### 2.2.5 搜索 URL 构建 (L2668-L2681)
 
 ```rust
 fn build_search_url(query: &str) -> Result<reqwest::Url, String> {
@@ -401,7 +401,7 @@ fn decode_duckduckgo_redirect(url: &str) -> Option<String> {
 
 ## 3. HTTP 客户端配置
 
-**源码位置**: `rust/crates/tools/src/lib.rs` (L2646-L2651)
+**源码位置**: `rust/crates/tools/src/lib.rs` (L2644-L2651)
 
 ```rust
 fn build_http_client() -> Result<Client, String> {
@@ -471,7 +471,7 @@ fn build_http_client() -> Result<Client, String> {
 
 ## 6. 输出结构
 
-### 6.1 WebFetchOutput (L2353-L2363)
+### 6.1 WebFetchOutput (L2354-L2364)
 
 ```rust
 #[derive(Debug, Serialize)]
@@ -485,7 +485,7 @@ struct WebFetchOutput {
 }
 ```
 
-### 6.2 WebSearchOutput (L2365-L2373)
+### 6.2 WebSearchOutput (L2366-L2374)
 
 ```rust
 #[derive(Debug, Serialize)]
@@ -500,7 +500,7 @@ struct WebSearchOutput {
 
 ## 7. 测试验证
 
-**源码位置**: `rust/crates/tools/src/lib.rs` (L6188-L6350)
+**源码位置**: `rust/crates/tools/src/lib.rs` (L6177-L6352)
 
 项目包含完整的 WebFetch 和 WebSearch 工具集成测试：
 
@@ -525,8 +525,8 @@ let result = execute_tool("WebSearch", &json!({
 
 | 工具 | 状态 | 源码位置 |
 |------|------|----------|
-| WebFetch | ✅ 完整实现 | `rust/crates/tools/src/lib.rs:L493-L507`, `L2556-L2587` |
-| WebSearch | ✅ 完整实现 | `rust/crates/tools/src/lib.rs:L508-L528`, `L2589-L2644` |
+| WebFetch | ✅ 完整实现 | `rust/crates/tools/src/lib.rs:L493-L507`, `L2556-L2588` |
+| WebSearch | ✅ 完整实现 | `rust/crates/tools/src/lib.rs:L508-L528`, `L2590-L2642` |
 
 ### 未实现功能
 

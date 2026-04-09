@@ -70,7 +70,7 @@ function isGrowthBookEnabled(): boolean {
 
 ### 3.2 GrowthBook 客户端配置
 
-**`packages/ccb/src/services/analytics/growthbook.ts#L560-L697`** - `getGrowthBookClient()` 关键配置：
+**`packages/ccb/src/services/analytics/growthbook.ts#L560-L694`** - `getGrowthBookClient()` 关键配置：
 
 ```typescript
 const getGrowthBookClient = memoize(
@@ -131,7 +131,7 @@ const getGrowthBookClient = memoize(
 
 ## 4. Feature Flag 读取优先级链
 
-**`packages/ccb/src/services/analytics/growthbook.ts#L814-L868`** - `getFeatureValue_CACHED_MAY_BE_STALE()`:
+**`packages/ccb/src/services/analytics/growthbook.ts#L814-L867`** - `getFeatureValue_CACHED_MAY_BE_STALE()`:
 
 ```
 1. CLAUDE_INTERNAL_FC_OVERRIDES 环境变量（JSON 对象覆盖，仅 ant 构建）
@@ -162,7 +162,7 @@ const remoteEvalFeatureValues = new Map<string, unknown>()
 
 ### 5.2 磁盘缓存
 
-**`packages/ccb/src/services/analytics/growthbook.ts#L407-L418`** - `syncRemoteEvalToDisk()`:
+**`packages/ccb/src/services/analytics/growthbook.ts#L407-L417`** - `syncRemoteEvalToDisk()`:
 
 ```typescript
 function syncRemoteEvalToDisk(): void {
@@ -180,7 +180,7 @@ function syncRemoteEvalToDisk(): void {
 
 ### 5.3 周期性刷新
 
-**`packages/ccb/src/services/analytics/growthbook.ts#L1114-L1122`** - 刷新间隔：
+**`packages/ccb/src/services/analytics/growthbook.ts#L1113-L1117`** - 刷新间隔：
 
 ```typescript
 // Periodic refresh interval (matches Statsig's 6-hour interval)
@@ -258,7 +258,7 @@ const GROWTHBOOK_REFRESH_INTERVAL_MS =
 
 ## 7. 本地默认配置 (LOCAL_GATE_DEFAULTS)
 
-**`packages/ccb/src/services/analytics/growthbook.ts#L434-L490`** 定义了 40+ 个本地 gate 默认值，分为三类：
+**`packages/ccb/src/services/analytics/growthbook.ts#L434-L472`** 定义了 40+ 个本地 gate 默认值，分为三类：
 
 ### P0 - 纯本地功能 (无外部依赖)
 - `tengu_keybinding_customization_release`: true
@@ -306,7 +306,7 @@ const GROWTHBOOK_REFRESH_INTERVAL_MS =
 
 1. **`packages/ccb/src/constants/keys.ts#L5-L16`** - `getGrowthBookClientKey()` 优先读取 `CLAUDE_GB_ADAPTER_KEY`
 2. **`packages/ccb/src/services/analytics/growthbook.ts#L488-L496`** - `isGrowthBookEnabled()` 适配器模式下直接启用
-3. **`packages/ccb/src/services/analytics/growthbook.ts#L567-L574`** - base URL 优先使用 `CLAUDE_GB_ADAPTER_URL`
+3. **`packages/ccb/src/services/analytics/growthbook.ts#L568-L572`** - base URL 优先使用 `CLAUDE_GB_ADAPTER_URL`
 
 所有 130+ 个调用方文件无需修改。
 

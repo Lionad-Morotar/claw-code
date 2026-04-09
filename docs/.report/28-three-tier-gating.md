@@ -97,7 +97,7 @@ enum TodoStatus {
 }
 ```
 
-这一定义位于 [`rust/crates/tools/src/lib.rs#L2095-L2108`](/rust/crates/tools/src/lib.rs#L2095-L2108)：
+这一定义位于 [`rust/crates/tools/src/lib.rs#L2094-L2107`](/rust/crates/tools/src/lib.rs#L2094-L2107)：
 
 ```rust
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
@@ -141,7 +141,7 @@ ToolSpec {
 }
 ```
 
-执行实现位于 [`rust/crates/tools/src/lib.rs#L1988-L1991`](/rust/crates/tools/src/lib.rs#L1988-L1991)：
+执行实现位于 [`rust/crates/tools/src/lib.rs#L1987-L1989`](/rust/crates/tools/src/lib.rs#L1987-L1989)：
 
 ```rust
 fn run_todo_write(input: TodoWriteInput) -> Result<String, String> {
@@ -247,9 +247,9 @@ fn run_todo_write(input: TodoWriteInput) -> Result<String, String> {
 | 文件 | 核心内容 |
 |------|----------|
 | [`/rust/crates/tools/src/lib.rs#L530-L555`](/rust/crates/tools/src/lib.rs#L530-L555) | TodoWrite 工具规格与输入 schema |
-| [`/rust/crates/tools/src/lib.rs#L2095-L2108`](/rust/crates/tools/src/lib.rs#L2095-L2108) | TodoItem 与 TodoStatus 枚举定义 |
+| [`/rust/crates/tools/src/lib.rs#L2094-L2107`](/rust/crates/tools/src/lib.rs#L2094-L2107) | TodoItem 与 TodoStatus 枚举定义 |
 | [`/rust/crates/tools/src/lib.rs#L645`](/rust/crates/tools/src/lib.rs#L645) | Proactive 模式标记 |
-| [`/rust/crates/tools/src/lib.rs#L1988-L1991`](/rust/crates/tools/src/lib.rs#L1988-L1991) | TodoWrite 执行入口 |
+| [`/rust/crates/tools/src/lib.rs#L1987-L1989`](/rust/crates/tools/src/lib.rs#L1987-L1989) | TodoWrite 执行入口 |
 | [`/src/reference_data/subsystems/buddy.json`](/src/reference_data/subsystems/buddy.json) | Buddy 系统存档数据 |
 | [`/src/reference_data/subsystems/services.json`](/src/reference_data/subsystems/services.json#L18) | GrowthBook 服务引用 |
 | [`/src/reference_data/subsystems/types.json`](/src/reference_data/subsystems/types.json#L9) | GrowthBook 实验事件类型 |

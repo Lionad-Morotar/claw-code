@@ -11,13 +11,13 @@ claw-code 实现了 **8 个隐藏功能**（Hidden Features），这些功能不
 
 | 功能 | Slash Command | 实际执行位置 | 权限要求 |
 |------|---------------|--------------|----------|
-| **Bughunter** | `/bughunter [scope]` | `main.rs#L3544` | 无额外限制 |
-| **Ultraplan** | `/ultraplan [task]` | `main.rs#L3547` | 无额外限制 |
-| **Teleport** | `/teleport <path>` | `main.rs#L3551` | 无额外限制 |
-| **DebugToolCall** | `/debug-tool-call` | `main.rs#L3558` | 无额外限制 |
+| **Bughunter** | `/bughunter [scope]` | `main.rs#L4336` | 无额外限制 |
+| **Ultraplan** | `/ultraplan [task]` | `main.rs#L4341` | 无额外限制 |
+| **Teleport** | `/teleport <path>` | `main.rs#L4346` | 无额外限制 |
+| **DebugToolCall** | `/debug-tool-call` | `main.rs#L4356` | 无额外限制 |
 | **Team** | `/team [action]` | `tools.rs#L1521` | `DangerFullAccess` |
-| **Cron** | `/cron [list\|add\|remove]` | `team_cron_registry.rs` | `DangerFullAccess` |
-| **Sandbox** | `/sandbox` | `main.rs#L3618` | 无额外限制 |
+| **Cron** | `/cron [list\|add\|remove]` | `tools.rs#L1556` | `DangerFullAccess` |
+| **Sandbox** | `/sandbox` | `main.rs#L3819` | 无额外限制 |
 | **Doctor** | `/doctor` | `main.rs#L1351` | 无额外限制 |
 
 ---
@@ -30,7 +30,7 @@ Bughunter 是一个内部代码审查工具，可扫描指定作用域内的代�
 
 ### 源码锚点
 
-**命令定义** [`commands/src/lib.rs#L178-L183`](/rust/crates/commands/src/lib.rs#L178-L183)：
+**命令定义** [`commands/src/lib.rs#L165-L172`](/rust/crates/commands/src/lib.rs#L165-L172)：
 
 ```rust
 SlashCommandSpec {
@@ -48,7 +48,7 @@ SlashCommandSpec {
 "bughunter" => SlashCommand::Bughunter { scope: remainder },
 ```
 
-**执行入口** [`rusty-claude-cli/src/main.rs#L4338-L4342`](/rust/crates/rusty-claude-cli/src/main.rs#L4338-L4342)：
+**执行入口** [`rusty-claude-cli/src/main.rs#L4336-L4340`](/rust/crates/rusty-claude-cli/src/main.rs#L4336-L4340)：
 
 ```rust
 fn run_bughunter(&self, scope: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
@@ -57,7 +57,7 @@ fn run_bughunter(&self, scope: Option<&str>) -> Result<(), Box<dyn std::error::E
 }
 ```
 
-**报告格式化** [`rusty-claude-cli/src/main.rs#L5318-L5328`](/rust/crates/rusty-claude-cli/src/main.rs#L5318-L5328)：
+**报告格式化** [`rusty-claude-cli/src/main.rs#L5321-L5331`](/rust/crates/rusty-claude-cli/src/main.rs#L5321-L5331)：
 
 ```rust
 fn format_bughunter_report(scope: Option<&str>) -> String {
@@ -91,7 +91,7 @@ Ultraplan 是一个深度规划工具，可将复杂任务分解为多步执行�
 
 ### 源码锚点
 
-**命令定义** [`commands/src/lib.rs#L193-L198`](/rust/crates/commands/src/lib.rs#L193-L198)：
+**命令定义** [`commands/src/lib.rs#L191-L197`](/rust/crates/commands/src/lib.rs#L191-L197)：
 
 ```rust
 SlashCommandSpec {
@@ -109,7 +109,7 @@ SlashCommandSpec {
 "ultraplan" => SlashCommand::Ultraplan { task: remainder },
 ```
 
-**执行入口** [`rusty-claude-cli/src/main.rs#L4345-L4349`](/rust/crates/rusty-claude-cli/src/main.rs#L4345-L4349)：
+**执行入口** [`rusty-claude-cli/src/main.rs#L4341-L4344`](/rust/crates/rusty-claude-cli/src/main.rs#L4341-L4344)：
 
 ```rust
 fn run_ultraplan(&self, task: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
@@ -118,7 +118,7 @@ fn run_ultraplan(&self, task: Option<&str>) -> Result<(), Box<dyn std::error::Er
 }
 ```
 
-**进度追踪器** [`rusty-claude-cli/src/main.rs#L5944-L6000`](/rust/crates/rusty-claude-cli/src/main.rs#L5944-L6000)：
+**进度追踪器** [`rusty-claude-cli/src/main.rs#L5932-L5968`](/rust/crates/rusty-claude-cli/src/main.rs#L5932-L5968)：
 
 ```rust
 impl InternalPromptProgressReporter {
@@ -141,7 +141,7 @@ impl InternalPromptProgressReporter {
 }
 ```
 
-**运行周期** [`rusty-claude-cli/src/main.rs#L6076-L6100`](/rust/crates/rusty-claude-cli/src/main.rs#L6076-L6100)：
+**运行周期** [`rusty-claude-cli/src/main.rs#L6076-L6098`](/rust/crates/rusty-claude-cli/src/main.rs#L6076-L6098)：
 
 ```rust
 impl InternalPromptProgressRun {
@@ -187,7 +187,7 @@ Teleport 允许用户通过搜索工作区快速跳转到指定文件或符号�
 
 ### 源码锚点
 
-**命令定义** [`commands/src/lib.rs#L199-L204`](/rust/crates/commands/src/lib.rs#L199-L204)：
+**命令定义** [`commands/src/lib.rs#L198-L205`](/rust/crates/commands/src/lib.rs#L198-L205)：
 
 ```rust
 SlashCommandSpec {
@@ -207,7 +207,7 @@ SlashCommandSpec {
 },
 ```
 
-**执行入口** [`rusty-claude-cli/src/main.rs#L4351-L4360`](/rust/crates/rusty-claude-cli/src/main.rs#L4351-L4360)：
+**执行入口** [`rusty-claude-cli/src/main.rs#L4346-L4354`](/rust/crates/rusty-claude-cli/src/main.rs#L4346-L4354)：
 
 ```rust
 fn run_teleport(target: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
@@ -241,7 +241,7 @@ DebugToolCall 用于回放最后一次工具调用并显示调试详情，包括
 
 ### 源码锚点
 
-**命令定义** [`commands/src/lib.rs#L205-L210`](/rust/crates/commands/src/lib.rs#L205-L210)：
+**命令定义** [`commands/src/lib.rs#L205-L212`](/rust/crates/commands/src/lib.rs#L205-L212)：
 
 ```rust
 SlashCommandSpec {
@@ -253,7 +253,7 @@ SlashCommandSpec {
 }
 ```
 
-**命令解析** [`commands/src/lib.rs#L1275-L1278`](/rust/crates/commands/src/lib.rs#L1275-L1278)：
+**命令解析** [`commands/src/lib.rs#L1274-L1277`](/rust/crates/commands/src/lib.rs#L1274-L1277)：
 
 ```rust
 "debug-tool-call" => {
@@ -262,7 +262,7 @@ SlashCommandSpec {
 }
 ```
 
-**执行入口** [`rusty-claude-cli/src/main.rs#L4362-L4367`](/rust/crates/rusty-claude-cli/src/main.rs#L4362-L4367)：
+**执行入口** [`rusty-claude-cli/src/main.rs#L4356-L4360`](/rust/crates/rusty-claude-cli/src/main.rs#L4356-L4360)：
 
 ```rust
 fn run_debug_tool_call(&self, args: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
@@ -289,7 +289,7 @@ Team 功能允许创建和管理多个子代理组成的团队，用于并行任
 
 ### 源码锚点
 
-**命令定义** [`commands/src/lib.rs#L814-L819`](/rust/crates/commands/src/lib.rs#L814-L819)：
+**命令定义** [`commands/src/lib.rs#L813-L820`](/rust/crates/commands/src/lib.rs#L813-L820)：
 
 ```rust
 SlashCommandSpec {
@@ -301,7 +301,7 @@ SlashCommandSpec {
 }
 ```
 
-**工具定义** [`tools/src/lib.rs#L980-L1035`](/rust/crates/tools/src/lib.rs#L980-L1035)：
+**工具定义** [`tools/src/lib.rs#L975-L1055`](/rust/crates/tools/src/lib.rs#L975-L1055)：
 
 ```rust
 ToolSpec {
@@ -343,20 +343,15 @@ ToolSpec {
 },
 ```
 
-**执行入口** [`tools/src/lib.rs#L1521-L1555`](/rust/crates/tools/src/lib.rs#L1521-L1555)：
+**执行入口** [`tools/src/lib.rs#L1521-L1543`](/rust/crates/tools/src/lib.rs#L1521-L1543)：
 
 ```rust
 fn run_team_create(input: TeamCreateInput) -> Result<String, String> {
     let task_ids: Vec<String> = input
         .tasks
         .iter()
-        .map(|task| {
-            let description = task.description.clone().or_else(|| Some(task.prompt.clone()));
-            let task = global_task_registry().create(&task.prompt, description.as_deref());
-            task.task_id
-        })
+        .filter_map(|t| t.get("task_id").and_then(|v| v.as_str()).map(str::to_owned))
         .collect();
-
     let team = global_team_registry().create(&input.name, task_ids);
     // Register team assignment on each task
     for task_id in &team.task_ids {
@@ -372,21 +367,25 @@ fn run_team_create(input: TeamCreateInput) -> Result<String, String> {
         "created_at": team.created_at
     }))
 }
+```
 
+**删除实现** [`tools/src/lib.rs#L1543-L1555`](/rust/crates/tools/src/lib.rs#L1543-L1555)：
+
+```rust
 fn run_team_delete(input: TeamDeleteInput) -> Result<String, String> {
     match global_team_registry().delete(&input.team_id) {
         Ok(team) => to_pretty_json(json!({
             "team_id": team.team_id,
             "name": team.name,
             "status": team.status,
-            "deleted_at": team.updated_at
+            "message": "Team deleted"
         })),
-        Err(err) => Err(err),
+        Err(e) => Err(e),
     }
 }
 ```
 
-**团队注册表** [`runtime/src/team_cron_registry.rs#L19-L82`](/rust/crates/runtime/src/team_cron_registry.rs#L19-L82)：
+**团队注册表** [`runtime/src/team_cron_registry.rs#L19-L90`](/rust/crates/runtime/src/team_cron_registry.rs#L19-L90)：
 
 ```rust
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -439,7 +438,7 @@ Cron 功能提供定时任务的创建、删除和列表查询，支持周期性
 
 ### 源码锚点
 
-**命令定义** [`commands/src/lib.rs#L800-L805`](/rust/crates/commands/src/lib.rs#L800-L805)：
+**命令定义** [`commands/src/lib.rs#L804-L811`](/rust/crates/commands/src/lib.rs#L804-L811)：
 
 ```rust
 SlashCommandSpec {
@@ -506,7 +505,7 @@ Sandbox 命令显示当前会话的沙箱隔离状态，包括是否启用、保
 
 ### 源码锚点
 
-**命令定义** [`commands/src/lib.rs#L67-L72`](/rust/crates/commands/src/lib.rs#L67-L72)：
+**命令定义** [`commands/src/lib.rs#L72-L79`](/rust/crates/commands/src/lib.rs#L72-L79)：
 
 ```rust
 SlashCommandSpec {
@@ -518,7 +517,7 @@ SlashCommandSpec {
 }
 ```
 
-**CLI Action 定义** [`rusty-claude-cli/src/main.rs#L302`](/rust/crates/rusty-claude-cli/src/main.rs#L302)：
+**CLI Action 定义** [`rusty-claude-cli/src/main.rs#L232`](/rust/crates/rusty-claude-cli/src/main.rs#L232)：
 
 ```rust
 Sandbox {
@@ -526,11 +525,15 @@ Sandbox {
 },
 ```
 
-**执行入口** [`rusty-claude-cli/src/main.rs#L3618-L3623`](/rust/crates/rusty-claude-cli/src/main.rs#L3618-L3623)：
+**REPL 分发** [`rusty-claude-cli/src/main.rs#L2606-L2611`](/rust/crates/rusty-claude-cli/src/main.rs#L2606-L2611) 与 **Slash 分发** [`rusty-claude-cli/src/main.rs#L3618-L3622`](/rust/crates/rusty-claude-cli/src/main.rs#L3618-L3622)：
 
 ```rust
 SlashCommand::Sandbox => {
-    Self::print_sandbox_status();
+    let cwd = env::current_dir()?;
+    let loader = ConfigLoader::default_for(&cwd);
+    let runtime_config = loader.load()?;
+    let status = resolve_sandbox_status(runtime_config.sandbox(), &cwd);
+    println!("{}", format_sandbox_report(&status));
     false
 }
 ```
@@ -539,37 +542,53 @@ SlashCommand::Sandbox => {
 
 ```rust
 fn print_sandbox_status() {
-    let cwd = env::current_dir().unwrap_or_default();
+    let cwd = env::current_dir().expect("current dir");
     let loader = ConfigLoader::default_for(&cwd);
-    let runtime_config = loader.load().unwrap_or(runtime::RuntimeConfig::empty());
+    let runtime_config = loader
+        .load()
+        .unwrap_or_else(|_| runtime::RuntimeConfig::empty());
     println!(
         "{}",
         format_sandbox_report(&resolve_sandbox_status(runtime_config.sandbox(), &cwd))
-    )
+    );
 }
 ```
 
-**Doctor 诊断集成** [`rusty-claude-cli/src/main.rs#L1726-L1755`](/rust/crates/rusty-claude-cli/src/main.rs#L1726-L1755)：
+**Doctor 诊断集成** [`rusty-claude-cli/src/main.rs#L1726-L1760`](/rust/crates/rusty-claude-cli/src/main.rs#L1726-L1760)：
 
 ```rust
 fn check_sandbox_health(status: &runtime::SandboxStatus) -> DiagnosticCheck {
-    DiagnosticCheck {
-        name: "Sandbox".to_string(),
-        status: if status.active {
-            DiagnosticStatus::Pass
-        } else if status.enabled {
-            DiagnosticStatus::Warning
-        } else {
-            DiagnosticStatus::Info
-        },
-        detail: if !status.enabled {
-            "sandbox is not active for this session"
-        } else if !status.active {
-            "sandbox was requested but is not currently active"
-        } else {
-            "sandbox protections are active"
-        },
+    let degraded = status.enabled && !status.active;
+    let mut details = vec![
+        format!("Enabled          {}", status.enabled),
+        format!("Active           {}", status.active),
+        format!("Supported        {}", status.supported),
+        format!("Filesystem mode  {}", status.filesystem_mode.as_str()),
+        format!("Filesystem live  {}", status.filesystem_active),
+    ];
+    if let Some(reason) = &status.fallback_reason {
+        details.push(format!("Fallback reason  {reason}"));
     }
+    DiagnosticCheck::new(
+        "Sandbox",
+        if degraded {
+            DiagnosticLevel::Warn
+        } else {
+            DiagnosticLevel::Ok
+        },
+        if degraded {
+            "sandbox was requested but is not currently active"
+        } else if status.active {
+            "sandbox protections are active"
+        } else {
+            "sandbox is not active for this session"
+        },
+    )
+    .with_details(details)
+    .with_data(Map::from_iter([
+        ("enabled".to_string(), json!(status.enabled)),
+        ("active".to_string(), json!(status.active)),
+    ]))
 }
 ```
 
@@ -593,7 +612,7 @@ Doctor 是一个综合性的系统诊断工具，检查认证、配置、工作�
 
 ### 源码锚点
 
-**命令定义** [`commands/src/lib.rs#L285-L290`](/rust/crates/commands/src/lib.rs#L285-L290)：
+**命令定义** [`commands/src/lib.rs#L251-L258`](/rust/crates/commands/src/lib.rs#L251-L258)：
 
 ```rust
 SlashCommandSpec {
@@ -611,7 +630,7 @@ SlashCommandSpec {
 CliAction::Doctor { output_format } => run_doctor(output_format)?,
 ```
 
-**执行入口** [`rusty-claude-cli/src/main.rs#L1351-L1363`](/rust/crates/rusty-claude-cli/src/main.rs#L1351-L1363)：
+**执行入口** [`rusty-claude-cli/src/main.rs#L1351-L1365`](/rust/crates/rusty-claude-cli/src/main.rs#L1351-L1365)：
 
 ```rust
 fn run_doctor(output_format: CliOutputFormat) -> Result<(), Box<dyn std::error::Error>> {
@@ -630,7 +649,7 @@ fn run_doctor(output_format: CliOutputFormat) -> Result<(), Box<dyn std::error::
 }
 ```
 
-**诊断报告渲染** [`rusty-claude-cli/src/main.rs#L1300-L1350`](/rust/crates/rusty-claude-cli/src/main.rs#L1300-L1350)：
+**诊断报告渲染** [`rusty-claude-cli/src/main.rs#L1315-L1363`](/rust/crates/rusty-claude-cli/src/main.rs#L1315-L1363)：
 
 ```rust
 fn render_doctor_report() -> Result<DoctorReport, Box<dyn std::error::Error>> {
@@ -688,7 +707,7 @@ claw doctor
 
 在 compat-harness 中检测到 daemon 相关快速路径：
 
-**Bootstrap Phase 定义** [`runtime/src/bootstrap.rs#L1-L14`](/rust/crates/runtime/src/bootstrap.rs#L1-L14)：
+**Bootstrap Phase 定义** [`runtime/src/bootstrap.rs#L2-L14`](/rust/crates/runtime/src/bootstrap.rs#L2-L14)：
 
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -708,7 +727,7 @@ pub enum BootstrapPhase {
 }
 ```
 
-**检测逻辑** [`compat-harness/src/lib.rs#L198-L215`](/rust/crates/compat-harness/src/lib.rs#L198-L215)：
+**检测逻辑** [`compat-harness/src/lib.rs#L198-L210`](/rust/crates/compat-harness/src/lib.rs#L198-L210)：
 
 ```rust
 if source.contains("--daemon-worker") {
@@ -731,7 +750,7 @@ if source.contains("args[0] === 'daemon'") {
 | **WorkspaceWrite** | Bughunter, Ultraplan |
 | **DangerFullAccess** | Team, Cron |
 
-权限检查在 `handle_slash_command` 和 `tool_executor.execute()` 前进行。
+权限检查在斜杠命令分发和工具执行前进行。
 
 ---
 
@@ -753,7 +772,7 @@ if source.contains("args[0] === 'daemon'") {
 
 关键测试用例：
 
-**Ultraplan 进度测试** [`rusty-claude-cli/src/main.rs#L10533-L10580`](/rust/crates/rusty-claude-cli/src/main.rs#L10533-L10580)：
+**Ultraplan 进度测试** [`rusty-claude-cli/src/main.rs#L10533-L10572`](/rust/crates/rusty-claude-cli/src/main.rs#L10533-L10572)：
 
 ```rust
 #[test]
@@ -770,39 +789,52 @@ fn ultraplan_progress_lines_include_phase_step_and_elapsed_status() {
 }
 ```
 
-**命令解析测试** [`commands/src/lib.rs#L4094-L4170`](/rust/crates/commands/src/lib.rs#L4094-L4170)：
+**命令解析测试** [`commands/src/lib.rs#L4082-L4115`](/rust/crates/commands/src/lib.rs#L4082-L4115)：
 
 ```rust
 #[test]
-fn parses_hidden_slash_commands() {
-    assert!(matches!(
+fn parses_supported_slash_commands() {
+    assert_eq!(SlashCommand::parse("/help"), Ok(Some(SlashCommand::Help)));
+    assert_eq!(
+        SlashCommand::parse(" /status "),
+        Ok(Some(SlashCommand::Status))
+    );
+    assert_eq!(
+        SlashCommand::parse("/sandbox"),
+        Ok(Some(SlashCommand::Sandbox))
+    );
+    assert_eq!(
         SlashCommand::parse("/bughunter runtime"),
-        Ok(Some(SlashCommand::Bughunter { scope: Some(s) })) if s == "runtime"
-    ));
-    assert!(matches!(
+        Ok(Some(SlashCommand::Bughunter {
+            scope: Some("runtime".to_string())
+        }))
+    );
+    assert_eq!(
         SlashCommand::parse("/ultraplan ship both features"),
-        Ok(Some(SlashCommand::Ultraplan { task: Some(t) })) if t == "ship both features"
-    ));
+        Ok(Some(SlashCommand::Ultraplan {
+            task: Some("ship both features".to_string())
+        }))
+    );
     // ... 更多测试
 }
 ```
 
-**团队注册表测试** [`runtime/src/team_cron_registry.rs#L239-L270`](/rust/crates/runtime/src/team_cron_registry.rs#L239-L270)：
+**团队注册表测试** [`runtime/src/team_cron_registry.rs#L251-L270`](/rust/crates/runtime/src/team_cron_registry.rs#L251-L270)：
 
 ```rust
 #[test]
-fn creates_and_retrieves_teams() {
-    let registry = TeamRegistry::new();
-    let team = registry.create("Alpha Squad", vec!["task_001".into(), "task_002".into()]);
-    assert_eq!(team.name, "Alpha Squad");
-    assert_eq!(team.task_ids.len(), 2);
-    assert_eq!(team.status, TeamStatus::Created);
-}
-
-#[test]
 fn lists_and_deletes_teams() {
     let registry = TeamRegistry::new();
-    // ... 创建、删除、验证测试
+    let t1 = registry.create("Team A", vec![]);
+    let t2 = registry.create("Team B", vec![]);
+    let all = registry.list();
+    assert_eq!(all.len(), 2);
+    let deleted = registry.delete(&t1.team_id).expect("delete should succeed");
+    assert_eq!(deleted.status, TeamStatus::Deleted);
+    let still_there = registry.get(&t1.team_id).unwrap();
+    assert_eq!(still_there.status, TeamStatus::Deleted);
+    registry.remove(&t2.team_id);
+    assert_eq!(registry.len(), 1);
 }
 ```
 

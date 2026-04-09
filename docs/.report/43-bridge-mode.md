@@ -87,7 +87,7 @@ pub enum McpConnectionStatus {
 }
 ```
 
-行号：#L25-31
+行号：#L25-33
 
 每个服务器的状态被封装为 `McpServerState`：
 
@@ -102,7 +102,7 @@ pub struct McpServerState {
 }
 ```
 
-行号：#L64-71
+行号：#L64-72
 
 ### 3.2 注册表结构
 

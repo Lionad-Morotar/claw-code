@@ -51,7 +51,7 @@ EXPERIMENTAL_SKILL_SEARCH 是一个实验性功能，旨在为模型提供根据
 
 功能通过 `feature('EXPERIMENTAL_SKILL_SEARCH')` 进行门控，该模式支持 DCE（Dead Code Elimination）：
 
-**源码**: `packages/ccb/src/utils/attachments.ts#L95-L103`
+**源码**: `packages/ccb/src/utils/attachments.ts#L95-L102`
 ```typescript
 const skillSearchModules = feature('EXPERIMENTAL_SKILL_SEARCH')
   ? {
@@ -119,17 +119,28 @@ const remoteSkillModules = feature('EXPERIMENTAL_SKILL_SEARCH')
 /* eslint-enable @typescript-eslint/no-require-imports */
 ```
 
-#### 3.4.2 远程规范技能执行
+#### 3.4.2 远程规范技能验证
 
-**源码**: `packages/ccb/src/tools/SkillTool/SkillTool.ts#L606-L613`
+**源码**: `packages/ccb/src/tools/SkillTool/SkillTool.ts#L378-L397`
 ```typescript
 if (
   feature('EXPERIMENTAL_SKILL_SEARCH') &&
   process.env.USER_TYPE === 'ant'
 ) {
-  const slug = remoteSkillModules!.stripCanonicalPrefix(commandName)
+  const slug = remoteSkillModules!.stripCanonicalPrefix(
+    normalizedCommandName,
+  )
   if (slug !== null) {
-    return executeRemoteSkill(slug, commandName, parentMessage, context)
+    const meta = remoteSkillModules!.getDiscoveredRemoteSkill(slug)
+    if (!meta) {
+      return {
+        result: false,
+        message: `Remote skill ${slug} was not discovered in this session. Use DiscoverSkills to find remote skills first.`,
+        errorCode: 6,
+      }
+    }
+    // Discovered remote skill — valid. Loading happens in call().
+    return { result: true }
   }
 }
 ```
@@ -158,7 +169,7 @@ const wasDiscoveredField =
 
 在用户首次输入时，`processUserInputAttachments` 会调用 `getTurnZeroSkillDiscovery`。
 
-**源码**: `packages/ccb/src/utils/attachments.ts#L800-L812`
+**源码**: `packages/ccb/src/utils/attachments.ts#L801-L812`
 ```typescript
 ...(feature('EXPERIMENTAL_SKILL_SEARCH') &&
 skillSearchModules &&
@@ -237,7 +248,7 @@ discoveredSkillNames?: Set<string>
 
 系统提示中包含技能发现的指导说明。
 
-**源码**: `packages/ccb/src/constants/prompts.ts#L334-L341`
+**源码**: `packages/ccb/src/constants/prompts.ts#L334-L342`
 ```typescript
 function getDiscoverSkillsGuidance(): string | null {
   if (
@@ -370,18 +381,18 @@ export const isSkillSearchEnabled: () => boolean = () => false;
 | `packages/ccb/src/services/skillSearch/featureCheck.ts` | L2-L3 | 功能检查 (Stub) |
 | `packages/ccb/src/tools/SkillTool/SkillTool.ts` | L107-L116 | 动态模块加载 |
 | `packages/ccb/src/tools/SkillTool/SkillTool.ts` | L139-L146 | was_discovered 遥测 |
-| `packages/ccb/src/tools/SkillTool/SkillTool.ts` | L378-L396 | 远程规范技能验证 |
+| `packages/ccb/src/tools/SkillTool/SkillTool.ts` | L378-L397 | 远程规范技能验证 |
 | `packages/ccb/src/tools/SkillTool/SkillTool.ts` | L493-L505 | 远程技能自动授权 |
-| `packages/ccb/src/tools/SkillTool/SkillTool.ts` | L606-L613 | 远程技能执行路由 |
+| `packages/ccb/src/tools/SkillTool/SkillTool.ts` | L606-L614 | 远程技能执行路由 |
 | `packages/ccb/src/tools/SkillTool/SkillTool.ts` | L662-L669 | was_discovered 字段注入 |
 | `packages/ccb/src/tools/SkillTool/SkillTool.ts` | L970-L1109 | executeRemoteSkill 实现 |
-| `packages/ccb/src/utils/attachments.ts` | L95-L103 | skillSearchModules 条件加载 |
-| `packages/ccb/src/utils/attachments.ts` | L800-L812 | Turn-0 技能发现 |
+| `packages/ccb/src/utils/attachments.ts` | L95-L102 | skillSearchModules 条件加载 |
+| `packages/ccb/src/utils/attachments.ts` | L801-L812 | Turn-0 技能发现 |
 | `packages/ccb/src/utils/attachments.ts` | L2693-L2698 | Skill Listing 过滤 |
 | `packages/ccb/src/query.ts` | L66-L68 | skillPrefetch 条件加载 |
 | `packages/ccb/src/query.ts` | L331-L335 | 预取启动 |
 | `packages/ccb/src/query.ts` | L1620-L1631 | 预取结果收集 |
-| `packages/ccb/src/constants/prompts.ts` | L87-L92 | DISCOVER_SKILLS_TOOL_NAME 加载 |
+| `packages/ccb/src/constants/prompts.ts` | L87-L93 | DISCOVER_SKILLS_TOOL_NAME 加载 |
 | `packages/ccb/src/constants/prompts.ts` | L334-L341 | getDiscoverSkillsGuidance |
 | `packages/ccb/src/constants/prompts.ts` | L778-L784 | 子代理系统提示集成 |
 | `packages/ccb/src/Tool.ts` | L224-L225 | discoveredSkillNames 上下文字段 |
