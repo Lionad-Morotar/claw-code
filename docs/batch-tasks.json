@@ -400,9 +400,9 @@
       "title": "\u81ea\u5b9a\u4e49 Sentry \u9519\u8bef\u4e0a\u62a5\u914d\u7f6e",
       "url": "https://ccb.agent-aura.top/docs/internals/sentry-setup",
       "output_file": "docs/.report/32-sentry-setup.md",
-      "status": "running",
+      "status": "completed",
       "assigned_at": "2026-04-09T12:20:00+08:00",
-      "completed_at": null,
+      "completed_at": "2026-04-09T12:00:00Z",
       "pr_url": null,
       "review_issues": 0
     },

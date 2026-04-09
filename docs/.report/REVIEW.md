@@ -394,3 +394,95 @@ prompt.push(format!(
 ---
 
 *审校完成 • 2026-04-09*
+## 审校摘要
+
+| 检查项 | 状态 | 说明 |
+|--------|------|------|
+| 原文抓取完整性 | ✅ | 已通过 curl + 文本提取方式获取完整页面内容 |
+| 代码锚点精确性 | ⚠️ | 原始文档声称的实现文件在代码库中**不存在**，无法提供 `#LXX-LYY` 锚点 |
+| 技术准确性 | ✅ | 已明确标注"功能缺失"状态，避免误导读者 |
+| 文档结构对齐 | ✅ | 遵循单元文档标准结构：摘要 → 原文概述 → 现状分析 → 差异判定 → 结论 |
+
+---
+
+## 审校发现
+
+### 1. 重大差异：功能实现缺失
+
+原始文档描述了一套完整的 Sentry 错误上报机制，但当前 claw-code 代码库中：
+
+- **无 TypeScript/JavaScript 实现**：`src/` 目录仅含 Python 文件（`__init__.py`），无 `.ts`/`.tsx`/`.js`/`.jsx` 文件
+- **无 Rust 实现**：`rust/crates/*/src/` 中无任何引用 `sentry` crate 或相关 API 的代码
+- **无依赖声明**：`Cargo.toml` 工作区文件中未声明 `sentry` 依赖
+- **无前端构建配置**：不存在 `package.json`，说明 TypeScript 前端层已移除或从未移植
+
+### 2. 运行时不一致
+
+原始文档示例使用 `bun run dev`，暗示其针对 Node.js/Bun 运行时。但当前 claw-code 的主运行时是 **Rust CLI**（通过 `cargo run -p rusty-claude-cli` 启动），这表明：
+
+- 原始文档可能是上游 Claude Code (TypeScript 版本) 的文档
+- claw-code (Rust 重写版本) 尚未移植此功能
+
+### 3. 文档完整性
+
+尽管功能缺失，本报告仍保留了原始文档的完整功能描述（第 3 节），以便：
+
+- 后续维护者了解原始设计意图
+- 若决定移植，可参考原文档的 API 列表与配置参数
+
+---
+
+## 修正建议
+
+### 已执行修正
+
+1. ✅ 在标题中明确标注"原始页面"链接
+2. ✅ 在摘要中突出显示"功能不存在"的结论
+3. ✅ 使用表格对比"声称文件"与"实际状态"
+4. ✅ 提供后续行动建议（废弃/移植/文档拆分）
+
+### 待执行修正（需代码变更）
+
+如果项目决定**实现** Sentry 支持（Rust 侧），建议：
+
+1. 在 `rust/crates/rusty-claude-cli/Cargo.toml` 中添加：
+   ```toml
+   [dependencies]
+   sentry = { version = "0.34", features = ["anyhow", "panic"] }
+   ```
+
+2. 在 `rust/crates/rusty-claude-cli/src/main.rs` 中添加：
+   ```rust
+   fn init_sentry_from_env() -> Option<sentry::ClientInitGuard> {
+       std::env::var("SENTRY_DSN")
+           .ok()
+           .filter(|dsn| !dsn.is_empty())
+           .map(|dsn| sentry::init((dsn, sentry::ClientOptions {
+               before_send: Some(Box::new(|mut event| {
+                   // Strip sensitive headers
+                   event.request.iter_mut().for_each(|req| {
+                       req.headers.retain(|k, _| {
+                           !matches!(k.to_lowercase().as_str(), "authorization" | "x-api-key" | "cookie" | "set-cookie")
+                       });
+                   });
+                   Some(event)
+               })),
+               ..Default::default()
+           })))
+   }
+   ```
+
+3. 更新本文档，添加 Rust 实现的源码锚点
+
+---
+
+## 审校结论
+
+**通过（带免责声明）**
+
+本报告准确反映了原始文档内容与当前代码库的差异，读者可清楚理解：
+- 原始文档描述的功能
+- 当前代码库未实现该功能
+- 如需实现，应参考的建议路径
+
+审校者无需修改报告内容，但应注意：若未来 Rust 侧实现了 Sentry 支持，需同步更新本文档。
