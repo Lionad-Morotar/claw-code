@@ -386,7 +386,7 @@ pub fn find_server_for_path(&self, path: &str) -> Option<LspServerState> {
 
 ### 源码映射：GitContext 检测
 
-`runtime/src/git_context.rs`（[`L1-L145`](/rust/crates/runtime/src/git_context.rs#L1-L145)）的 `GitContext::detect`：
+`runtime/src/git_context.rs`（[`L21-L42`](/rust/crates/runtime/src/git_context.rs#L21-L42)）的 `GitContext::detect`：
 
 ```rust
 impl GitContext {
