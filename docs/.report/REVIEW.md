@@ -1054,3 +1054,53 @@ Approved for commit.
 ## 54-auto-dream
 - **Status**: Synced from worktree (no separate review file)
 - **评定**: Pass
+
+---
+
+## 05-streaming.md
+
+- **评定**：Pass
+- **修正总数**：写作与自审过程中 3 处行号锚点修正
+
+### 写作阶段自审记录
+
+- **issue 1**：Blocker（自审），初稿将 `AnthropicRuntimeClient::stream`（`ApiClient` trait 实现）引用为 `main.rs#L6361-L6455`。经核对源码，实际 `impl ApiClient for AnthropicRuntimeClient` 从第 6477 行开始，`consume_stream` 从 6531 行开始。已修正为 `L6477-L6510` 和 `L6531-L6700`。
+- **issue 2**：Warning（自审），初稿将 `push_output_block` 内部行号引用为 `L6614-L6617`。因 `consume_stream` 起始行整体下移，`InputJsonDelta` 的 `input.push_str` 实际位于 `L6629-L6632`。已同步修正。
+- **issue 3**：Warning（自审），初稿将 `format_tool_call_start` 前的工具调用输出摘要引用为 `L6631-L6647`，将 guard check 降级逻辑引用为 `L6657-L6675`。经核对源码，对应代码块实际在 `L6646-L6662` 和 `L6672-L6690`。已修正。
+
+### 抽检链接验证清单
+
+| 链接 | 对应内容 | 状态 |
+|------|----------|------|
+| `main.rs#L81` | `POST_TOOL_STALL_TIMEOUT` 常量定义 | ✅ |
+| `main.rs#L6477-L6510` | `impl ApiClient for AnthropicRuntimeClient`，`stream` 方法 | ✅ |
+| `main.rs#L6531-L6700` | `consume_stream`：流式事件状态机、ANSI 渲染、guard check | ✅ |
+| `main.rs#L6395-L6448` | `AnthropicRuntimeClient::new`，Provider 分派 | ✅ |
+| `main.rs#L6629-L6632` | `InputJsonDelta` 拼接 `pending_tool` input | ✅ |
+| `main.rs#L6646-L6662` | `ContentBlockStop` 输出 `format_tool_call_start` | ✅ |
+| `main.rs#L6948-L6990` | `format_tool_call_start` 工具标签格式化 | ✅ |
+| `main.rs#L3444-L3485` | `LiveCli::run_turn`，spinner 启动 | ✅ |
+| `api/src/types.rs#L259-L268` | `StreamEvent` 枚举 | ✅ |
+| `api/src/types.rs#L178-L207` | `OutputContentBlock` 枚举 | ✅ |
+| `api/src/types.rs#L235-L253` | `ContentBlockDelta` 枚举 | ✅ |
+| `api/src/sse.rs#L4-L80` | `SseParser` 结构及 `next_frame` | ✅ |
+| `api/src/providers/anthropic.rs#L339-L350` | `AnthropicClient::stream_message` | ✅ |
+| `api/src/providers/anthropic.rs#L401-L488` | `send_with_retry` 及指数退避 | ✅ |
+| `api/src/providers/openai_compat.rs#L170-L185` | `OpenAiCompatClient::stream_message` | ✅ |
+| `api/src/providers/openai_compat.rs#L420-L490` | `StreamState::ingest_chunk` 归一化 | ✅ |
+| `api/src/providers/openai_compat.rs#L747-L810` | `build_chat_completion_request` | ✅ |
+| `api/src/providers/openai_compat.rs#L943-L983` | `normalize_response` | ✅ |
+| `runtime/src/conversation.rs#L30-L43` | `AssistantEvent` 枚举 | ✅ |
+| `runtime/src/conversation.rs#L672-L710` | `build_assistant_message` 事件收敛 | ✅ |
+| `render.rs#L601-L620` | `MarkdownStreamState::push` / `flush` | ✅ |
+| `render.rs#L810-L840` | `find_stream_safe_boundary` | ✅ |
+| `render.rs#L274-L277` | `TerminalRenderer::markdown_to_ansi` | ✅ |
+| `render.rs#L75-L90` | `Spinner::tick` | ✅ |
+
+### 内容评定
+
+报告严格遵循原文 ToC（为什么需要流式、核心事件类型、事件处理状态机、内容块类型、文本与 tool_use 交织、错误处理、停滞检测、工具执行反馈、多 Provider 适配、Markdown 增量渲染），为每个主节增加了 `### 源码映射` 子节展开 Rust 实现。文档准确描述了 `claw-code` 的"三层收敛"架构（SSE `StreamEvent` → CLI `AssistantEvent` → Runtime `ConversationMessage`），对 Anthropic 原生 SSE 与 OpenAI 兼容层的差异、post-tool stall 检测与 nudge 重试、流式/非流式降级 guard、Markdown 安全边界切割等机制均有精确源码锚点支撑。**达到对外发布标准**。
+
+*审校完成。*
+
+---
