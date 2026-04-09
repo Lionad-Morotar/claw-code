@@ -2,15 +2,15 @@
 
 > Feature Flag: `FEATURE_WORKFLOW_SCRIPTS=1`  
 > 文档来源: `packages/ccb/docs/features/workflow-scripts.md`  
-> 主项目: `/Users/lionad/Github/Run/claw-code/packages/ccb`（claw-code / ccb）  
+> 主项目: `packages/ccb`（claw-code / ccb 子项目）  
 
 ---
 
 ## 一、功能概述
 
-`WORKFLOW_SCRIPTS` 旨在实现**基于文件的多步自动化工作流**。用户可以定义 YAML/JSON 格式的工作流描述文件，系统将其解析为可执行的多 agent 步骤序列，并通过 `/workflows` 命令统一管理和触发。
+`WORKFLOW_SCRIPTS` 的设计目标是实现基于文件的多步自动化工作流：用户可以定义 YAML/JSON 格式的工作流描述文件，系统将其解析为可执行的多 agent 步骤序列，并通过 `/workflows` 命令统一管理和触发。
 
-当前实现状态：**全部 Stub（骨架已布线完整）**。核心执行引擎、DSL 解析、内置工作流均未实现，但命令注册、任务系统、工具系统、UI 列表与详情对话框的接入点已全部就绪。
+**当前实现状态：全部 Stub（骨架已布线完整）**。核心执行引擎、DSL 解析、内置工作流均未实现，但命令注册、任务系统、工具系统、UI 列表与详情对话框的接入点已全部就绪。
 
 ---
 
@@ -20,7 +20,7 @@
 
 | 模块 | 文件 | 状态 | 源码位置 |
 |------|------|------|----------|
-| WorkflowTool | `src/tools/WorkflowTool/WorkflowTool.ts` | Stub | [#L1-L4](#workflowtool) |
+| WorkflowTool | `src/tools/WorkflowTool/WorkflowTool.ts` | Stub |  |
 | Workflow 权限 | `src/tools/WorkflowTool/WorkflowPermissionRequest.ts` | Stub | [#L1-L4](#workflowpermissionrequest) |
 | 常量 | `src/tools/WorkflowTool/constants.ts` | Stub | [#L1-L2](#constants) |
 | 命令创建 | `src/tools/WorkflowTool/createWorkflowCommand.ts` | Stub | [#L1-L4](#createworkflowcommand) |
@@ -91,15 +91,6 @@ const loadAllCommands = memoize(async (cwd: string): Promise<Command[]> => {
 ```typescript
 // src/types/command.ts#L197-L199
 kind?: 'workflow' // Distinguishes workflow-backed commands (badged in autocomplete)
-```
-
-在 UI 描述格式化中，workflow 命令会显示 `(workflow)` 后缀：
-
-```typescript
-// src/types/command.ts#L735-L737
-if (cmd.kind === 'workflow') {
-  return `${cmd.description} (workflow)`
-}
 ```
 
 ### 3.3 工具注册（`src/tools.ts`）
@@ -284,14 +275,14 @@ case 'local_workflow':
 
 注意：这里引用的 `task.workflowName` 和 `task.agentCount` 在当前的 `LocalWorkflowTaskState` 类型中**尚未声明**，意味着 `BackgroundTask.tsx` 已经提前为完整状态做了 UI 假设。
 
-### 3.8 Workflow 工具与权限_STUB（`src/tools/WorkflowTool/`）
+### 3.8 Workflow 工具与权限 Stub（`src/tools/WorkflowTool/`）
 
 | 文件 | 内容 | 锚点 |
 |------|------|------|
-| `WorkflowTool.ts` | `export const WorkflowTool: Record<string, unknown> = {};` | [#L1-L4](#workflowtoolts) |
-| `createWorkflowCommand.ts` | `export const getWorkflowCommands = () => {};` | [#L1-L4](#createworkflowcommandts) |
-| `constants.ts` | `export const WORKFLOW_TOOL_NAME: string = '';` | [#L1-L2](#constantsts) |
-| `WorkflowPermissionRequest.ts` | `export const WorkflowPermissionRequest = () => null;` | [#L1-L4](#workflowpermissionrequestts) |
+| `WorkflowTool.ts` | `export const WorkflowTool: Record<string, unknown> = {};` |  |
+| `createWorkflowCommand.ts` | `export const getWorkflowCommands = () => {};` |  |
+| `constants.ts` | `export const WORKFLOW_TOOL_NAME: string = '';` |  |
+| `WorkflowPermissionRequest.ts` | `export const WorkflowPermissionRequest = () => null;` |  |
 
 这四个文件均为自动生成的空 stub，等待实际实现填充。
 
@@ -330,7 +321,7 @@ BackgroundTasksDialog + WorkflowDetailDialog 显示进度/kill/skip/retry
 
 1. **Feature Flag 门控**
    - 所有 workflow 相关模块使用 `feature('WORKFLOW_SCRIPTS')` + 动态 `require` 包裹，确保外部构建可以通过 Bun 的 DCE 完全剔除未使用代码。
-   - `BackgroundTasksDialog.tsx` 注释明确说明：使用相对路径 `./WorkflowDetailDialog.js` 而非 `src/...` 路径映射，因为 Bun 的 DCE 能静态解析并消除 `./` 开头的 require，而路径映射字符串会作为死代码字面量保留在 bundle 中（[#L143-L144](#dce-note)）。
+   - `BackgroundTasksDialog.tsx` 注释明确说明：使用相对路径 `./WorkflowDetailDialog.js` 而非 `src/...` 路径映射，因为 Bun 的 DCE 能静态解析并消除 `./` 开头的 require，而路径映射字符串会作为死代码字面量保留在 bundle 中。
 
 2. **任务ID体系**
    - 工作流任务使用前缀 `w`，与 bash(`b`)、local agent(`a`)、remote agent(`r`) 等区分。

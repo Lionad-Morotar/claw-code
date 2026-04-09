@@ -120,7 +120,7 @@ assert!(!is_read_only_command("sed -i 's/a/b/' file"));
 
 ### 完整验证管线：bash_validation
 
-[`runtime/src/bash_validation.rs#L99-L131`](/rust/crates/runtime/src/bash_validation.rs#L99-L131) 的 `validate_read_only()` 实现了更严格的策略：
+[`runtime/src/bash_validation.rs#L99-L131`](/rust/crates/runtime/src/bash_validation.rs#L99-L130) 的 `validate_read_only()` 实现了更严格的策略：
 
 - 显式列出 `WRITE_COMMANDS`：`cp`, `mv`, `rm`, `mkdir`, `touch`, `tee`, `dd` ...
 - 显式列出 `STATE_MODIFYING_COMMANDS`：`apt`, `brew`, `npm`, `cargo`, `docker`, `systemctl`, `kill`, `reboot` ...
@@ -254,7 +254,7 @@ async fn execute_bash_async(
 
 ### 默认值与上限
 
-`claw-code` 的 Bash timeout 没有内置的硬编码默认值（与上游 TypeScript 的 120,000ms 不同），完全依赖调用方传入。但在 MCP 工具层面有默认 `tool_call_timeout_ms`（15,000ms）用于 MCP 服务器调用，对原生 Bash 工具不生效。CLI 侧尚未暴露 `--timeout` 参数。
+`claw-code` 的 Bash timeout 没有内置的硬编码默认值（与上游 TypeScript 的 120,000ms 不同），完全依赖调用方传入。这意味着如果模型或用户未显式指定 timeout，Bash 命令将无限期阻塞，直到子进程自行结束。这意味着如果模型或用户未显式指定 timeout，Bash 命令将无限期阻塞，直到子进程自行结束。但在 MCP 工具层面有默认 `tool_call_timeout_ms`（15,000ms）用于 MCP 服务器调用，对原生 Bash 工具不生效。CLI 侧尚未暴露 `--timeout` 参数。
 
 ---
 
@@ -485,7 +485,7 @@ pub fn check_bash(&self, command: &str) -> EnforcementResult {
 
 ## 进度反馈的流式设计
 
-原文提到 `onProgress` 回调逐行推送输出。`claw-code` 目前的 `execute_bash()` 实现是**同步阻塞返回完整输出**，还未实现 generator yield 的流式进度。但 CLI 渲染层已经为上层的流式调用留好了接口。
+原文提到 `onProgress` 回调逐行推送输出。`claw-code` 目前的 `execute_bash()` 实现是**同步阻塞返回完整输出**，尚未实现 generator yield 的流式进度。CLI 渲染层虽然为上层的流式调用预留了接口，但 Bash 工具本身的事件粒度仍然是以命令退出为边界。这意味着长时间运行的构建任务（如 `cargo build`）在执行期间，终端只能看到一个静态的 spinner，用户无法通过流式输出来判断编译进展到了哪个 crate。
 
 ### CLI 渲染层的进度适配
 

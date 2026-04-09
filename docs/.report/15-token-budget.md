@@ -86,7 +86,7 @@ fn estimate_serialized_tokens<T: Serialize>(value: &T) -> u32 {
 
 ### 精确计数（API 调用，关键决策点使用）
 
-在 [`providers/anthropic.rs`](rust/crates/api/src/providers/anthropic.rs#L492-L520) 中，`preflight_message_request` 方法在本地估算通过后，会尝试调用 Anthropic 的 `beta.messages.countTokens` 端点：
+在 [`providers/anthropic.rs`](rust/crates/api/src/providers/anthropic.rs#L489-L520) 中，`preflight_message_request` 方法在本地估算通过后，会尝试调用 Anthropic 的 `beta.messages.countTokens` 端点：
 
 ```rust
 async fn preflight_message_request(&self, request: &MessageRequest) -> Result<(), ApiError> {
@@ -100,7 +100,7 @@ async fn preflight_message_request(&self, request: &MessageRequest) -> Result<()
     // 2. 最佳努力尝试远程精确计数
     let counted_input_tokens = match self.count_tokens(request).await {
         Ok(count) => count,
-        Err(_) => return Ok(()),  // 失败时回退到本地估算
+        Err(_) => return Ok(()),  // 失败则跳过精确计数，继续后续流程
     };
 
     // 3. 使用精确计数进行最终拦截
@@ -149,7 +149,7 @@ const AUTO_COMPACTION_THRESHOLD_ENV_VAR: &str = "CLAUDE_CODE_AUTO_COMPACT_INPUT_
 - **~100K**：自动压缩触发点（默认阈值）
 - **可通过环境变量覆盖**：`CLAUDE_CODE_AUTO_COMPACT_INPUT_TOKENS=50000`
 
-阈值解析逻辑在 [`parse_auto_compact_threshold`](rust/crates/runtime/src/conversation.rs#L558-L564)：
+阈值解析逻辑在 [`parse_auto_compact_threshold`](rust/crates/runtime/src/conversation.rs#L669-L674)：
 
 ```rust
 #[must_use]
@@ -163,7 +163,7 @@ fn parse_auto_compaction_threshold(value: Option<&str>) -> u32 {
 
 ### 逃逸条件
 
-`maybe_auto_compact` 方法（[`conversation.rs#L529-L548`](rust/crates/runtime/src/conversation.rs#L529-L548)）有多个逃逸条件：
+`maybe_auto_compact` 方法（[`conversation.rs#L525-L548`](rust/crates/runtime/src/conversation.rs#L525-L548)）有多个逃逸条件：
 - 累计 input tokens 未达到阈值 → 跳过
 - 压缩后 `removed_message_count == 0` → 返回 `None`
 
@@ -265,12 +265,12 @@ impl UsageTracker {
 
 ## 全量压缩的完整流程
 
-在 [`runtime/src/compact.rs`](rust/crates/runtime/src/compact.rs#L93-L132) 中：
+在 [`runtime/src/compact.rs`](rust/crates/runtime/src/compact.rs#L96-L139) 中：
 
 ```rust
 pub fn compact_session(session: &Session, config: CompactionConfig) -> CompactionResult {
     if !should_compact(session, config) {
-        return CompactionResult { ... };  // 无需压缩
+        return CompactionResult::no_op(session.clone());  // 无需压缩
     }
 
     // 1. 检查是否存在已有的压缩摘要
@@ -309,13 +309,17 @@ pub fn compact_session(session: &Session, config: CompactionConfig) -> Compactio
     compacted_session.messages = compacted_messages;
     compacted_session.record_compaction(summary.clone(), removed.len());
 
-    CompactionResult { ... }
+    CompactionResult {
+        compacted_session,
+        removed_message_count: removed.len(),
+        formatted_summary: summary,
+    }
 }
 ```
 
 ### CompactionConfig 配置
 
-在 [`compact.rs#L15-L21`](rust/crates/runtime/src/compact.rs#L15-L21)：
+在 [`compact.rs#L9-L12`](rust/crates/runtime/src/compact.rs#L9-L12)：
 
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -329,7 +333,7 @@ pub struct CompactionConfig {
 
 ## Prompt Cache Sharing
 
-压缩 API 调用是整个会话中最昂贵的操作之一。在 `claw-code` 中，压缩通过复用主线程的 prompt cache 前缀（system prompt + tools + context messages），将缓存命中率从 2% 提升到接近 100%。
+压缩 API 调用是整个会话中最昂贵的操作之一。在 `claw-code` 中，压缩通过复用主线程的 prompt cache 前缀（system prompt + tools + context messages），理论上可显著提升缓存命中率。实际效果取决于模型 provider 的缓存实现和请求内容的稳定性。
 
 ---
 
@@ -384,7 +388,7 @@ pub fn preflight_message_request(request: &MessageRequest) -> Result<(), ApiErro
 }
 ```
 
-错误类型定义在 [`api/src/error.rs`](rust/crates/api/src/error.rs#L34-L40)：
+错误类型定义在 [`api/src/error.rs`](rust/crates/api/src/error.rs#L31-L37)：
 
 ```rust
 ContextWindowExceeded {
@@ -435,7 +439,7 @@ ContextWindowExceeded {
 | [`rust/crates/runtime/src/usage.rs`](rust/crates/runtime/src/usage.rs) | `TokenUsage`、`UsageTracker`、成本估算 | L29-L36, L167-L215 |
 | [`rust/crates/runtime/src/conversation.rs`](rust/crates/runtime/src/conversation.rs) | `run_turn`、`maybe_auto_compact`、阈值解析 | L16-L18, L505-L548, L558-L564 |
 | [`rust/crates/runtime/src/compact.rs`](rust/crates/runtime/src/compact.rs) | `compact_session`、`estimate_session_tokens`、`should_compact` | L15-L21, L93-L132 |
-| [`rust/crates/runtime/src/session.rs`](rust/crates/runtime/src/session.rs) | `ConversationMessage::usage`、`record_compaction` | L48, L254-L259 |
+| [`rust/crates/runtime/src/session.rs`](rust/crates/runtime/src/session.rs) | `ConversationMessage::usage`、`record_compaction` | L47-L51, L240-L248 |
 
 ---
 
@@ -443,7 +447,7 @@ ContextWindowExceeded {
 
 ### 自动压缩触发测试
 
-[`conversation.rs#L1436-L1469`](rust/crates/runtime/src/conversation.rs#L1436-L1469)：
+[`conversation.rs#L1476-L1508`](rust/crates/runtime/src/conversation.rs#L1476-L1508)：
 
 ```rust
 #[test]
@@ -480,7 +484,7 @@ fn auto_compacts_when_cumulative_input_threshold_is_crossed() {
 
 ### 上下文窗口拦截测试
 
-[`providers/mod.rs#L616-L662`](rust/crates/api/src/providers/mod.rs#L616-L662)：
+[`providers/mod.rs#L619-L662`](rust/crates/api/src/providers/mod.rs#L619-L662)：
 
 ```rust
 #[test]
@@ -509,7 +513,7 @@ fn preflight_blocks_requests_that_exceed_the_model_context_window() {
 
 ### 会话压缩测试
 
-[`compact.rs#L314-L361`](rust/crates/runtime/src/compact.rs#L314-L361)：
+[`compact.rs#L537-L583`](rust/crates/runtime/src/compact.rs#L537-L583)：
 
 ```rust
 #[test]

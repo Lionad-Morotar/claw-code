@@ -79,11 +79,11 @@ checkSemantics(commands)
 
 | 模块 | 文件 | 行数 | 职责 |
 |------|------|------|------|
-| 门控入口 | `src/utils/bash/parser.ts` | ~110 | `parseCommand()`、`parseCommandRaw()`、`ensureInitialized()` |
-| Bash 解析器 | `src/utils/bash/bashParser.ts` | 4437 | 纯 TS 词法分析 + 递归下降解析器 |
-| 安全分析器 | `src/utils/bash/ast.ts` | 2680 | 树遍历安全分析 + `parseForSecurity()` |
-| AST 分析辅助 | `src/utils/bash/treeSitterAnalysis.ts` | 507 | 引号上下文、复合结构、危险模式提取 |
-| 权限检查入口 | `src/tools/BashTool/bashPermissions.ts` | ~140 | 集成 AST 结果到权限决策 |
+| 门控入口 | `packages/ccb/src/utils/bash/parser.ts` | ~110 | `parseCommand()`、`parseCommandRaw()`、`ensureInitialized()` |
+| Bash 解析器 | `packages/ccb/src/utils/bash/bashParser.ts` | 4437 | 纯 TS 词法分析 + 递归下降解析器 |
+| 安全分析器 | `packages/ccb/src/utils/bash/ast.ts` | 2680 | 树遍历安全分析 + `parseForSecurity()` |
+| AST 分析辅助 | `packages/ccb/src/utils/bash/treeSitterAnalysis.ts` | 507 | 引号上下文、复合结构、危险模式提取 |
+| 权限检查入口 | `packages/ccb/src/tools/BashTool/bashPermissions.ts` | ~140 | 集成 AST 结果到权限决策 |
 
 ### claw-code Rust 实现
 
@@ -91,7 +91,9 @@ checkSemantics(commands)
 
 ### 3.2 Bash 解析器
 
-**文件**: `src/utils/bash/bashParser.ts`（4437 行）
+**文件**: `packages/ccb/src/utils/bash/bashParser.ts`（4436 行）
+
+> **实现风险**：该解析器为纯 TypeScript 手写实现，与上游 `tree-sitter-bash` 语法不同步。Bash 语法持续演进（如 `assoc+=()`、`coproc` 变体），任何新增语法都需要手动更新 parser 与 `walkArgument` allowlist，否则这些构造会被 fail-closed 归类为 `too-complex`，导致用户体验频繁中断。Parser 维护成本应被纳入长期技术债务评估。
 
 - 纯 TypeScript 实现（无原生依赖）
 - 生成与 tree-sitter-bash 兼容的 AST
@@ -100,7 +102,7 @@ checkSemantics(commands)
 
 ### 3.3 安全分析器
 
-**文件**: `src/utils/bash/ast.ts`（2680 行）
+**文件**: `packages/ccb/src/utils/bash/ast.ts`（2679 行）
 
 核心函数：
 
@@ -115,7 +117,7 @@ checkSemantics(commands)
 
 ### 3.4 AST 分析辅助
 
-**文件**: `src/utils/bash/treeSitterAnalysis.ts`（507 行）
+**文件**: `packages/ccb/src/utils/bash/treeSitterAnalysis.ts`（507 行）
 
 | 函数 | 职责 |
 |------|------|
@@ -165,11 +167,11 @@ FEATURE_TREE_SITTER_BASH_SHADOW=1 bun run dev
 
 | 文件 | 行数 | 职责 |
 |------|------|------|
-| `src/utils/bash/parser.ts` | ~110 | 门控入口点 |
-| `src/utils/bash/bashParser.ts` | 4437 | 纯 TS bash 解析器 |
-| `src/utils/bash/ast.ts` | 2680 | 安全分析器（核心） |
-| `src/utils/bash/treeSitterAnalysis.ts` | 507 | AST 分析辅助 |
-| `src/tools/BashTool/bashPermissions.ts:1670-1810` | ~140 | 权限集成 + Shadow 遥测 |
+| `packages/ccb/src/utils/bash/parser.ts` | ~110 | 门控入口点 |
+| `packages/ccb/src/utils/bash/bashParser.ts` | 4437 | 纯 TS bash 解析器 |
+| `packages/ccb/src/utils/bash/ast.ts` | 2680 | 安全分析器（核心） |
+| `packages/ccb/src/utils/bash/treeSitterAnalysis.ts` | 507 | AST 分析辅助 |
+| `packages/ccb/src/tools/BashTool/bashPermissions.ts:1670-1810` | ~140 | 权限集成 + Shadow 遥测 |
 
 ---
 
@@ -278,9 +280,9 @@ assert_eq!(
 **源码锚点汇总**：
 - `rust/crates/runtime/src/lib.rs:#L8` — 模块声明
 - `rust/crates/runtime/src/bash.rs:#L70-L103` — Bash 执行入口
-- `rust/crates/runtime/src/bash_validation.rs:#L102-L160` — 只读验证
+- `rust/crates/runtime/src/bash_validation.rs:#L103-L160` — 只读验证
 - `rust/crates/runtime/src/bash_validation.rs:#L241-L274` — 危险命令检测
 - `rust/crates/runtime/src/bash_validation.rs:#L533-L584` — 命令分类
 - `rust/crates/runtime/src/bash_validation.rs:#L594-L615` — 完整验证管道
-- `rust/crates/runtime/src/permissions.rs:#L8-L14` — 权限模式定义
-- `rust/crates/runtime/src/permissions.rs:#L174-L286` — 权限授权逻辑
+- `rust/crates/runtime/src/permissions.rs:#L9-L14` — 权限模式定义
+- `rust/crates/runtime/src/permissions.rs:#L175-L292` — 权限授权逻辑

@@ -2,13 +2,14 @@
 
 **Feature Flags**: `FEATURE_CONTEXT_COLLAPSE=1`, `FEATURE_HISTORY_SNIP=1`  
 **实现状态**: 核心逻辑全部 Stub，布线（plumbing）完整  
-**引用计数**: `CONTEXT_COLLAPSE` 20 处 + `HISTORY_SNIP` 16 处 ≈ 36 处集成点
+**引用计数**: `CONTEXT_COLLAPSE` 20 处 + `HISTORY_SNIP` 16 处 ≈ 36 处集成点  
+**源码位置**: `packages/ccb/src/` (子项目)
 
 ---
 
 ## 1. 功能概述
 
-Context Collapse 的设计目标是在上下文窗口接近上限时，自动将旧消息折叠为压缩摘要以释放 token 空间。但当前实现仅停留在**接口与布线层面**：核心折叠引擎为空函数，`HISTORY_SNIP` 的手动标记工具也尚未落地。报告接下来梳理的是已铺设的集成点与持久化结构，实际 summarization 功能仍待开发。
+Context Collapse 的设计目标是在上下文窗口接近上限时，自动将旧消息折叠为压缩摘要以释放 token 空间。但当前实现仅停留在**接口与布线层面**：核心折叠引擎为空函数，`HISTORY_SNIP` 的手动标记工具也尚未落地。报告接下来梳理的是已铺设的集成点与持久化结构，实际的 summarization 功能仍待开发。
 
 - **`CONTEXT_COLLAPSE`**: 上下文折叠引擎（自动折叠）— **当前为 Stub**
 - **`HISTORY_SNIP`**: SnipTool — 手动标记消息进行折叠/修剪 — **当前为 Stub**
@@ -436,7 +437,7 @@ const forceSnip = feature('HISTORY_SNIP')
 
 ---
 
-## 4. 数据流总览
+## 4. 数据流总览（基于现有布线与源码注释的推断）
 
 ```
 对话持续增长
@@ -445,20 +446,20 @@ const forceSnip = feature('HISTORY_SNIP')
 query.ts:L440 检测上下文接近限制
       │
       ├── applyCollapsesIfNeeded(messages, toolUseContext, querySource)
-      │      (contextCollapse/index.ts#L47)
+      │      (contextCollapse/index.ts#L47) — 当前为恒等透传
       │
-      ├── 后台 LLM 调用压缩旧消息（目前 Stub，待实现）
-      ├── 保留关键信息（决策、文件路径、错误）
-      └── 替换旧消息为压缩摘要
+      ├── [待实现] 后台 LLM 调用压缩旧消息
+      ├── [待实现] 保留关键信息（决策、文件路径、错误）
+      └── [待实现] 替换旧消息为压缩摘要
       │
-      ├── 413 恢复流: recoverFromOverflow() (query.ts:L1093, L1179)
-      │   └── 紧急 drain staged collapses
-      │
-      ▼
-operations.ts:projectView() 过滤/重放折叠后视图
+      ├── 413 恢复流: recoverFromOverflow() (query.ts#L1093, L1179)
+      │   └── 当前始终返回 committed: 0
       │
       ▼
-API 接收压缩后的消息序列
+operations.ts:projectView() 过滤/重放折叠后视图（当前恒等透传）
+      │
+      ▼
+API 接收消息序列
       │
       ▼
 Compact/rewind → resetContextCollapse()
@@ -474,10 +475,10 @@ Compact/rewind → resetContextCollapse()
 
 ## 5. 设计决策摘要
 
-1. **读取时投影**：折叠不是修改 REPL 的 `messages` 数组，而是通过 `projectView()` 在每次 API 调用前重放。这保证了 collapse state 持久且可恢复。
-2. **与 autocompact 互斥**：当 collapse 启用时， proactive autocompact 被抑制（`autoCompact.ts` 返回 `false`），避免两者竞争 headroom。但 reactive compact 仍保留作为 413 fallback。
-3. **413 恢复优先 drain staged**：API 返回 prompt-too-long 时，先尝试 drain staged collapse，失败后才会 fallback 到 reactive compact/truncation。
-4. **子 Agent 隔离**：`runPostCompactCleanup` 和 `autoCompact` 都会判断 `querySource`，防止子 agent（`agent:*` / `marble_origami`）的 compact 污染主线程的 module-level collapse store。
+1. **读取时投影**（设计意图）：折叠计划不直接修改 REPL 的 `messages` 数组，而是通过 `projectView()` 在每次 API 调用前重放，以保证 collapse state 持久且可恢复。当前 `projectView()` 仍为恒等函数。
+2. **与 autocompact 互斥**（布线完成）：当 collapse 启用时，proactive autocompact 被抑制（`autoCompact.ts` 返回 `false`），避免两者竞争 headroom。reactive compact 仍保留作为 413 fallback。
+3. **413 恢复优先 drain staged**（设计意图）：API 返回 prompt-too-long 时，代码路径先尝试 drain staged collapse，失败后才会 fallback 到 reactive compact/truncation。当前 drain 逻辑始终返回 `committed: 0`。
+4. **子 Agent 隔离**（已实现）：`runPostCompactCleanup` 和 `autoCompact` 都会判断 `querySource`，防止子 agent（`agent:*` / `marble_origami`）的 compact 污染主线程的 module-level collapse store。
 5. **持久化格式**：采用双结构 — `marble-origami-commit`（按顺序重放）和 `marble-origami-snapshot`（last-wins，仅最新一条生效）。
 
 ---

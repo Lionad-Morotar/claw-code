@@ -137,7 +137,7 @@ pub fn resolve_request(
 
 ### 4. Bash 执行体中的沙箱集成
 
-真正执行 Bash 命令的是 `runtime/src/bash.rs` 中的 `execute_bash()`（[`L70-L103`](/rust/crates/runtime/src/bash.rs#L70-L103)）。它首先调用 `sandbox_status_for_input()`：
+真正执行 Bash 命令的是 `runtime/src/bash.rs` 中的 `execute_bash()`（[`L70-L103`](/rust/crates/runtime/src/bash.rs#L70-L103)）。它首先调用 `sandbox_status_for_input()`（[`L170-L183`](/rust/crates/runtime/src/bash.rs#L170-L183)）：
 
 ```rust
 fn sandbox_status_for_input(input: &BashCommandInput, cwd: &std::path::Path) -> SandboxStatus {

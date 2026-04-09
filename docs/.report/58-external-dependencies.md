@@ -6,9 +6,9 @@
 
 ---
 
-## 1. Original Page Summary
+## 1. 原始文档摘要
 
-The CCB documentation page describes Claude Code's external network dependencies - remote services that the CLI connects to during operation. The page lists 20+ remote endpoints including:
+CCB 原始文档描述了官方 Claude Code CLI 运行时需要连接的远程服务端点，涵盖 20 余个外部依赖，包括：
 
 - **LLM Providers**: Anthropic API, AWS Bedrock, Google Vertex AI, Azure Foundry
 - **Authentication**: OAuth (platform.claude.com, claude.ai)
@@ -20,11 +20,15 @@ The CCB documentation page describes Claude Code's external network dependencies
 
 ## 2. claw-code External Dependency Analysis
 
-claw-code 是一个 Rust 实现的 Claude Code 兼容客户端。与原始 Claude Code (TypeScript/Node.js) 不同，claw-code 使用 Rust 生态系统，其外部依赖通过 Cargo 管理。
+claw-code 仓库包含两个主要子系统：
+1. `rust/` — Rust CLI/运行时实现，依赖通过 Cargo 管理；
+2. `src/` — 宿主层与 CLI 逻辑，包含大量 TypeScript/Python 代码。
+
+本报告聚焦 `rust/` 侧的 Cargo 依赖。
 
 ### 2.1 依赖统计
 
-- **总 crates 数量**: 215 个 (包含传递依赖)
+- **总 crates 数量**: 约 230 个 (包含传递依赖，`Cargo.lock` 中 `name = ` 条目计数)
 - **直接依赖 crates**: ~20 个核心外部 crate
 - **内部 crates**: 10 个 (api, commands, runtime, plugins, tools, telemetry 等)
 
@@ -217,20 +221,20 @@ claw-code 通过网络与以下端点通信：
 | `rust/crates/rusty-claude-cli/src/input.rs` | 6-13 | rustyline 集成 |
 | `rust/crates/telemetry/src/lib.rs` | 9-10 | serde 使用 |
 | `rust/crates/tools/src/pdf_extract.rs` | 363-365 | flate2 使用 |
-| `rust/Cargo.lock` | 全文 | 215 个 crate 锁定 |
+| `rust/Cargo.lock` | 全文 | 约 230 个 crate 锁定 |
 
 ---
 
 ## 7. 结论
 
-claw-code 作为 Rust 实现的 Claude Code 客户端，其外部依赖管理与原始 TypeScript 版本有显著不同：
+claw-code 的 `rust/` 侧与基于 TypeScript/Node.js 的官方版本相比，外部依赖管理方式差异显著，但 `src/` 宿主层仍保留了原有的 npm/TypeScript 生态依赖：
 
-1. **更少的远程依赖**: 所有 Rust crate 来自 crates.io，无运行时远程配置
-2. **编译时锁定**: Cargo.lock 确保依赖版本确定性
+1. **`rust/` 编译时锁定**: `Cargo.lock` 确保 Rust 依赖版本确定性
+2. **`rust/` 运行时远程依赖**: 除 Anthropic API 外，`rust/` CLI 本身当前未实现独立的 GrowthBook、Datadog、OTEL 等遥测/远程配置客户端，因此直接对接的远程服务端点少于 CCB 宿主层。
 3. **原生性能**: tokio + reqwest 提供高性能异步 HTTP
 4. **终端体验**: crossterm + rustyline + syntect 提供本地终端交互
 
-与 CCB 文档描述的 20+ 远程端点不同，claw-code 主要依赖：
+`rust/` 侧主要外部依赖：
 - **crates.io**: 包注册表
 - **api.anthropic.com**: LLM API (与原始相同)
 - **可选代理**: 通过环境变量配置

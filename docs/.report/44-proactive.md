@@ -27,17 +27,17 @@ FEATURE_KAIROS=1     # KAIROS 隐含启用 Proactive
 
 | 模块 | 文件 | 状态 | 说明 |
 |------|------|------|------|
-| 核心逻辑 | `src/proactive/index.ts` | **Stub** | `activateProactive()`、`deactivateProactive()`、`isProactiveActive()` 均为空实现 |
-| SleepTool 提示 | `src/tools/SleepTool/prompt.ts` | **完整** | 工具提示定义（工具名：`Sleep`） |
-| 命令注册 | `src/commands.ts:62-65` | **布线** | 动态加载 `./commands/proactive.js` |
-| 工具注册 | `src/tools.ts:25-28` | **布线** | SleepTool 条件加载 |
-| REPL 集成 | `src/screens/REPL.tsx` | **布线** | Tick 驱动逻辑、占位符、页脚 UI |
-| 系统提示 | `src/constants/prompts.ts:860-914` | **完整** | 自主工作行为指令（~55 行详细 prompt） |
-| 会话存储 | `src/utils/sessionStorage.ts:4892-4912` | **布线** | Tick 消息检测用于 Session 标题 |
+| 核心逻辑 | `packages/ccb/src/proactive/index.ts` | **Stub** | `activateProactive()`、`deactivateProactive()`、`isProactiveActive()` 均为空实现 |
+| SleepTool 提示 | `packages/ccb/src/tools/SleepTool/prompt.ts` | **完整** | 工具提示定义（工具名：`Sleep`） |
+| 命令注册 | `packages/ccb/src/commands.ts:62-65` | **布线** | 动态加载 `./commands/proactive.js` |
+| 工具注册 | `packages/ccb/src/tools.ts:25-28` | **布线** | SleepTool 条件加载 |
+| REPL 集成 | `packages/ccb/src/screens/REPL.tsx` | **布线** | Tick 驱动逻辑、占位符、页脚 UI |
+| 系统提示 | `packages/ccb/src/constants/prompts.ts:861-914` | **完整** | 自主工作行为指令（~55 行详细 prompt） |
+| 会话存储 | `packages/ccb/src/utils/sessionStorage.ts:4892-4912` | **布线** | Tick 消息检测用于 Session 标题 |
 
 ### 2.2 核心源码文件
 
-#### 2.2.1 Proactive 核心 Stub (`src/proactive/index.ts`)
+#### 2.2.1 Proactive 核心 Stub (`packages/ccb/src/proactive/index.ts`)
 
 ```typescript
 // Auto-generated stub — replace with real implementation
@@ -48,11 +48,11 @@ export const isProactivePaused: () => boolean = () => false;
 export const deactivateProactive: () => void = () => {};
 ```
 
-**位置**: `src/proactive/index.ts:1-7`
+**位置**: `packages/ccb/src/proactive/index.ts:1-6`
 
 > 现状：所有导出函数均为空 Stub，返回 `false` 或空操作。
 
-#### 2.2.2 SleepTool 提示 (`src/tools/SleepTool/prompt.ts`)
+#### 2.2.2 SleepTool 提示 (`packages/ccb/src/tools/SleepTool/prompt.ts`)
 
 ```typescript
 import { TICK_TAG } from '../../constants/xml.js'
@@ -74,9 +74,9 @@ Prefer this over \`Bash(sleep ...)\` — it doesn't hold a shell process.
 Each wake-up costs an API call, but the prompt cache expires after 5 minutes of inactivity — balance accordingly.`
 ```
 
-**位置**: `src/tools/SleepTool/prompt.ts:1-18`
+**位置**: `packages/ccb/src/tools/SleepTool/prompt.ts:1-17`
 
-#### 2.2.3 系统提示词注入 (`src/constants/prompts.ts:860-914`)
+#### 2.2.3 系统提示词注入 (`packages/ccb/src/constants/prompts.ts:861-914`)
 
 `getProactiveSection()` 函数生成完整的自主工作指令：
 
@@ -138,17 +138,17 @@ The user context may include a \`terminalFocus\` field indicating whether the us
 }
 ```
 
-**位置**: `src/constants/prompts.ts:860-914`
+**位置**: `packages/ccb/src/constants/prompts.ts:861-914`
 
-#### 2.2.4 Tick 标签定义 (`src/constants/xml.ts:25`)
+#### 2.2.4 Tick 标签定义 (`packages/ccb/src/constants/xml.ts:25`)
 
 ```typescript
 export const TICK_TAG = 'tick'
 ```
 
-**位置**: `src/constants/xml.ts:25`
+**位置**: `packages/ccb/src/constants/xml.ts:25`
 
-#### 2.2.5 命令注册 (`src/commands.ts:62-65`)
+#### 2.2.5 命令注册 (`packages/ccb/src/commands.ts:62-65`)
 
 ```typescript
 const proactive =
@@ -157,17 +157,17 @@ const proactive =
     : null
 ```
 
-**位置**: `src/commands.ts:62-65`
+**位置**: `packages/ccb/src/commands.ts:62-65`
 
-命令数组中的注册 (`src/commands.ts:324`)：
+命令数组中的注册 (`packages/ccb/src/commands.ts:324`)：
 
 ```typescript
 ...(proactive ? [proactive] : []),
 ```
 
-**位置**: `src/commands.ts:324`
+**位置**: `packages/ccb/src/commands.ts:324`
 
-#### 2.2.6 工具注册 (`src/tools.ts:25-28`)
+#### 2.2.6 工具注册 (`packages/ccb/src/tools.ts:25-28`)
 
 ```typescript
 const SleepTool =
@@ -176,15 +176,15 @@ const SleepTool =
     : null
 ```
 
-**位置**: `src/tools.ts:25-28`
+**位置**: `packages/ccb/src/tools.ts:25-28`
 
-工具列表中的注册 (`src/tools.ts:232`)：
+工具列表中的注册 (`packages/ccb/src/tools.ts:232`)：
 
 ```typescript
 ...(SleepTool ? [SleepTool] : []),
 ```
 
-**位置**: `src/tools.ts:232`
+**位置**: `packages/ccb/src/tools.ts:232`
 
 ### 2.3 数据流
 
@@ -211,7 +211,7 @@ SleepTool 等待 [Stub - 需要实现]
 
 ### 2.4 REPL 集成
 
-#### 2.4.1 状态订阅 (`src/screens/REPL.tsx:907-910`)
+#### 2.4.1 状态订阅 (`packages/ccb/src/screens/REPL.tsx:910`)
 
 ```typescript
 // Track proactive mode for tools dependency - SleepTool filters by proactive state
@@ -221,9 +221,9 @@ const proactiveActive = React.useSyncExternalStore(
 );
 ```
 
-**位置**: `src/screens/REPL.tsx:907-910`
+**位置**: `packages/ccb/src/screens/REPL.tsx:910`
 
-#### 2.4.2 Hook 调用 (`src/screens/REPL.tsx:4784`)
+#### 2.4.2 Hook 调用 (`packages/ccb/src/screens/REPL.tsx:4784`)
 
 ```typescript
 useProactive?.({
@@ -236,27 +236,27 @@ useProactive?.({
 });
 ```
 
-**位置**: `src/screens/REPL.tsx:4784`
+**位置**: `packages/ccb/src/screens/REPL.tsx:4784`
 
 #### 2.4.3 暂停/恢复控制
 
-暂停 (`src/screens/REPL.tsx:2466`)：
+暂停 (`packages/ccb/src/screens/REPL.tsx:2466`)：
 ```typescript
 proactiveModule?.pauseProactive();
 ```
 
-恢复 (`src/screens/REPL.tsx:3740`)：
+恢复 (`packages/ccb/src/screens/REPL.tsx:3740`)：
 ```typescript
 proactiveModule?.resumeProactive();
 ```
 
-上下文阻塞控制 (`src/screens/REPL.tsx:3050, 3084-3086, 3220, 6150`)：
+上下文阻塞控制 (`packages/ccb/src/screens/REPL.tsx`（多处以 `setContextBlocked` 控制 Proactive 上下文阻塞）)：
 ```typescript
 proactiveModule?.setContextBlocked(false);
 proactiveModule?.setContextBlocked(true);
 ```
 
-### 2.5 CLI 参数注册 (`src/main.tsx:5588-5590`)
+### 2.5 CLI 参数注册 (`packages/ccb/src/main.tsx:5589-5591`)
 
 ```typescript
 if (feature("PROACTIVE") || feature("KAIROS")) {
@@ -266,9 +266,9 @@ if (feature("PROACTIVE") || feature("KAIROS")) {
 }
 ```
 
-**位置**: `src/main.tsx:5588-5590`
+**位置**: `packages/ccb/src/main.tsx:5589-5591`
 
-### 2.6 启动时激活 (`src/main.tsx:3321-3342`)
+### 2.6 启动时激活 (`packages/ccb/src/main.tsx:3321-3342`)
 
 ```typescript
 if (
@@ -294,9 +294,9 @@ if (
 }
 ```
 
-**位置**: `src/main.tsx:3321-3342`
+**位置**: `packages/ccb/src/main.tsx:3321-3342`
 
-### 2.7 Headless 路径激活 (`src/main.tsx:2863-2868`)
+### 2.7 Headless 路径激活 (`packages/ccb/src/main.tsx:2863-2864`)
 
 ```typescript
 // Activate proactive mode BEFORE getTools() so SleepTool.isEnabled()
@@ -305,9 +305,9 @@ if (
 maybeActivateProactive(options);
 ```
 
-**位置**: `src/main.tsx:2863-2868`
+**位置**: `packages/ccb/src/main.tsx:2863-2864`
 
-`maybeActivateProactive` 函数 (`src/main.tsx:6877-6889`)：
+`maybeActivateProactive` 函数 (`packages/ccb/src/main.tsx:6875-6885`)：
 
 ```typescript
 function maybeActivateProactive(options: unknown): void {
@@ -324,9 +324,9 @@ function maybeActivateProactive(options: unknown): void {
 }
 ```
 
-**位置**: `src/main.tsx:6877-6889`
+**位置**: `packages/ccb/src/main.tsx:6875-6885`
 
-### 2.8 Session Storage Tick 注入 (`src/utils/sessionStorage.ts:4892-4912`)
+### 2.8 Session Storage Tick 注入 (`packages/ccb/src/utils/sessionStorage.ts:4892-4912`)
 
 ```typescript
 if (SKIP_FIRST_PROMPT_PATTERN.test(result)) {
@@ -344,7 +344,7 @@ if ((feature('PROACTIVE') || feature('KAIROS')) && hasTickMessages)
   return 'Proactive session'
 ```
 
-**位置**: `src/utils/sessionStorage.ts:4892-4912`
+**位置**: `packages/ccb/src/utils/sessionStorage.ts:4892-4912`
 
 ---
 
@@ -352,10 +352,10 @@ if ((feature('PROACTIVE') || feature('KAIROS')) && hasTickMessages)
 
 | 优先级 | 模块 | 工作量 | 说明 |
 |--------|------|--------|------|
-| **1** | `src/proactive/index.ts` | 中 | Tick 调度器、`activate/deactivate` 状态机、`pause/resume`、`subscribeToProactiveChanges` |
-| **2** | `src/tools/SleepTool/SleepTool.tsx` | 小 | 工具执行（等待指定时间后触发 tick）— **文件不存在，需创建** |
-| **3** | `src/commands/proactive.js` | 小 | `/proactive` 斜杠命令处理器 |
-| **4** | `src/proactive/useProactive.ts` | 中 | React hook（REPL 引用但不存在） |
+| **1** | `packages/ccb/src/proactive/index.ts` | 中 | Tick 调度器、`activate/deactivate` 状态机、`pause/resume`、`subscribeToProactiveChanges` |
+| **2** | `packages/ccb/src/tools/SleepTool/SleepTool.tsx` | 小 | 工具执行（等待指定时间后触发 tick）— **文件不存在，需创建** |
+| **3** | `packages/ccb/src/commands/proactive.js` | 小 | `/proactive` 斜杠命令处理器 |
+| **4** | `packages/ccb/src/proactive/useProactive.ts` | 中 | React hook（REPL 引用但不存在） |
 
 ### 3.1 缺失文件列表
 
@@ -411,16 +411,16 @@ claude --proactive
 
 | 文件 | 职责 | 行号 |
 |------|------|------|
-| `src/proactive/index.ts` | 核心逻辑（stub） | 1-7 |
-| `src/tools/SleepTool/prompt.ts` | SleepTool 工具提示 | 1-18 |
-| `src/constants/prompts.ts` | 自主工作系统提示 | 860-914 |
-| `src/constants/xml.ts` | TICK_TAG 定义 | 25 |
-| `src/screens/REPL.tsx` | REPL tick 集成 | 907-910, 4784, 2466, 3740 |
-| `src/utils/sessionStorage.ts` | Tick 消息注入 | 4892-4912 |
-| `src/commands.ts` | 命令注册 | 62-65, 324 |
-| `src/tools.ts` | 工具注册 | 25-28, 232 |
-| `src/main.tsx` | CLI 参数/激活逻辑 | 5588-5590, 3321-3342, 6877-6889, 2863-2868 |
-| `src/types/textInputTypes.ts` | QueuePriority 类型 | 277-291 |
+| `packages/ccb/src/proactive/index.ts` | 核心逻辑（stub） | 1-7 |
+| `packages/ccb/src/tools/SleepTool/prompt.ts` | SleepTool 工具提示 | 1-18 |
+| `packages/ccb/src/constants/prompts.ts` | 自主工作系统提示 | 861-914 |
+| `packages/ccb/src/constants/xml.ts` | TICK_TAG 定义 | 25 |
+| `packages/ccb/src/screens/REPL.tsx` | REPL tick 集成 | 907-910, 4784, 2466, 3740 |
+| `packages/ccb/src/utils/sessionStorage.ts` | Tick 消息注入 | 4892-4912 |
+| `packages/ccb/src/commands.ts` | 命令注册 | 62-65, 324 |
+| `packages/ccb/src/tools.ts` | 工具注册 | 25-28, 232 |
+| `packages/ccb/src/main.tsx` | CLI 参数/激活逻辑 | 5589-5591, 3321-3342, 6875-6885, 2863-2864 |
+| `packages/ccb/src/types/textInputTypes.ts` | QueuePriority 类型 | 277-291 |
 
 ---
 
@@ -434,7 +434,7 @@ claude --proactive
 | 工具布线 | ✅ 完成 |
 | REPL 集成 | ✅ 布线完成 |
 | CLI 参数 | ✅ 完成 |
-| 核心 Tick 调度器 | ❌ Stub |
+| 核心 Tick 调度器 | ❌ Stub。实现风险最高：需要设计不阻塞主 REPL 输入队列的定时唤醒机制、处理用户并发输入时的 race condition、以及终端失焦/聚焦状态的精确检测。
 | SleepTool 执行器 | ❌ **缺失（文件不存在）** |
 | useProactive Hook | ❌ 缺失 |
 | proactive.js 命令 | ❌ 缺失 |

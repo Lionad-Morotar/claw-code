@@ -18,8 +18,7 @@
 - 内部构建：`process.env.USER_TYPE === 'ant'` 为 `true`
 - 外部构建：相同比较被常量折叠为 `false`，后续代码被 DCE 移除
 
-据文档统计，`USER_TYPE === 'ant'` 在上游出现 **291 次**，`(process.env.USER_TYPE) === 'ant'` 出现 **86 次**，`
-!== 'ant'` 出现 **53 次**，总引用量约 **465 处**，控制着工具注册、斜杠命令、Beta Header、UI 渲染、功能开关等方方面面。
+据文档统计，`USER_TYPE === 'ant'` 在上游出现 **291 次**，`(process.env.USER_TYPE) === 'ant'` 出现 **86 次**，`!== 'ant'` 出现 **53 次**，总引用量约 **465 处**，控制着工具注册、斜杠命令、Beta Header、UI 渲染、功能开关等方方面面。
 
 ### claw-code 中的现状
 
@@ -95,6 +94,8 @@ claw-code 当前已实现 **67 / 141** 个上游斜杠命令条目（参见 [`PA
 - [`rusty-claude-cli/src/main.rs`](/rust/crates/rusty-claude-cli/src/main.rs) — CLI 入口与 `CliAction` 分发
 - [`commands/src/lib.rs#L3873-L3920`](/rust/crates/commands/src/lib.rs#L3873-L3920) 附近 — 消息组装与工具调用分发
 
+**有趣的现象**：上游的 `debug-tool-call` 和 `bughunter` 原本是内部命令，但在 `claw-code` 中已作为公开 slash command 实现（参见 [Unit 33: 隐藏功能](33-hidden-features.md)）。这反映了两个项目价值观的差异：原始产品需要严格分层，而重写版更倾向于代码透明。
+
 ---
 
 ## Beta API Headers 体系
@@ -114,18 +115,18 @@ pub struct AnthropicRequestProfile {
 }
 ```
 
-源码位置：[`rust/crates/telemetry/src/lib.rs#L54-L63`](/rust/crates/telemetry/src/lib.rs#L54-L63)
+源码位置：[`rust/crates/telemetry/src/lib.rs#L54-L63`](/rust/crates/telemetry/src/lib.rs#L54-L61)
 
 默认构造时注入了两个 public beta：
 
 ```rust
-betas: vec![
-    DEFAULT_AGENTIC_BETA.to_string(),          // "claude-code-20250219"
-    DEFAULT_PROMPT_CACHING_SCOPE_BETA.to_string(), // "prompt-caching-scope-2026-01-05"
-],
+            betas: vec![
+                DEFAULT_AGENTIC_BETA.to_string(),
+                DEFAULT_PROMPT_CACHING_SCOPE_BETA.to_string(),
+            ],
 ```
 
-源码位置：[`telemetry/src/lib.rs#L64-L68`](/rust/crates/telemetry/src/lib.rs#L64-L68)
+源码位置：[`telemetry/src/lib.rs#L68-L72`](/rust/crates/telemetry/src/lib.rs#L68-L72)
 
 `AnthropicClient` 提供 `with_beta(...)` 链式 API 以追加额外 beta：
 
@@ -136,7 +137,7 @@ pub fn with_beta(mut self, beta: impl Into<String>) -> Self {
 }
 ```
 
-源码位置：[`api/src/providers/anthropic.rs#L227-L231`](/rust/crates/api/src/providers/anthropic.rs#L227-L231)
+源码位置：[`api/src/providers/anthropic.rs#L227-L231`](/rust/crates/api/src/providers/anthropic.rs#L227-L230)
 
 发送请求时，header 通过 `request_profile.header_pairs()` 注入：
 
@@ -198,7 +199,7 @@ body.get("betas").is_none(),
 
 ### claw-code 映射现状
 
-claw-code 中**未出现**任何 `tengu_`、 `capybara`、 `fennec` 或 `undercover` 相关字符串。代号体系的过滤属于上游的 commit/发布流程工程，Rust 重写版尚未建立等价的文化/过滤机制。
+claw-code 中**未出现**任何 `tengu_`、`capybara`、`fennec` 或 `undercover` 相关字符串。代号体系的过滤属于上游的 commit/发布流程工程，Rust 重写版尚未建立等价的文化/过滤机制。
 
 ---
 
@@ -277,7 +278,7 @@ Rust 代码中对环境变量的读取更加收敛。`AnthropicClient` 通过 `r
 **审查日期**: 2026-04-09
 
 **准确性核对**
-- [x] 源码锚点已逐一手动核对，行号与当前 `research` 分支一致
+- [x] 源码锚点已逐一手动核对，行号与当前 `main` 分支一致
 - [x] `telemetry/src/lib.rs#L52-L59`、`L69-L72` 行号确认无误
 - [x] `api/src/providers/anthropic.rs#L227-L230`、`L483-L485`、`L1011-L1024` 行号确认无误
 - [x] `api/tests/client_integration.rs#L101-L102` 行号确认无误

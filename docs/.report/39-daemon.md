@@ -20,11 +20,11 @@ Daemon 是 claw-code 的后台守护进程系统，将 CLI 转变为可持续运
 
 | 模块文件 | 状态 | 工作量 | 说明 |
 |----------|------|--------|------|
-| `src/daemon/main.ts` | ✅ 完整实现 | 大 | Supervisor 主进程：启动 worker、生命周期管理、IPC |
-| `src/daemon/workerRegistry.ts` | ✅ 完整实现 | 中 | Worker 注册与类型分发 |
-| `src/entrypoints/cli.tsx` | ✅ 路由完成 | - | `--daemon-worker` 和 `daemon` 子命令路由 |
-| `src/commands/remoteControlServer/` | ✅ 完整实现 | 大 | TUI 命令封装，与 daemon 集成 |
-| `src/bridge/bridgeMain.ts` | ✅ 依赖模块 | 大 | headless bridge 运行核心 |
+| `packages/ccb/src/daemon/main.ts` | ✅ 完整实现 | 大 | Supervisor 主进程：启动 worker、生命周期管理、IPC |
+| `packages/ccb/src/daemon/workerRegistry.ts` | ✅ 完整实现 | 中 | Worker 注册与类型分发 |
+| `packages/ccb/src/entrypoints/cli.tsx` | ✅ 路由完成 | - | `--daemon-worker` 和 `daemon` 子命令路由 |
+| `packages/ccb/src/commands/remoteControlServer/` | ✅ 完整实现 | 大 | TUI 命令封装，与 daemon 集成 |
+| `packages/ccb/src/bridge/bridgeMain.ts` | ✅ 依赖模块 | 大 | headless bridge 运行核心 |
 
 ### 2.2 CLI 入口与路由
 
@@ -55,9 +55,9 @@ if (feature('DAEMON') && args[0] === 'daemon') {
 
 ### 2.3 Supervisor 主进程架构
 
-**文件**: `src/daemon/main.ts`
+**文件**: `packages/ccb/src/daemon/main.ts`
 
-**核心数据结构** (`main.ts:19-26`):
+**核心数据结构** (`main.ts:19-27`):
 ```typescript
 interface WorkerState {
   kind: string
@@ -69,19 +69,19 @@ interface WorkerState {
 }
 ```
 
-**Supervisor 生命周期** (`main.ts:126-198`):
+**Supervisor 生命周期** (`main.ts:125-211`):
 1. 解析 CLI 参数（`--dir`, `--spawn-mode`, `--capacity` 等）
 2. 创建 Worker 列表（当前仅 `remoteControl` 类型）
 3. 注册 SIGTERM/SIGINT 信号处理器
 4. 启动 worker 并持续监控
 5. 等待 abort 信号后优雅关闭
 
-**Worker 重启策略** (`main.ts:256-304`):
+**Worker 重启策略** (`main.ts:255-305`):
 - 退出码 78 (`EXIT_CODE_PERMANENT`) → 永久错误，park 不重启
 - 运行 < 10s 崩溃 → failureCount 累加，≥5 次则 park
 - 正常运行后崩溃 → 指数退避重启（初始 2s, 上限 120s, multiplier=2）
 
-**Worker 环境配置** (`main.ts:213-223`):
+**Worker 环境配置** (`main.ts:212-223):
 ```typescript
 const env: Record<string, string | undefined> = {
   ...process.env,
@@ -98,7 +98,7 @@ const env: Record<string, string | undefined> = {
 
 ### 2.4 Worker Registry
 
-**文件**: `src/daemon/workerRegistry.ts`
+**文件**: `packages/ccb/src/daemon/workerRegistry.ts`
 
 **Worker 类型分发** (`workerRegistry.ts:33-40`):
 ```typescript
@@ -119,7 +119,7 @@ switch (kind) {
 
 ### 2.5 RemoteControlServer TUI 命令
 
-**文件**: `src/commands/remoteControlServer/remoteControlServer.tsx`
+**文件**: `packages/ccb/src/commands/remoteControlServer/remoteControlServer.tsx`
 
 **启动流程** (`remoteControlServer.tsx:202-247`):
 ```typescript
@@ -144,7 +144,7 @@ function startDaemon(): void {
 
 ## 三、与 BRIDGE_MODE 的关系
 
-**双重门控** (`commands.ts:76-79`):
+**双重门控** (`packages/ccb/src/commands.ts:76-79`):
 ```typescript
 const remoteControlServerCommand =
   feature('DAEMON') && feature('BRIDGE_MODE')
@@ -242,14 +242,14 @@ claude daemon stop
 
 | 文件 | 行号 | 说明 |
 |------|------|------|
-| `src/daemon/main.ts` | - | Supervisor 主进程（完整实现） |
-| `src/daemon/workerRegistry.ts` | - | Worker 注册与分发（完整实现） |
-| `src/entrypoints/cli.tsx` | #L124-L128 | Worker 快速路径路由 |
-| `src/entrypoints/cli.tsx` | #L186-L195 | Supervisor 快速路径路由 |
-| `src/commands.ts` | #L76-L79 | remoteControlServer 命令双重门控 |
-| `src/commands/remoteControlServer/index.ts` | - | TUI 命令入口 |
-| `src/commands/remoteControlServer/remoteControlServer.tsx` | - | React 管理界面 |
-| `src/bridge/bridgeMain.ts` | - | Headless bridge 运行核心 |
+| `packages/ccb/src/daemon/main.ts` | - | Supervisor 主进程（完整实现） |
+| `packages/ccb/src/daemon/workerRegistry.ts` | - | Worker 注册与分发（完整实现） |
+| `packages/ccb/src/entrypoints/cli.tsx` | #L124-L128 | Worker 快速路径路由 |
+| `packages/ccb/src/entrypoints/cli.tsx` | #L186-L195 | Supervisor 快速路径路由 |
+| `packages/ccb/src/commands.ts` | #L76-L79 | remoteControlServer 命令双重门控 |
+| `packages/ccb/src/commands/remoteControlServer/index.ts` | - | TUI 命令入口 |
+| `packages/ccb/src/commands/remoteControlServer/remoteControlServer.tsx` | - | React 管理界面 |
+| `packages/ccb/src/bridge/bridgeMain.ts` | - | Headless bridge 运行核心 |
 
 ---
 
@@ -257,7 +257,7 @@ claude daemon stop
 
 根据原始文档，以下内容需要后续完善：
 
-1. **IPC 协议层**: Supervisor-Worker 通信协议当前未实现（仅 pipe stdout/stderr）
+1. **IPC 协议层**: Supervisor-Worker 通信协议当前未实现（仅 pipe stdout/stderr）。实现真正的 IPC 需要设计消息边界协议、心跳与超时机制，工作量可能被低估。（仅 pipe stdout/stderr）
 2. **更多 Worker 类型**: 当前仅 `remoteControl`，预期有 `assistant`, `bridge-sync`, `proactive`
 3. **状态查询 CLI**: `daemon status` 和 `daemon stop` 为 stub
 4. **PID 文件**: 用于外部进程管理
@@ -270,10 +270,10 @@ claude daemon stop
 |--------|------|------|
 | EXIT_CODE_PERMANENT 定义 | `main.ts:9`, `workerRegistry.ts:15` | - |
 | 退避参数 | `main.ts:14-17` | - |
-| WorkerState 接口 | `main.ts:19-26` | - |
-| daemonMain 入口 | `main.ts:41-63` | - |
-| runSupervisor | `main.ts:126-198` | - |
-| spawnWorker | `main.ts:203-305` | - |
+| WorkerState 接口 | `main.ts:19-27` | - |
+| daemonMain 入口 | `main.ts:40-63` | - |
+| runSupervisor | `main.ts:125-211` | - |
+| spawnWorker | `main.ts:212-305` | - |
 | runDaemonWorker | `workerRegistry.ts:26-41` | - |
 | runRemoteControlWorker | `workerRegistry.ts:57-112` | - |
 | CLI daemon-worker 路由 | `cli.tsx:124-128` | - |

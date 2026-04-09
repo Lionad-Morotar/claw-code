@@ -61,7 +61,7 @@ Claude Code 不是运行在云端沙箱中的聊天机器人，而是**运行在
 
 ### 五级权限模式
 
-[`runtime/src/permissions.rs#L9-L16`](/rust/crates/runtime/src/permissions.rs#L9-L16) 定义了从最严格到最宽松的五个权限级别：
+[`runtime/src/permissions.rs#L9-L16`](/rust/crates/runtime/src/permissions.rs#L9-L15) 定义了从最严格到最宽松的五个权限级别：
 
 ```rust
 pub enum PermissionMode {
@@ -79,7 +79,7 @@ pub enum PermissionMode {
 
 1. **Deny 规则优先** — 若匹配 deny 规则，立即拒绝（[`L182-L188`](/rust/crates/runtime/src/permissions.rs#L182-L188)）
 2. **Hook 覆盖检查** — 若 Hook 返回 `Deny`，立即拒绝（[`L196-L204`](/rust/crates/runtime/src/permissions.rs#L196-L204)）
-3. **Ask 规则强制** — 若匹配 ask 规则，必须弹窗确认（[`L244-L257`](/rust/crates/runtime/src/permissions.rs#L244-L257)）
+3. **Ask 规则强制** — 若匹配 ask 规则，必须弹窗确认（[`L240-L257`](/rust/crates/runtime/src/permissions.rs#L240-L257)）
 4. **模式升级检查** — 若当前模式 < 所需模式，且处于 `Prompt` 或 `WorkspaceWrite` → `DangerFullAccess`，触发确认（[`L266-L283`](/rust/crates/runtime/src/permissions.rs#L266-L283)）
 
 ### 规则语法示例
@@ -162,7 +162,7 @@ const GIT_READ_ONLY_SUBCOMMANDS: &[&str] = &[
 
 ### 3.2 破坏性命令警告（Destructive Command Warning）
 
-[`check_destructive`](/rust/crates/runtime/src/bash_validation.rs#L241-L274) 检测危险模式并返回警告：
+[`check_destructive`](/rust/crates/runtime/src/bash_validation.rs#L206-L248) 检测危险模式并返回警告：
 
 ```rust
 const DESTRUCTIVE_PATTERNS: &[(&str, &str)] = &[
@@ -180,7 +180,7 @@ const DESTRUCTIVE_PATTERNS: &[(&str, &str)] = &[
 
 ### 3.3 路径验证（Path Validation）
 
-[`validate_paths`](/rust/crates/runtime/src/bash_validation.rs#L360-L382) 检测目录遍历攻击：
+[`validate_paths`](/rust/crates/runtime/src/bash_validation.rs#L360-L384) 检测目录遍历攻击：
 
 ```rust
 // 检测 "../" 目录遍历模式
@@ -200,7 +200,7 @@ if command.contains("~/") || command.contains("$HOME") {
 
 ### 3.4 命令语义分类（Command Semantics）
 
-[`classify_command`](/rust/crates/runtime/src/bash_validation.rs#L533-L584) 将命令分类为不同意图：
+[`classify_command`](/rust/crates/runtime/src/bash_validation.rs#L533-L580) 将命令分类为不同意图：
 
 ```rust
 pub enum CommandIntent {
@@ -217,7 +217,7 @@ pub enum CommandIntent {
 
 ### 3.5 完整验证流水线
 
-[`validate_command`](/rust/crates/runtime/src/bash_validation.rs#L594-L615) 按顺序执行所有检查：
+[`validate_command`](/rust/crates/runtime/src/bash_validation.rs#L594-L619) 按顺序执行所有检查：
 
 ```rust
 pub fn validate_command(command: &str, mode: PermissionMode, workspace: &Path) -> ValidationResult {
@@ -259,7 +259,7 @@ if pre_hook_result.is_denied() {
 
 ### PostToolUse Hook
 
-工具执行后，`run_post_tool_use_hook` 或 `run_post_tool_use_failure_hook` 可以修改输出或标记错误（[`conversation.rs#L427-L453`](/rust/crates/runtime/src/conversation.rs#L427-L453)）：
+工具执行后，`run_post_tool_use_hook` 或 `run_post_tool_use_failure_hook` 可以修改输出或标记错误（[`conversation.rs#L427-L450`](/rust/crates/runtime/src/conversation.rs#L427-L450)）：
 
 ```rust
 let post_hook_result = if is_error {
@@ -317,18 +317,37 @@ self.session.push_message(result_message.clone())?;
 
 ```rust
 pub fn check_file_write(&self, path: &str, workspace_root: &str) -> EnforcementResult {
-    match self.policy.active_mode() {
-        PermissionMode::ReadOnly => EnforcementResult::Denied { ... },
+    let mode = self.policy.active_mode();
+
+    match mode {
+        PermissionMode::ReadOnly => EnforcementResult::Denied {
+            tool: "write_file".to_owned(),
+            active_mode: mode.as_str().to_owned(),
+            required_mode: PermissionMode::WorkspaceWrite.as_str().to_owned(),
+            reason: format!("file writes are not allowed in '{}' mode", mode.as_str()),
+        },
         PermissionMode::WorkspaceWrite => {
             if is_within_workspace(path, workspace_root) {
                 EnforcementResult::Allowed
             } else {
                 EnforcementResult::Denied {
-                    reason: format!("path '{}' is outside workspace root '{}'", path, workspace_root),
+                    tool: "write_file".to_owned(),
+                    active_mode: mode.as_str().to_owned(),
+                    required_mode: PermissionMode::DangerFullAccess.as_str().to_owned(),
+                    reason: format!(
+                        "path '{}' is outside workspace root '{}'",
+                        path, workspace_root
+                    ),
                 }
             }
         }
-        // ...
+        PermissionMode::Allow | PermissionMode::DangerFullAccess => EnforcementResult::Allowed,
+        PermissionMode::Prompt => EnforcementResult::Denied {
+            tool: "write_file".to_owned(),
+            active_mode: mode.as_str().to_owned(),
+            required_mode: PermissionMode::WorkspaceWrite.as_str().to_owned(),
+            reason: "file write requires confirmation in prompt mode".to_owned(),
+        },
     }
 }
 ```
@@ -340,7 +359,7 @@ pub fn check_file_write(&self, path: &str, workspace_root: &str) -> EnforcementR
 ```rust
 fn is_read_only_command(command: &str) -> bool {
     let first_token = command.split_whitespace().next().unwrap_or("").rsplit('/').next().unwrap_or("");
-    matches!(first_token, "cat" | "head" | "tail" | "grep" | "find" | "ls" | "git" | ...)
+    matches!(first_token, "cat" | "head" | "tail" | "grep" | "find" | "ls" | "git" | "jq" | "awk" | "sed" | "wc" | "sort" | "uniq" | "pwd" | "echo" | "which" | "ps" | "date" | "dirname" | "basename" | "cut" | "tr" | "xargs" | "tar" | "zip" | "unzip" | "gzip" | "gunzip" | "diff" | "comm" | "zcat" | "bzcat" | "xzcat" | "strings" | "hexdump" | "file" | "less" | "more" | "pgrep" | "readlink" | "realpath" | "id" | "whoami" | "uname" | "arch" | "printenv" | "env" | "df" | "du" | "stat" | "lsblk" | "lscpu" | "lsmem" | "lsusb" | "lspci" | "lsof" | "free" | "top" | "htop" | "vmstat" | "iostat" | "mpstat" | "sar" | "pidstat" | "ss" | "netstat" | "ip" | "ifconfig" | "route" | "ping" | "curl" | "wget" | "dig" | "nslookup" | "host" | "nmap" | "telnet" | "ssh" | "scp" | "rsync" | "git" | "svn" | "hg" | "cvs" | "bzr" | "fossil" | "p4" | "tf" | "gh" | "glab" | "hub")
         && !command.contains("-i ")       // 排除 sed -i
         && !command.contains("--in-place") // 排除原地编辑
         && !command.contains(" > ")        // 排除重定向写
@@ -352,7 +371,7 @@ fn is_read_only_command(command: &str) -> bool {
 
 ## Bash 工具的输出截断
 
-[`bash.rs#L288-L304`](/rust/crates/runtime/src/bash.rs#L288-L304) 定义了输出截断机制，防止大输出淹没终端：
+[`bash.rs#L292-L304`](/rust/crates/runtime/src/bash.rs#L292-L304) 定义了输出截断机制，防止大输出淹没终端：
 
 ```rust
 const MAX_OUTPUT_BYTES: usize = 16_384; // 16 KiB

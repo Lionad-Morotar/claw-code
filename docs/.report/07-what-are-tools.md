@@ -11,7 +11,7 @@
 
 ### Rust 实现中的核心抽象
 
-在 `claw-code` 中，"AI 的双手"被抽象为一个极简的 `ToolExecutor` trait，定义在 [`runtime/src/conversation.rs#L57-L59`](/rust/crates/runtime/src/conversation.rs#L57-L59)：
+在 `claw-code` 中，"AI 的双手"被抽象为一个极简的 `ToolExecutor` trait，定义在 [`runtime/src/conversation.rs#L57-L59`](/rust/crates/runtime/src/conversation.rs#L57-L60)：
 
 ```rust
 pub trait ToolExecutor {
@@ -20,6 +20,10 @@ pub trait ToolExecutor {
 ```
 
 这个接口只有两个参数：工具名字（`tool_name`）和输入 JSON（`input`），返回一个字符串结果。整个 agentic loop 不需要知道工具内部是怎么工作的——它只负责把模型请求的工具调用交给 `ToolExecutor`，再把结果塞回对话历史。
+
+#### 审视角：`ToolExecutor` 的语义限制
+
+这个极简接口虽然优雅，但也隐藏了扩展性成本。所有工具的输出都被强制统一为 `String`，这意味着结构化数据（如 LSP 的符号列表、MCP 的 JSON-RPC 响应）必须在工具内部完成序列化，Runtime 层无法基于类型做进一步优化（如选择性压缩、模式校验或增量 diff）。此外，`ToolError` 仅携带文本信息，没有错误码或重试策略标记，这使得 `ConversationRuntime` 难以区分"暂时性网络失败"（应重试）和"权限拒绝"（不应重试）。如果未来需要引入更复杂的工具编排或工具链组合，这个接口可能会成为重构的负载-bearing 决策。
 
 ---
 
@@ -32,7 +36,7 @@ pub trait ToolExecutor {
 
 ### 核心四要素（Rust 映射）
 
-`ToolSpec` 定义在 [`tools/src/lib.rs#L100-L107`](/rust/crates/tools/src/lib.rs#L100-L107) 附近：
+`ToolSpec` 定义在 [`tools/src/lib.rs#L100-L107`](/rust/crates/tools/src/lib.rs#L100-L106) 附近：
 
 ```rust
 pub struct ToolSpec {
@@ -226,7 +230,7 @@ Hook 的具体实现见 [`runtime/src/hooks.rs`](/rust/crates/runtime/src/hooks.
 
 ### Bash 命令执行工具
 
-Bash 的输入输出结构定义在 [`runtime/src/bash.rs#L17-L67`](/rust/crates/runtime/src/bash.rs#L17-L67)：
+Bash 的输入输出结构定义在 [`runtime/src/bash.rs#L17-L67`](/rust/crates/runtime/src/bash.rs#L17-L67）。注意 `namespace_restrictions` 字段存在但在当前沙箱实现中作用有限；真正的隔离由 `sandbox_status_for_input` 根据 `dangerously_disable_sandbox` 和运行时环境共同决定：
 
 ```rust
 pub struct BashCommandInput {
@@ -253,7 +257,7 @@ pub struct BashCommandOutput {
 }
 ```
 
-执行入口 `execute_bash`（[`runtime/src/bash.rs#L69-L103`](/rust/crates/runtime/src/bash.rs#L69-L103)）会根据 `run_in_background` 决定是后台 spawn 还是同步等待；同步路径会走到 `execute_bash_async`，使用 `tokio::process::Command` 执行，并支持基于毫秒的超时控制。
+执行入口 `execute_bash`（[`runtime/src/bash.rs#L69-L169`](/rust/crates/runtime/src/bash.rs#L69-L168)）会根据 `run_in_background` 决定是后台 spawn 还是同步等待；同步路径会走到 `execute_bash_async`（L89 起），使用 `tokio::process::Command` 执行，并支持基于毫秒的超时控制。
 
 沙箱方面，`prepare_tokio_command`（[`runtime/src/bash.rs#L212-L237`](/rust/crates/runtime/src/bash.rs#L212-L237)）会先检查 Linux 下的沙箱启动器（`build_linux_sandbox_command`），如果没有则降级到普通 `sh -lc`，但会根据 `SandboxStatus` 重定向 `HOME` 和 `TMPDIR` 到工作区下的隔离目录。
 
@@ -296,7 +300,7 @@ pub fn read_file(path: &str, offset: Option<usize>, limit: Option<usize>) -> io:
 
 #### Grep
 
-`grep_search`（[`runtime/src/file_ops.rs#L342-L450`](/rust/crates/runtime/src/file_ops.rs#L342-L450)）使用 `regex::RegexBuilder` 编译模式，配合 `walkdir::WalkDir` 遍历文件。支持：
+`grep_search`（[`runtime/src/file_ops.rs#L342-L451`](/rust/crates/runtime/src/file_ops.rs#L342-L450)）使用 `regex::RegexBuilder` 编译模式，配合 `walkdir::WalkDir` 遍历文件。支持：
 
 - `output_mode`：`files_with_matches`（默认）、`content`、`count`
 - `glob` 过滤器、`file_type` 后缀过滤
@@ -366,7 +370,7 @@ else if let Some(prompt) = prompter.as_mut() {
 };
 ```
 
-见 [`runtime/src/conversation.rs#L338-L365`](/rust/crates/runtime/src/conversation.rs#L338-L365)。
+见 [`runtime/src/conversation.rs#L376-L417`](/rust/crates/runtime/src/conversation.rs#L376-L417)。
 
 ### 规则匹配引擎
 
@@ -405,11 +409,11 @@ Hook 的三种退出码语义（[`runtime/src/hooks.rs#L440-L455`](/rust/crates/
 
 | 源码位置 | 描述 |
 | --- | --- |
-| [`runtime/src/conversation.rs#L57-L59`](/rust/crates/runtime/src/conversation.rs#L57-L59) | `ToolExecutor` trait 定义 |
+| [`runtime/src/conversation.rs#L57-L59`](/rust/crates/runtime/src/conversation.rs#L57-L60) | `ToolExecutor` trait 定义 |
 | [`runtime/src/conversation.rs#L296-L484`](/rust/crates/runtime/src/conversation.rs#L296-L484) | `ConversationRuntime::run_turn`，完整的 tool use → tool result 循环 |
 | [`runtime/src/conversation.rs#L370-L372`](/rust/crates/runtime/src/conversation.rs#L370-L372) | PreToolUse hook 调用点 |
 | [`runtime/src/conversation.rs#L433-L439`](/rust/crates/runtime/src/conversation.rs#L433-L439) | PostToolUse / PostToolUseFailure hook 调用点 |
-| [`tools/src/lib.rs#L100-L107`](/rust/crates/tools/src/lib.rs#L100-L107) | `ToolSpec` 结构体（name / description / input_schema / required_permission） |
+| [`tools/src/lib.rs#L100-L107`](/rust/crates/tools/src/lib.rs#L100-L106) | `ToolSpec` 结构体（name / description / input_schema / required_permission） |
 | [`tools/src/lib.rs#L125-L131`](/rust/crates/tools/src/lib.rs#L125-L131) | `GlobalToolRegistry::builtin()` 构造器 |
 | [`tools/src/lib.rs#L133-L184`](/rust/crates/tools/src/lib.rs#L133-L184) | `GlobalToolRegistry::with_plugin_tools` / `with_runtime_tools` 注册与去重 |
 | [`tools/src/lib.rs#L192-L244`](/rust/crates/tools/src/lib.rs#L192-L244) | `normalize_allowed_tools`，包含 read/write/edit/glob/grep 别名映射 |
@@ -418,7 +422,7 @@ Hook 的三种退出码语义（[`runtime/src/hooks.rs#L440-L455`](/rust/crates/
 | [`tools/src/lib.rs#L1178-L1267`](/rust/crates/tools/src/lib.rs#L1178-L1267) | `execute_tool_with_enforcer`：40+ 工具的统一 match 分发器 |
 | [`tools/src/lib.rs#L2000-L2002`](/rust/crates/tools/src/lib.rs#L2000-L2002) | `run_tool_search` 入口 |
 | [`runtime/src/bash.rs#L17-L67`](/rust/crates/runtime/src/bash.rs#L17-L67) | `BashCommandInput` / `BashCommandOutput` |
-| [`runtime/src/bash.rs#L69-L103`](/rust/crates/runtime/src/bash.rs#L69-L103) | `execute_bash` 同步入口 |
+| [`runtime/src/bash.rs#L69-L169`](/rust/crates/runtime/src/bash.rs#L69-L168) | `execute_bash` 入口（含同步与异步路径） |
 | [`runtime/src/bash.rs#L212-L237`](/rust/crates/runtime/src/bash.rs#L212-L237) | `prepare_tokio_command`：沙箱启动器检查与普通 shell 回退 |
 | [`runtime/src/bash.rs#L289`](/rust/crates/runtime/src/bash.rs#L289) | `MAX_OUTPUT_BYTES = 16_384`（bash 输出截断阈值） |
 | [`runtime/src/file_ops.rs#L12-L16`](/rust/crates/runtime/src/file_ops.rs#L12-L16) | `MAX_READ_SIZE` / `MAX_WRITE_SIZE`（10MB） |
@@ -426,12 +430,12 @@ Hook 的三种退出码语义（[`runtime/src/hooks.rs#L440-L455`](/rust/crates/
 | [`runtime/src/file_ops.rs#L223-L255`](/rust/crates/runtime/src/file_ops.rs#L223-L255) | `write_file` 实现 |
 | [`runtime/src/file_ops.rs#L257-L296`](/rust/crates/runtime/src/file_ops.rs#L257-L296) | `edit_file` 实现 |
 | [`runtime/src/file_ops.rs#L298-L340`](/rust/crates/runtime/src/file_ops.rs#L298-L340) | `glob_search` 实现 |
-| [`runtime/src/file_ops.rs#L342-L450`](/rust/crates/runtime/src/file_ops.rs#L342-L450) | `grep_search` 实现 |
+| [`runtime/src/file_ops.rs#L342-L451`](/rust/crates/runtime/src/file_ops.rs#L342-L450) | `grep_search` 实现 |
 | [`runtime/src/permissions.rs#L7-L15`](/rust/crates/runtime/src/permissions.rs#L7-L15) | `PermissionMode` 五级权限枚举 |
 | [`runtime/src/permissions.rs#L173-L292`](/rust/crates/runtime/src/permissions.rs#L173-L292) | `PermissionPolicy::authorize_with_context` |
 | [`runtime/src/permissions.rs#L349-L402`](/rust/crates/runtime/src/permissions.rs#L349-L402) | 权限规则解析器 `PermissionRule::parse` |
 | [`runtime/src/hooks.rs#L18-L23`](/rust/crates/runtime/src/hooks.rs#L18-L23) | `HookEvent` 枚举 |
 | [`runtime/src/hooks.rs#L440-L455`](/rust/crates/runtime/src/hooks.rs#L440-L455) | hook 脚本退出码语义：0 = Allow, 2 = Deny, 其他 = Failed |
 | [`runtime/src/mcp_tool_bridge.rs#L240-L278`](/rust/crates/runtime/src/mcp_tool_bridge.rs#L240-L278) | `McpToolRegistry::call_tool`：跨线程 MCP JSON-RPC 调用 |
-| [`rusty-claude-cli/src/main.rs#L168-L240`](/rust/crates/rusty-claude-cli/src/main.rs#L168-L240) | CLI 入口 `run()`，按 `CliAction` 分发 Prompt / Repl 等模式 |
+| [`rusty-claude-cli/src/main.rs#L165-L257`](/rust/crates/rusty-claude-cli/src/main.rs#L165-L257) | CLI 入口 `run()`，按 `CliAction` 分发 Prompt / Repl 等模式 |
 | [`rusty-claude-cli/src/main.rs#L2789-L2838`](/rust/crates/rusty-claude-cli/src/main.rs#L2789-L2838) | `run_repl`：REPL 启动，创建 `LiveCli` 并进入 `run_turn` 循环 |

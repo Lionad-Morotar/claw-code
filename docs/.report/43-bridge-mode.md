@@ -156,22 +156,48 @@ fn spawn_tool_call(
                     let response = manager
                         .call_tool(&qualified_tool_name, arguments)
                         .await
-                        .map_err(|error| error.to_string())?;
+                        .map_err(|error| error.to_string());
                     let shutdown = manager.shutdown().await.map_err(|error| error.to_string());
-                    // ...
+
+                    match (response, shutdown) {
+                        (Ok(response), Ok(())) => Ok(response),
+                        (Err(error), Ok(())) | (Err(error), Err(_)) => Err(error),
+                        (Ok(_), Err(error)) => Err(error),
+                    }
                 }?;
-                // 处理 JSON-RPC error 与 result 序列化
+
+                if let Some(error) = response.error {
+                    return Err(format!(
+                        "MCP server returned JSON-RPC error for tools/call: {} ({})",
+                        error.message, error.code
+                    ));
+                }
+
+                let result = response.result.ok_or_else(|| {
+                    "MCP server returned no result for tools/call".to_string()
+                })?;
+
+                serde_json::to_value(result)
+                    .map_err(|error| format!("failed to serialize MCP tool result: {error}"))
             })
         })
         .map_err(|error| format!("failed to spawn MCP tool call thread: {error}"))?;
 
-    join_handle.join().map_err(|panic_payload| { /* ... */ })?
+    join_handle.join().map_err(|panic_payload| {
+        if let Some(message) = panic_payload.downcast_ref::<&str>() {
+            format!("MCP tool call thread panicked: {message}")
+        } else if let Some(message) = panic_payload.downcast_ref::<String>() {
+            format!("MCP tool call thread panicked: {message}")
+        } else {
+            "MCP tool call thread panicked".to_string()
+        }
+    })?
 }
 ```
 
 行号：#L177-238
 
-注意该线程每次调用都会执行完整的 `discover_tools -> call_tool -> shutdown` 生命周期，每个工具调用结束后关闭进程，下次调用重新初始化，确保状态隔离。
+注意该线程每次调用都会执行完整的 `discover_tools -> call_tool -> shutdown` 生命周期。这意味着每个工具调用都会创建一个全新的 tokio `current_thread` runtime 并 spawn 一个 OS 线程，频繁调用时线程创建/销毁开销和进程重启开销可能成为瓶颈（_latencies 在毫秒级但不排除高并发时累积）。若需优化，应考虑复用 runtime 和 MCP stdio 长连接。每个工具调用结束后关闭进程，下次调用重新初始化，确保状态隔离。
 
 ### 3.4 工具名规范化
 

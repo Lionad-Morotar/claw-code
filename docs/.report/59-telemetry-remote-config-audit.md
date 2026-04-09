@@ -1,7 +1,7 @@
 # Unit 59 — Telemetry Remote Config Audit
 
 > Source page: https://ccb.agent-aura.top/docs/telemetry-remote-config-audit  
-> Audit scope: Rust CLI (`rust/`) + CCB TypeScript source (`packages/ccb/src/`)  
+> Audit scope: `packages/ccb/src/` (TypeScript 宿主层) + `rust/crates/` (Rust CLI 运行时)  
 > Generated: 2026-04-09
 
 ---
@@ -22,10 +22,7 @@
 
 **Rust CLI**
 
-Rust CLI 当前未实现独立的 Datadog 导出器；遥测统一由 CCB 宿主进程通过 `telemetry` crate 的 `TelemetryEvent::Analytics` 消费后再路由到 Datadog。
-
-- 相关类型: `rust/crates/telemetry/src/lib.rs` [#L134-L157](rust/crates/telemetry/src/lib.rs#L134-L157) `AnalyticsEvent`
-- 路由层: `packages/ccb/src/services/analytics/sink.ts` [#L48-L71](packages/ccb/src/services/analytics/sink.ts#L48-L71)
+`rust/crates/telemetry/src/lib.rs` 定义了 `AnalyticsEvent` 类型 [#L135-L142](rust/crates/telemetry/src/lib.rs#L135-L142)，但 Rust CLI 当前**未实现独立的 Datadog exporter**。若 Rust 运行时嵌入 CCB 宿主进程，遥测统一由宿主层消费后再路由。
 
 ---
 
@@ -44,8 +41,7 @@ Rust CLI 当前未实现独立的 Datadog 导出器；遥测统一由 CCB 宿主
 
 **Rust CLI**
 
-- Rust 通过 `telemetry` crate 生成结构化事件，由 CCB 侧完成批量导出。
-- `rust/crates/telemetry/src/lib.rs` [#L205-L231](rust/crates/telemetry/src/lib.rs#L205-L231) `TelemetrySink` trait 与 `MemoryTelemetrySink`。
+`rust/crates/telemetry/src/lib.rs` [#L205-L277](rust/crates/telemetry/src/lib.rs#L205-L277) 提供了 `TelemetrySink`、`MemoryTelemetrySink`、`JsonlTelemetrySink`。与 Datadog 类似，Rust 侧未实现直接对接 BQ 的 exporter，事件一般由宿主层接收后再转发。
 
 ---
 
@@ -70,8 +66,8 @@ Rust CLI 当前未实现独立的 Datadog 导出器；遥测统一由 CCB 宿主
 
 **Rust CLI**
 
-- Rust CLI 尚未实现独立的 GrowthBook 客户端。运行时特性通过 CCB 传递的配置注入。
-- 注意: `rust/crates/runtime/src/config.rs` [#L1970-L1990](rust/crates/runtime/src/config.rs#L1970-L1990) 的验证测试显式拒绝未知顶层键 `"telemetry"`，说明 Rust 配置层目前不直接暴露 telemetry 开关，而是走 CCB 侧配置。
+Rust CLI 尚未实现独立的 GrowthBook 客户端。运行时特性通过 CCB 传递的配置注入。
+`rust/crates/runtime/src/config.rs` [#L1985-L1990](rust/crates/runtime/src/config.rs#L1985-L1990) 附近的验证测试显式拒绝未知顶层键 `"telemetry"`，说明 Rust 配置层目前不直接暴露 telemetry 开关。
 
 ---
 
@@ -124,7 +120,7 @@ Rust CLI 当前未实现独立的 Datadog 导出器；遥测统一由 CCB 宿主
 
 **Rust CLI**
 
-- Rust 当前未集成 OTEL SDK；遥测由 `telemetry` crate 以应用自定义事件协议输出，由宿主层转换为 OTEL。
+Rust 当前未集成 OTEL SDK；遥测由 `telemetry` crate 以应用自定义事件协议输出，由宿主层转换为 OTEL。
 
 ---
 
@@ -230,9 +226,8 @@ Rust CLI 当前未实现独立的 Datadog 导出器；遥测统一由 CCB 宿主
 - 核心类型:
   - `TelemetryEvent` 枚举 [#L170-L203](rust/crates/telemetry/src/lib.rs#L170-L203):
     `HttpRequestStarted`、`HttpRequestSucceeded`、`HttpRequestFailed`、`Analytics`、`SessionTrace`
-  - `TelemetrySink` trait [#L205-L207](rust/crates/telemetry/src/lib.rs#L205-L207)
-  - `MemoryTelemetrySink` / `JsonlTelemetrySink` [#L209-L277](rust/crates/telemetry/src/lib.rs#L209-L277)
-  - `SessionTracer` [#L279-L407](rust/crates/telemetry/src/lib.rs#L279-L407)
+  - `TelemetrySink` trait 与 `MemoryTelemetrySink` / `JsonlTelemetrySink` [#L205-L277](rust/crates/telemetry/src/lib.rs#L205-L277)
+  - `SessionTracer` [#L280-L407](rust/crates/telemetry/src/lib.rs#L280-L407)
     - `record_http_request_started`
     - `record_http_request_succeeded`
     - `record_http_request_failed`
@@ -244,9 +239,9 @@ Rust CLI 当前未实现独立的 Datadog 导出器；遥测统一由 CCB 宿主
 - `AnthropicClient` 包含可选的 `session_tracer: Option<SessionTracer>` [#L122](rust/crates/api/src/providers/anthropic.rs#L122)
 - Builder: `with_session_tracer` [#L215-L220](rust/crates/api/src/providers/anthropic.rs#L215-L220)
 - 请求生命周期打点:
-  - started [#L410-L417](rust/crates/api/src/providers/anthropic.rs#L410-L417)
-  - succeeded [#L421-L430](rust/crates/api/src/providers/anthropic.rs#L421-L430)
-  - failed [#L551-L561](rust/crates/api/src/providers/anthropic.rs#L551-L561)
+  - started [#L411-L417](rust/crates/api/src/providers/anthropic.rs#L411-L417)
+  - succeeded [#L422-L430](rust/crates/api/src/providers/anthropic.rs#L422-L430)
+  - failed [#L552-L561](rust/crates/api/src/providers/anthropic.rs#L552-L561)
 - `message_usage` analytics 在响应成功后记录 [#L314-L332](rust/crates/api/src/providers/anthropic.rs#L314-L332)
 
 ### 14.3 ConversationRuntime 的 Session Trace
@@ -255,12 +250,12 @@ Rust CLI 当前未实现独立的 Datadog 导出器；遥测统一由 CCB 宿主
 - `ConversationRuntime` 包含可选 `session_tracer` [#L138](rust/crates/runtime/src/conversation.rs#L138)
 - Builder: `with_session_tracer` [#L219-L224](rust/crates/runtime/src/conversation.rs#L219-L224)
 - 记录的事件:
-  - `turn_started` [#L547-L556](rust/crates/runtime/src/conversation.rs#L547-L556)
-  - `assistant_iteration_completed` [#L565-L579](rust/crates/runtime/src/conversation.rs#L565-L579)
-  - `tool_execution_started` [#L583-L593](rust/crates/runtime/src/conversation.rs#L583-L593)
-  - `tool_execution_finished` [#L597-L617](rust/crates/runtime/src/conversation.rs#L597-L617)
-  - `turn_completed` [#L618-L639](rust/crates/runtime/src/conversation.rs#L618-L639)
-  - `turn_failed` [#L643-L654](rust/crates/runtime/src/conversation.rs#L643-L654)
+  - `turn_started` [#L550-L560](rust/crates/runtime/src/conversation.rs#L550-L560)
+  - `assistant_iteration_completed` [#L565-L580](rust/crates/runtime/src/conversation.rs#L565-L580)
+  - `tool_execution_started` [#L583-L598](rust/crates/runtime/src/conversation.rs#L583-L598)
+  - `tool_execution_finished` [#L600-L620](rust/crates/runtime/src/conversation.rs#L600-L620)
+  - `turn_completed` [#L621-L643](rust/crates/runtime/src/conversation.rs#L621-L643)
+  - `turn_failed` [#L644-L654](rust/crates/runtime/src/conversation.rs#L644-L654)
 
 ### 14.4 集成测试中的遥测断言
 
@@ -315,8 +310,8 @@ CCB 宿主进程消费并路由到 Datadog / BQ / OTEL
 
 | 能力 | CCB TypeScript | Rust CLI |
 |------|----------------|----------|
-| Datadog 日志 | 完整实现 | 未实现（由宿主层路由） |
-| 1P BQ 事件 | 完整实现 | 未实现（由宿主层路由） |
+| Datadog 日志 | 完整实现 | 未实现独立 exporter |
+| 1P BQ 事件 | 完整实现 | 未实现独立 exporter |
 | GrowthBook flags | 完整实现 | 未实现 |
 | Remote Managed Settings | 完整实现 | 未实现 |
 | Settings Sync | 完整实现 | 未实现 |
@@ -328,6 +323,6 @@ CCB 宿主进程消费并路由到 Datadog / BQ / OTEL
 | Bridge Poll Config | 完整实现 | N/A（无 bridge） |
 | Plugin/MCP 遥测 | 完整实现 | 未实现（无 plugin 市场） |
 | Privacy Level 控制 | 完整实现 | 未实现 |
-| 基础 SessionTracer | 消费端在 CCB | `telemetry` crate 提供 |
+| 基础 SessionTracer | 消费端在 CCB | `telemetry` crate 提供，由宿主层消费 |
 
-Rust CLI (`rust/`) 当前仅提供了基础遥测类型和内存/JSONL sink，尚未接入任何外部遥测后端。所有高级遥测、远程配置、动态 Feature Flags 均保留在 CCB TypeScript 侧实现。
+Rust CLI (`rust/`) 当前仅提供了基础遥测类型和内存/JSONL sink，尚未接入任何外部遥测后端。所有高级遥测、远程配置、动态 Feature Flags 均保留在 CCB TypeScript 侧实现。若 Rust 运行时以独立进程运行，则这些遥测与配置能力均不可用。

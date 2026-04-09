@@ -29,7 +29,7 @@ ULTRAPLAN 是 Claude Code 的增强计划模式，在用户输入中检测 "ultr
 | 命令处理器 | `packages/ccb/src/commands/ultraplan.tsx` | 474 | ✅ 完整 |
 | CCR 会话 | `packages/ccb/src/utils/ultraplan/ccrSession.ts` | 349 | ✅ 完整 |
 | 关键字检测 | `packages/ccb/src/utils/ultraplan/keyword.ts` | 127 | ✅ 完整 |
-| 嵌入式提示 | `packages/ccb/src/utils/ultraplan/prompt.txt` | 1 | ✅ 完整 |
+| 嵌入式提示 | `packages/ccb/src/utils/ultraplan/prompt.txt` | ~20 | ✅ 完整 |
 | REPL 对话框 | `packages/ccb/src/screens/REPL.tsx` | — | ✅ 布线 |
 | 关键字高亮 | `packages/ccb/src/components/PromptInput/PromptInput.tsx` | — | ✅ 布线 |
 
@@ -214,25 +214,31 @@ export async function launchUltraplan(opts: {
   getAppState: () => AppState;
   setAppState: (f: (prev: AppState) => AppState) => void;
   signal: AbortSignal;
+  disconnectedBridge?: boolean;
   onSessionReady?: (msg: string) => void;  // URL 就绪回调
 }): Promise<string> {
-  const { ultraplanSessionUrl: active, ultraplanLaunching } = getAppState()
+  const { blurb, seedPlan, getAppState, setAppState, signal, disconnectedBridge, onSessionReady } = opts;
+  const { ultraplanSessionUrl: active, ultraplanLaunching } = getAppState();
   if (active || ultraplanLaunching) {
-    return buildAlreadyActiveMessage(active)  // 防止重复启动
+    return buildAlreadyActiveMessage(active);  // 防止重复启动
   }
 
   if (!blurb && !seedPlan) {
-    // 无参数时显示使用说明
-    return 'Usage: /ultraplan <prompt>, or include "ultraplan" anywhere in your prompt'
+    // 无参数时返回使用说明（支持 Markdown 渲染）
+    return [
+      'Usage: /ultraplan \\u003cprompt\\u003e, or include "ultraplan" anywhere in your prompt',
+      '',
+      'Advanced multi-agent plan mode with our most powerful model (Opus).',
+    ].join('\n');
   }
 
-  // 设置 launching 状态防止重复
-  setAppState(prev => (prev.ultraplanLaunching ? prev : { ...prev, ultraplanLaunching: true }))
-  
-  //  detached 执行，失败通过 enqueuePendingNotification 通知
-  void launchDetached({ blurb, seedPlan, getAppState, setAppState, signal, onSessionReady })
-  
-  return buildLaunchMessage(disconnectedBridge)  // 立即返回启动消息
+  // 同步设置 launching 状态，防止 teleportToRemote 窗口期重复启动
+  setAppState(prev => (prev.ultraplanLaunching ? prev : { ...prev, ultraplanLaunching: true }));
+
+  // detached 执行，失败通过 enqueuePendingNotification 通知
+  void launchDetached({ blurb, seedPlan, getAppState, setAppState, signal, onSessionReady });
+
+  return buildLaunchMessage(disconnectedBridge);  // 立即返回启动消息
 }
 ```
 
@@ -431,7 +437,9 @@ const result =
 - `--ultraplan-mode` — CLI 参数
 - `how to use ultraplan?` — 疑问句
 
-### 4.2 本地/远程双模式
+### 4.2 本地/远程双模式与实现风险
+
+CCR 会话依赖 Bridge Mode 的远程轮询基础设施。若 Bridge worker 崩溃或网络分区，`pollForApprovedExitPlanMode` 的 30 分钟长轮询会造成资源悬挂；此外，`ExitPlanModeScanner` 目前仅处理 `ExitPlanMode` 一种工具，未来若 CCR 侧新增其他协议工具，扫描器必须同步扩展，否则状态机将漏判。
 
 支持两种执行方式：
 - **本地执行** — 用户选择 "Implement here" 或 "Start new session"，计划在当前终端执行
@@ -479,8 +487,8 @@ FEATURE_ULTRAPLAN=1 bun run dev
 | `packages/ccb/src/commands/ultraplan.tsx` | 474 | 斜杠命令处理器 |
 | `packages/ccb/src/utils/ultraplan/ccrSession.ts` | 349 | CCR 远程会话管理 + ExitPlanModeScanner |
 | `packages/ccb/src/utils/ultraplan/keyword.ts` | 127 | 关键字检测和替换 |
-| `packages/ccb/src/utils/ultraplan/prompt.txt` | 1 | 嵌入式提示 |
-| `packages/ccb/src/utils/processUserInput/processUserInput.ts` | 605 | 关键字重定向 (#L467-L493) |
+| `packages/ccb/src/utils/ultraplan/prompt.txt` | ~20 | 嵌入式提示 |
+| `packages/ccb/src/utils/processUserInput/processUserInput.ts` | ~640 | 关键字重定向 (#L467-L493) |
 | `packages/ccb/src/components/PromptInput/PromptInput.tsx` | 3175 | 彩虹高亮 |
 | `packages/ccb/src/components/ultraplan/UltraplanLaunchDialog.tsx` | 153 | 启动前对话框 |
 | `packages/ccb/src/components/ultraplan/UltraplanChoiceDialog.tsx` | 244 | 计划审批后对话框 |

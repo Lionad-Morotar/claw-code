@@ -140,8 +140,24 @@ where
     std::fs::write(&output_file, output_contents)?;
 
     // 6. 创建并持久化 manifest
-    let manifest = AgentOutput { ... };
-    write_agent_manifest(&manifest)?;                                  // L3527-3536
+    let manifest = AgentOutput {
+        agent_id,
+        name: agent_name,
+        description: input.description,
+        subagent_type: normalized_subagent_type,
+        model,
+        status: "running".to_string(),
+        output_file: output_file.to_string_lossy().to_string(),
+        manifest_file: manifest_file.to_string_lossy().to_string(),
+        created_at: iso8601_now(),
+        started_at: None,
+        completed_at: None,
+        lane_events: vec![],
+        current_blocker: None,
+        derived_state: "working".to_string(),
+        error: None,
+    };
+    write_agent_manifest(&manifest)?;
 
     // 7.  spawn 子线程执行
     let job = AgentJob {
@@ -254,7 +270,7 @@ impl ToolExecutor for SubagentToolExecutor {
 ### 5.2 按类型的工具子集
 
 ```rust
-// L3458-3530: allowed_tools_for_subagent 实现
+// L3451-3530: allowed_tools_for_subagent 实现
 fn allowed_tools_for_subagent(subagent_type: &str) -> BTreeSet<String> {
     let tools = match subagent_type {
         // Explore 类型：只读 + 搜索工具
@@ -305,7 +321,7 @@ fn tool_specs_for_allowed_tools(allowed_tools: Option<&BTreeSet<String>>) -> Vec
 ### 6.1 Session 结构绑定 Worktree
 
 ```rust
-// rust/crates/runtime/src/session.rs L68-97: Session 结构
+// rust/crates/runtime/src/session.rs L89-100: Session 结构
 #[derive(Debug, Clone)]
 pub struct Session {
     pub version: u32,
@@ -321,13 +337,14 @@ pub struct Session {
 }
 ```
 
-**设计动机**（L82-87）：
-> `workspace_root` binds the session to the worktree it was created in. The global session store under `~/.local/share/opencode` is shared across every `opencode serve` instance, so without an explicit workspace root parallel lanes can race and report success while writes land in the wrong CWD.
+**设计动机**（`session.rs` L82–87）：
+
+> `workspace_root` 将会话绑定到其创建时所在的 worktree。全局 session store 在所有 `opencode serve` 实例间共享，因此若没有显式的 workspace root，并行 lane 可能产生竞态，导致写入落在错误的 CWD 中。
 
 ### 6.2 Session::with_workspace_root
 
 ```rust
-// rust/crates/runtime/src/session.rs L170-183
+// rust/crates/runtime/src/session.rs L180-183
 /// Bind this session to the workspace root it was created in.
 ///
 /// This is the per-worktree counterpart to the global session store and
@@ -432,7 +449,7 @@ fn workspace_sessions_dir_differs_for_different_cwds() {
 ### 7.1 ProviderRuntimeClient 构建
 
 ```rust
-// rust/crates/tools/src/lib.rs L3403-3428
+// rust/crates/tools/src/lib.rs L3406-3428
 fn build_agent_runtime(
     job: &AgentJob,
 ) -> Result<ConversationRuntime<ProviderRuntimeClient, SubagentToolExecutor>, String> {
@@ -503,7 +520,7 @@ pub async fn send_message(
 ### 8.1 build_agent_system_prompt
 
 ```rust
-// rust/crates/tools/src/lib.rs L3436-3447
+// rust/crates/tools/src/lib.rs L3428-3441
 fn build_agent_system_prompt(subagent_type: &str) -> Result<Vec<String>, String> {
     let cwd = std::env::current_dir().map_err(|error| error.to_string())?;
     let mut prompt = load_system_prompt(
@@ -551,7 +568,7 @@ std::fs::write(&output_file, output_contents).map_err(|error| error.to_string())
 ### 9.2 Manifest JSON 结构
 
 ```rust
-// rust/crates/tools/src/lib.rs L3527-3536
+// rust/crates/tools/src/lib.rs L3539-3548
 fn write_agent_manifest(manifest: &AgentOutput) -> Result<(), String> {
     let mut normalized = manifest.clone();
     normalized.lane_events = dedupe_superseded_commit_events(&normalized.lane_events);
@@ -566,7 +583,7 @@ fn write_agent_manifest(manifest: &AgentOutput) -> Result<(), String> {
 ### 9.3 终端状态持久化
 
 ```rust
-// rust/crates/tools/src/lib.rs L3543-3592
+// rust/crates/tools/src/lib.rs L3555-3604
 fn persist_agent_terminal_state(
     manifest: &AgentOutput,
     status: &str,
@@ -665,7 +682,7 @@ fn agent_store_dir() -> Result<std::path::PathBuf, String> {
 | SessionStore | `rust/crates/runtime/src/session_control.rs` | L20-27 | 会话存储结构 |
 | SessionStore::from_data_dir | `rust/crates/runtime/src/session_control.rs` | L49-64 | 按 Worktree 隔离 |
 | ProviderClient::from_model | `rust/crates/api/src/client.rs` | L17-49 | 模型路由 |
-| persist_agent_terminal_state | `rust/crates/tools/src/lib.rs` | L3543-3592 | 状态持久化 |
+| persist_agent_terminal_state | `rust/crates/tools/src/lib.rs` | L3555-3604 | 状态持久化 |
 | agent_store_dir | `rust/crates/tools/src/lib.rs` | L4240-4249 | 存储目录解析 |
 
 ---

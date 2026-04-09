@@ -78,7 +78,7 @@ where
 
 ### 子 Agent 的工具权限隔离
 
-`allowed_tools_for_subagent` 函数（[`tools/src/lib.rs#L3411-L3455`](/rust/crates/tools/src/lib.rs#L3411-L3455)）根据 `subagent_type` 严格限制子 Agent 的工具集：
+`allowed_tools_for_subagent` 函数（[`tools/src/lib.rs#L3451-L3530`](/rust/crates/tools/src/lib.rs#L3451-L3530)）根据 `subagent_type` 严格限制子 Agent 的工具集：
 
 | subagent_type | 可用工具 |
 |---------------|----------|
@@ -103,7 +103,7 @@ Agent Swarm 的核心是**共享任务列表 + 竞争认领**。`claw-code` 在 
 
 ### TaskRegistry：任务的完整状态机
 
-`TaskRegistry`（[`runtime/src/task_registry.rs#L55-L231`](/rust/crates/runtime/src/task_registry.rs#L55-L231)）使用 `Arc<Mutex<RegistryInner>>` 实现了线程安全的内存级任务管理。任务状态枚举为（[`L13-L20`](/rust/crates/runtime/src/task_registry.rs#L13-L20)）：
+`TaskRegistry`（[`runtime/src/task_registry.rs#L55-L231`](/rust/crates/runtime/src/task_registry.rs#L55-L231)）使用 `Arc<Mutex<RegistryInner>>` 实现了线程安全的内存级任务管理。任务状态枚举为（[`L14-L20`](/rust/crates/runtime/src/task_registry.rs#L14-L20)）：
 
 ```rust
 pub enum TaskStatus {
@@ -138,7 +138,7 @@ pub enum TaskStatus {
 
 ### TeamRegistry：团队的创建与软删除
 
-`TeamRegistry`（[`runtime/src/team_cron_registry.rs#L50-L120`](/rust/crates/runtime/src/team_cron_registry.rs#L50-L120)）管理 `Team` 结构体：
+`TeamRegistry`（[`runtime/src/team_cron_registry.rs#L21-L91`](/rust/crates/runtime/src/team_cron_registry.rs#L21-L91)）管理 `Team` 结构体：
 
 ```rust
 pub struct Team {
@@ -194,7 +194,7 @@ pub struct TaskPacket {
 
 ## Worker Boot：子 Agent 的终端生命周期管理
 
-`WorkerRegistry`（[`runtime/src/worker_boot.rs#L125-L535`](/rust/crates/runtime/src/worker_boot.rs#L125-L535)）为子 Agent 提供了更细粒度的终端控制状态机。它解决的核心问题是：**如何可靠地把 prompt 投递到一个外部终端进程，并观测它的执行状态。**
+`WorkerRegistry`（[`runtime/src/worker_boot.rs#L144-L531`](/rust/crates/runtime/src/worker_boot.rs#L144-L531)）为子 Agent 提供了更细粒度的终端控制状态机。它解决的核心问题是：**如何可靠地把 prompt 投递到一个外部终端进程，并观测它的执行状态。**
 
 ### Worker 状态机
 

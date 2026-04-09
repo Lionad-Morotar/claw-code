@@ -41,14 +41,14 @@ fn maybe_auto_compact(&mut self) -> Option<AutoCompactionEvent> {
 触发优先级链：
 
 1. **阈值检查**：`input_tokens` 必须超过 `auto_compaction_input_tokens_threshold`（默认 100,000）。
-2. **紧凑检查**：`compact_session` 内部调用 `should_compact`，只有满足 `preserve_recent_messages` 和 `max_estimated_tokens` 双重条件才会真正压缩。
+2. **紧凑性检查**：`compact_session` 内部调用 `should_compact`，只有同时满足 `preserve_recent_messages` 数量下限和 `max_estimated_tokens` 上限双重条件才会真正压缩。
 3. **状态替换**：压缩成功后，原 `session` 被替换为 `compacted_session`。
 
 #### 源码映射
 
-- 自动压缩触发逻辑：[conversation.rs](/rust/crates/runtime/src/conversation.rs#L521-L545)
-- 默认阈值常量：[conversation.rs](/rust/crates/runtime/src/conversation.rs#L18)
-- 阈值解析（支持环境变量覆盖）：[conversation.rs](/rust/crates/runtime/src/conversation.rs#L656-L669)
+- 自动压缩触发逻辑：[conversation.rs](/rust/crates/runtime/src/conversation.rs#L525-L548)
+- 默认阈值常量：[conversation.rs](/rust/crates/runtime/src/conversation.rs#L121-L123)
+- 阈值解析（支持环境变量覆盖）：[conversation.rs](/rust/crates/runtime/src/conversation.rs#L669-L674)
 
 ---
 
@@ -75,7 +75,7 @@ pub fn should_compact(session: &Session, config: CompactionConfig) -> bool {
 
 - **忽略已有摘要前缀**：`compacted_summary_prefix_len` 检查首条消息是否是之前压缩产生的 system summary，避免对摘要本身重复评估。
 - **双条件**：消息数量必须超过 `preserve_recent_messages`（默认保留 4 条），且可压缩部分的 token 估算值必须达到 `max_estimated_tokens`（默认 10,000）。
-- `maybe_auto_compact` 将 `max_estimated_tokens` 设为 `0`，意味着只要超过保留窗口即可触发压缩。
+- `maybe_auto_compact` 将 `max_estimated_tokens` 设为 `0`，意味着只要可压缩消息数超过保留窗口即可触发压缩。
 
 #### 源码映射
 
@@ -250,7 +250,7 @@ pub struct SessionCompaction {
 
 ## Hook 与扩展机制
 
-压缩前后可以通过 `HookRunner` 注入自定义行为。当前 `ConversationRuntime` 中 Hook 的调用点主要集中在工具调用前后（`run_pre_tool_use_hook`、`run_post_tool_use_hook`）。虽然压缩本身没有独立的 `pre_compact` / `post_compact` Hook 入口，但整个 turn 结束后可以通过外部编排层在检测到 `AutoCompactionEvent` 时追加扩展逻辑。
+压缩前后可以通过 `HookRunner` 注入自定义行为。当前 `ConversationRuntime` 中 Hook 的调用点集中在工具调用前后（`run_pre_tool_use_hook`、`run_post_tool_use_hook`）。压缩流程本身未暴露独立的 `pre_compact` / `post_compact` Hook 入口，但外部编排层可以在检测到 `AutoCompactionEvent` 后追加扩展逻辑。
 
 #### 源码映射
 
@@ -271,6 +271,6 @@ pub struct SessionCompaction {
 
 #### 源码映射
 
-- 压缩模块测试：[compact.rs](/rust/crates/runtime/src/compact.rs#L510-L696)
-- 会话持久化元数据测试：[session.rs](/rust/crates/runtime/src/session.rs#L1208-L1223)
-- 自动压缩阈值解析测试：[conversation.rs](/rust/crates/runtime/src/conversation.rs#L1555-L1578)
+- 压缩模块测试：[compact.rs](/rust/crates/runtime/src/compact.rs#L519-L695)
+- 会话持久化元数据测试：[session.rs](/rust/crates/runtime/src/session.rs#L1208-L1224)
+- 自动压缩阈值解析测试：[conversation.rs](/rust/crates/runtime/src/conversation.rs#L1568-L1582)

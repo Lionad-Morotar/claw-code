@@ -9,7 +9,15 @@
 
 ## 1. 概述
 
-GrowthBook 适配器是 Claude Code 中用于连接自定义 GrowthBook 服务器的机制，允许用户通过环境变量指定自己的 GrowthBook 实例，实现远程 feature flag 控制。该设计提供了优雅的降级策略：无配置时自动回退到代码中的默认值，零网络请求。
+GrowthBook 适配器是 Claude Code 中用于连接自定义 GrowthBook 服务器的机制，允许用户通过环境变量指定自己的 GrowthBook 实例，实现远程 feature flag 控制。
+
+### 核心设计 rationale
+
+原始 Claude Code 的 GrowthBook 是硬连线到 Anthropic 内部 API 的（`remoteEval: true`，需要 auth headers）。这对社区用户和自托管场景不友好。适配器的设计目标有三点：
+
+1. **零配置降级**：未设置适配器变量时，所有 feature 读取直接返回代码中的默认值，不产生任何网络请求。这避免了原始代码中"GrowthBook 强依赖 1P 认证"导致的启动阻塞问题。
+2. **向后兼容**：130+ 个调用方文件无需修改，统一的 `getFeatureValue_CACHED_MAY_BE_STALE` API 透明处理适配器模式与内部模式。
+3. **最小侵入**：仅在 SDK 初始化层做分支（`isAdapterMode`），上层业务代码完全无感知。
 
 ### 核心行为
 
@@ -48,6 +56,8 @@ export function getGrowthBookClientKey(): string {
     : 'sdk-zAZezfDKGoZuXXKe'
 }
 ```
+
+**设计意图**：`CLAUDE_GB_ADAPTER_KEY` 优先级最高，覆盖原有的 `ant` / `external` 硬编码 SDK key。这使得即使是内部构建，也可以临时指向自定义 GrowthBook 服务器进行测试。
 
 ---
 
@@ -127,6 +137,10 @@ const getGrowthBookClient = memoize(
 | Auth Headers | 不需要 | 需要 `getAuthHeaders()` |
 | Base URL | `CLAUDE_GB_ADAPTER_URL` | `api.anthropic.com` |
 
+**为什么适配器模式下 `remoteEval` 必须关闭？**
+
+`remoteEval` 是 Anthropic 内部 GrowthBook 部署的定制功能：服务端根据用户属性直接计算分组结果，客户端只接收最终结果。标准的 GrowthBook Cloud 和自托管版本不支持这一模式。因此适配器模式下必须关闭 `remoteEval`，让 SDK 走传统的本地求值路径。
+
 ---
 
 ## 4. Feature Flag 读取优先级链
@@ -147,6 +161,8 @@ const getGrowthBookClient = memoize(
 
 **`packages/ccb/src/constants/keys.ts#L5-L16`** - 适配器 Key 优先级最高。
 
+这种优先级设计确保了：即使在网络断开或服务器不可用时，已缓存的值仍然可用；如果连缓存都没有，代码中的硬编码默认值能保证功能不崩溃。
+
 ---
 
 ## 5. 缓存与刷新机制
@@ -159,6 +175,8 @@ const getGrowthBookClient = memoize(
 // Cache for remote eval feature values - workaround for SDK not respecting remoteEval response
 const remoteEvalFeatureValues = new Map<string, unknown>()
 ```
+
+注意：虽然变量名叫 `remoteEvalFeatureValues`，但在适配器模式下它同样被用来缓存从 GrowthBook 服务器拉取的 feature 值。
 
 ### 5.2 磁盘缓存
 
@@ -198,7 +216,7 @@ const GROWTHBOOK_REFRESH_INTERVAL_MS =
 
 ## 6. Feature Key 列表
 
-### 6.1 高频使用 (原文 L147-L162)
+### 6.1 高频使用
 
 | Feature Key | 类型 | 代码默认值 | 用途 |
 |-------------|------|-----------|------|
@@ -302,11 +320,11 @@ const GROWTHBOOK_REFRESH_INTERVAL_MS =
 
 ## 8. 实现变更摘要
 
-原文提到修改了 2 个文件共 3 处：
+适配器机制共修改了 3 个关键位置：
 
 1. **`packages/ccb/src/constants/keys.ts#L5-L16`** - `getGrowthBookClientKey()` 优先读取 `CLAUDE_GB_ADAPTER_KEY`
 2. **`packages/ccb/src/services/analytics/growthbook.ts#L488-L496`** - `isGrowthBookEnabled()` 适配器模式下直接启用
-3. **`packages/ccb/src/services/analytics/growthbook.ts#L568-L572`** - base URL 优先使用 `CLAUDE_GB_ADAPTER_URL`
+3. **`packages/ccb/src/services/analytics/growthbook.ts#L568-L694`** - `getGrowthBookClient()` 中 base URL 优先使用 `CLAUDE_GB_ADAPTER_URL`，并关闭 `remoteEval`
 
 所有 130+ 个调用方文件无需修改。
 
@@ -349,7 +367,7 @@ bun run dev
 | 文件路径 | 说明 | 关键行 |
 |---------|------|--------|
 | `packages/ccb/src/constants/keys.ts` | Client Key 获取 | L5-L16 |
-| `packages/ccb/src/services/analytics/growthbook.ts` | 主实现文件 | 全文 1256 行 |
+| `packages/ccb/src/services/analytics/growthbook.ts` | 主实现文件 | 全文 ~1256 行 |
 | `packages/ccb/src/types/generated/events_mono/growthbook/v1/growthbook_experiment_event.ts` | 实验事件类型定义 | - |
 | `packages/ccb/scripts/verify-gates.ts` | Gate 验证脚本 | - |
 

@@ -2,7 +2,8 @@
 
 **原始页面**: https://ccb.agent-aura.top/docs/features/tier3-stubs  
 **报告生成**: 2026-04-09  
-**状态**: Tier 3 — 纯 Stub / N/A 低优先级 Feature 概览
+**状态**: Tier 3 — 纯 Stub / N/A 低优先级 Feature 概览  
+**源码位置**: `packages/ccb/src/` (子项目)
 
 ---
 
@@ -56,7 +57,7 @@ export const sendToUdsSocket: (target: string, message: string) => Promise<void>
 export const listAllLiveSessions: () => Promise<Array<{ kind?: string; sessionId?: string }>> = async () => [];
 ```
 
-**分析**: 
+**分析**:
 - `sendToUdsSocket()` — 空实现，设计用于向 UDS socket 发送消息
 - `listAllLiveSessions()` — 返回空数组，设计用于列出所有活跃会话
 
@@ -77,7 +78,7 @@ export const listAllLiveSessions: () => Promise<Array<{ kind?: string; sessionId
 **引用数**: 11  
 **类别**: 会话管理
 
-**核心实现**: `packages/ccb/src/utils/concurrentSessions.ts` (205 行)
+**核心实现**: `packages/ccb/src/utils/concurrentSessions.ts` (204 行)
 
 **已实现功能**:
 - `registerSession()` — 写入 PID 文件到 `~/.claude/sessions/<pid>.json` #L59-L109
@@ -149,7 +150,7 @@ function envSessionKind(): SessionKind | undefined {
 **引用数**: 7  
 **类别**: 记忆
 
-**源码位置**: `packages/ccb/src/services/extractMemories/extractMemories.ts` (616 行)
+**源码位置**: `packages/ccb/src/services/extractMemories/extractMemories.ts` (615 行)
 
 **核心功能**:
 - `initExtractMemories()` — 初始化提取系统 #L296
@@ -213,7 +214,7 @@ function envSessionKind(): SessionKind | undefined {
 **引用数**: 4  
 **类别**: 压缩
 
-**源码位置**: `packages/ccb/src/services/compact/reactiveCompact.ts` (23 行)
+**源码位置**: `packages/ccb/src/services/compact/reactiveCompact.ts` (22 行)
 
 ```typescript
 // Auto-generated stub — replace with real implementation
@@ -313,17 +314,17 @@ BUILDING_CLAUDE_APPS, ANTI_DISTILLATION_CC, AGENT_TRIGGERS, ABLATION_BASELINE
 
 ---
 
-## 四、优先级说明
+## 四、分类说明
 
 这些 feature 被列为 Tier 3 的原因：
 
-| 原因 | Feature 示例 | 工作量评估 |
-|------|-------------|------------|
-| 内部基础设施 | CHICAGO_MCP, LODESTONE | N/A — 外部无法运行 |
-| 纯 Stub 且引用低 | UDS_INBOX, MONITOR_TOOL | 高 — 需要完整后端实现 |
-| 实验性功能 | SHOT_STATS, EXTRACT_MEMORIES | 中 — 概念验证完成 |
-| 辅助功能 | STREAMLINED_OUTPUT, HOOK_PROMPTS | 低 — 影响范围小 |
-| 依赖远程控制 | CCR 系列 | 高 — 需要 BRIDGE_MODE 完善 |
+| 原因 | Feature 示例 |
+|------|-------------|
+| 内部基础设施 | CHICAGO_MCP, LODESTONE — 外部无法直接运行 |
+| 纯 Stub 且引用低 | UDS_INBOX, MONITOR_TOOL, REACTIVE_COMPACT — 需要完整后端实现 |
+| 实验性功能 | SHOT_STATS, EXTRACT_MEMORIES — Gate 控制严格，引用范围有限 |
+| 辅助功能 | STREAMLINED_OUTPUT, HOOK_PROMPTS — 影响范围小 |
+| 依赖远程控制 | CCR 系列 — 需要 BRIDGE_MODE 完善 |
 
 ---
 
@@ -333,20 +334,20 @@ BUILDING_CLAUDE_APPS, ANTI_DISTILLATION_CC, AGENT_TRIGGERS, ABLATION_BASELINE
 |------|------|------|
 | `src/tools/MonitorTool/MonitorTool.ts` | 3 | 纯 Stub |
 | `src/utils/udsClient.ts` | 3 | 纯 Stub |
-| `src/services/compact/reactiveCompact.ts` | 23 | 纯 Stub |
-| `src/utils/concurrentSessions.ts` | 205 | 完整实现 |
-| `src/services/extractMemories/extractMemories.ts` | 616 | 完整实现 |
-| `src/utils/stats.ts` | 829+ | 完整实现 |
-| `src/utils/backgroundHousekeeping.ts` | 95 | 完整集成 |
+| `src/services/compact/reactiveCompact.ts` | 22 | 纯 Stub |
+| `src/utils/concurrentSessions.ts` | 204 | 部分实现 |
+| `src/services/extractMemories/extractMemories.ts` | 615 | 完整实现 |
+| `src/utils/stats.ts` | ~1061 | 完整实现 |
+| `src/utils/backgroundHousekeeping.ts` | 94 | 完整集成 |
 
 ---
 
 ## 六、结论
 
-Tier 3 features 占全部 feature flags 的约 40%，其中：
+Tier 3 features 包含大量引用量低或处于实验/内部状态的开关。其中：
 
-- **~15%** 为 Anthropic 内部基础设施（外部不可用）
-- **~25%** 为纯 Stub 或部分实现（需要额外开发）
-- **~60%** 为功能完整但引用量低的辅助功能
+- 部分为 **Anthropic 内部基础设施**（`CHICAGO_MCP`、`LODESTONE` 等），外部仓库无法直接运行；
+- 部分为 **纯 Stub 或骨架布线**（`MONITOR_TOOL`、`UDS_INBOX`、`REACTIVE_COMPACT`、Context Collapse 核心模块等），需要完整后端实现才能投入使用；
+- 另有少量功能本身已实现（如 `EXTRACT_MEMORIES`、`SHOT_STATS`），但 Gate 控制严格、引用范围有限，目前仍处于实验或小流量阶段。
 
-如需深入了解某个 Tier 3 feature，可以在代码库中搜索 `feature('FEATURE_NAME')` 查看具体使用场景。
+如需深入了解某个 Tier 3 feature，可在 `packages/ccb/src/` 中搜索 `feature('FEATURE_NAME')` 查看具体使用场景。

@@ -13,6 +13,8 @@ Claude Code 是一个**运行在本地终端中的 agentic coding system**。它
 
 `claw-code` 仓库是 Claude Code 的 Rust 重写实现。它将上游的 Terminal-native 架构以 Rust 的内存安全和零成本抽象重新落地，核心代码位于仓库的 [`/rust/`](/rust/) 目录下，采用 Cargo Workspace 组织，包含 `api`、`runtime`、`rusty-claude-cli`、`tools`、`commands`、`telemetry`、`plugins`、`compat-harness`、`mock-anthropic-service` 等 11 个 crate。
 
+这种架构取舍的直接代价是：与 IDE 生态（VS Code 扩展、JetBrains 插件）完全绝缘。`claw-code` 无法复用任何 IDE 的 LSP 客户端、调试器 UI 或版本控制面板，一切都必须在终端内重新实现。这是 Terminal-native 的边界，也是其保持简洁的前提。
+
 ---
 
 ## 理解关键词
@@ -41,7 +43,7 @@ fn main() {
 
 ### Agentic = 自主工具调用链
 
-Agentic 的核心不是"一问一答"，而是一个**带状态的工具执行循环**。在 `claw-code` 中，这个循环被封装在 [`runtime/src/conversation.rs`](/rust/crates/runtime/src/conversation.rs) 的 `ConversationRuntime` 里。`run_turn` 方法（[`L296-L487`](/rust/crates/runtime/src/conversation.rs#L296-L487)）的伪代码逻辑如下：
+Agentic 的核心不是"一问一答"，而是一个**带状态的工具执行循环**。在 `claw-code` 中，这个循环被封装在 [`runtime/src/conversation.rs`](/rust/crates/runtime/src/conversation.rs) 的 `ConversationRuntime` 里。`run_turn` 方法（[`L296-L490`](/rust/crates/runtime/src/conversation.rs#L296-L490)）的伪代码逻辑如下：
 
 1. 接收用户输入 → 写入 Session
 2. 组装 `ApiRequest`（system prompt + 当前消息历史）
@@ -65,7 +67,7 @@ pub enum ContentBlock {
 }
 ```
 
-参见 [`runtime/src/session.rs#L28-L44`](/rust/crates/runtime/src/session.rs#L28-L44)。注意这里 `ToolResult` 直接关联 `tool_use_id`，这意味着工具调用和工具结果形成严格的**请求-响应配对**，便于在多轮循环中追踪调用链。这种数据结构天然就是为 Coding system 设计的。
+参见 [`runtime/src/session.rs#L28-L47`](/rust/crates/runtime/src/session.rs#L28-L46)。注意这里 `ToolResult` 直接关联 `tool_use_id`，这意味着工具调用和工具结果形成严格的**请求-响应配对**，便于在多轮循环中追踪调用链。这种数据结构天然就是为 Coding system 设计的。
 
 ---
 
@@ -82,7 +84,7 @@ pub enum ContentBlock {
 
 ### Rust 实现中的安全边界设计
 
-由于拥有完整 shell 能力，`claw-code` 在 `runtime` crate 中设计了一个五级权限模型 `PermissionMode`（[`runtime/src/permissions.rs#L8-L16`](/rust/crates/runtime/src/permissions.rs#L8-L16)）：
+由于拥有完整 shell 能力，`claw-code` 在 `runtime` crate 中设计了一个五级权限模型 `PermissionMode`（[`runtime/src/permissions.rs#L9-L15`](/rust/crates/runtime/src/permissions.rs#L9-L15)）：
 
 ```rust
 pub enum PermissionMode {
@@ -94,7 +96,9 @@ pub enum PermissionMode {
 }
 ```
 
-从最严格的 `ReadOnly` 到完全放行的 `Allow`，每一级都对应不同的策略。工具执行前，`ConversationRuntime` 会调用 `permission_policy.authorize_with_context(...)` 进行判定。如果用户配置了 `Prompt` 模式，危险操作会主动弹窗请求确认——这是"完整 shell 能力"和"安全可控"之间的关键平衡。
+从最严格的 `ReadOnly` 到完全放行的 `Allow`，每一级都对应不同的策略。工具执行前，`ConversationRuntime` 会调用 `permission_policy.authorize_with_context(...)` 进行判定。如果用户配置了 `Prompt` 模式，危险操作会主动弹窗请求确认。
+
+但这道防线存在一个未明示的假设：**用户能正确判断 AI 请求的操作是否安全**。在 `Allow` 模式下，所有检查都会被短路；在 `Prompt` 模式下，模型可能通过拆分命令（如先 `read_file` 再 `bash`）绕过用户的心理防线。此外，`PermissionPolicy` 只检查工具名和输入字符串，无法在语义层面理解命令的真实意图。因此，五级权限模型是"速度-安全"的实用妥协，而非绝对的安全边界。
 
 ---
 
@@ -130,7 +134,7 @@ pub enum PermissionMode {
 
 ### 入口层详解
 
-用户在终端键入命令后，真正的入口是 [`rusty-claude-cli/src/main.rs#L165-L257`](/rust/crates/rusty-claude-cli/src/main.rs#L165-L257) 的 `run()` 函数。它会把命令行参数解析为 `CliAction` 枚举：
+用户在终端键入命令后，真正的入口是 [`rusty-claude-cli/src/main.rs#L168-L240`](/rust/crates/rusty-claude-cli/src/main.rs#L168-L240) 的 `run()` 函数。它会把命令行参数解析为 `CliAction` 枚举：
 
 ```rust
 enum CliAction {
@@ -198,7 +202,7 @@ pub trait Provider {
 
 #### Bash 工具
 
-Bash 不是简单的 `std::process::Command` 透传。它的输入输出 schema 定义在 [`runtime/src/bash.rs#L21-L52`](/rust/crates/runtime/src/bash.rs#L21-L52)：
+Bash 不是简单的 `std::process::Command` 透传。它的输入输出 schema 定义在 [`runtime/src/bash.rs#L19-L31`](/rust/crates/runtime/src/bash.rs#L19-L31)：
 
 ```rust
 pub struct BashCommandInput {
@@ -216,7 +220,7 @@ pub struct BashCommandInput {
 
 #### FileOps 工具
 
-FileOps 实现了 `read_file`、`write_file`、`edit_file`、`glob_search`、`grep_search`。所有路径都会先执行**工作区边界检查**（[`runtime/src/file_ops.rs#L32-L41`](/rust/crates/runtime/src/file_ops.rs#L32-L41)）：
+FileOps 实现了 `read_file`、`write_file`、`edit_file`、`glob_search`、`grep_search`。所有路径都会先执行**工作区边界检查**（[`runtime/src/file_ops.rs#L32-L44`](/rust/crates/runtime/src/file_ops.rs#L32-L44)）：
 
 ```rust
 fn validate_workspace_boundary(resolved: &Path, workspace_root: &Path) -> io::Result<()> {
@@ -239,11 +243,11 @@ fn validate_workspace_boundary(resolved: &Path, workspace_root: &Path) -> io::Re
 ## 它不是什么
 
 * **不是 IDE 插件**：没有图形界面，不依赖 VS Code 或任何 IDE
-  * 在 Rust 实现中，这意味着 UI 完全由 TUI（Terminal UI）渲染。CLI 通过 `crossterm` 控制光标、颜色和清屏，通过 `pulldown-cmark` + `syntect` 将模型返回的 Markdown 实时渲染为 ANSI 彩色文本。参见 [`rusty-claude-cli/src/render.rs#L602-L607`](/rust/crates/rusty-claude-cli/src/render.rs#L602-L607) 的 `MarkdownStreamState::push`。
+  * 在 Rust 实现中，这意味着 UI 完全由 TUI（Terminal UI）渲染。CLI 通过 `crossterm` 控制光标、颜色和清屏，通过 `pulldown-cmark` + `syntect` 将模型返回的 Markdown 实时渲染为 ANSI 彩色文本。参见 [`rusty-claude-cli/src/render.rs#L602-L607`](/rust/crates/rusty-claude-cli/src/render.rs#L602-L606) 的 `MarkdownStreamState::push`。
 * **不是 API wrapper**：它有自己的工具系统、权限模型、上下文工程、会话管理
   * 这些能力全部内建在 `runtime` crate 中，而不是简单转发 OpenAI/Anthropic SDK 的调用。
 * **不是聊天机器人**：输出不是纯文本，而是实际的文件修改、命令执行
-  * Session 中消息的核心数据结构是 `ContentBlock::ToolUse` 和 `ContentBlock::ToolResult`，而不是单一的 `String`。见 [`runtime/src/session.rs#L28-L44`](/rust/crates/runtime/src/session.rs#L28-L44)。
+  * Session 中消息的核心数据结构是 `ContentBlock::ToolUse` 和 `ContentBlock::ToolResult`，而不是单一的 `String`。见 [`runtime/src/session.rs#L28-L47`](/rust/crates/runtime/src/session.rs#L28-L46)。
 * **不是无脑执行器**：每个敏感操作都有权限检查和用户确认环节
   * 在 `run_turn` 的工具执行路径中，调用 `tool_executor.execute()` 之前必须先经过 `permission_policy.authorize_with_context()`。此外，还有 `pre_tool_use` hook 可以在工具执行前插入额外策略检查。
 
@@ -266,7 +270,7 @@ fn validate_workspace_boundary(resolved: &Path, workspace_root: &Path) -> io::Re
 
 ### Prompt 组装
 
-在启动 `ConversationRuntime` 之前，系统会调用 [`runtime/src/prompt.rs#L430-L444`](/rust/crates/runtime/src/prompt.rs#L430-L444) 的 `load_system_prompt`：
+在启动 `ConversationRuntime` 之前，系统会调用 [`runtime/src/prompt.rs#L432-L446`](/rust/crates/runtime/src/prompt.rs#L432-L446) 的 `load_system_prompt`：
 
 ```rust
 pub fn load_system_prompt(cwd, current_date, os_name, os_version) -> Result<Vec<String>, ...> {
@@ -304,6 +308,10 @@ pub fn load_system_prompt(cwd, current_date, os_name, os_version) -> Result<Vec<
   * 渲染层基于 `crossterm` + `pulldown-cmark` + `syntect`，而非 Chromium。流式响应通过 `MarkdownStreamState::push` 增量渲染，每个 token 到达后立即刷新终端，避免整屏重绘。
 
 代价是用户需要适应命令行界面——但也正因如此，它吸引的是需要**真正掌控开发环境**的开发者。
+
+### 未声明的假设：会话恢复的安全边界
+
+`claw-code` 的 `Session` 持久化使用 JSON Lines 格式（见 [`session.rs`](/rust/crates/runtime/src/session.rs)）。虽然 `Session::load_from_path()` 会验证基本的消息结构，但它并不会对 `ToolResult` 中的输出内容进行沙箱化过滤。这意味着如果会话文件被外部篡改，恢复的会话可能携带恶意 payload 直接进入下一轮的 `ApiRequest`。当前实现依赖于文件系统权限（`~/.claw/sessions/` 目录）来保护持久化文件，尚未引入加密签名或完整性校验。
 
 ---
 

@@ -19,6 +19,11 @@ const SleepTool = feature('PROACTIVE') || feature('KAIROS')
 
 在 Anthropic 的内部构建中，`feature()` 在打包时被求值——返回 `true` 的代码会被保留，返回 `false` 的代码会被 **Dead Code Elimination (DCE)** 彻底移除。
 
+**为什么选择构建时门控？** 原始代码库采用编译时开关而非运行时配置，主要有三点设计 rationale：
+1. **风险隔离**：实验性或内部专用的代码不会出现在外部发布包中，从源头杜绝误泄露或误触发。
+2. **产物体积**：被 DCE 移除的模块不会增加最终二进制大小，也减少了 Bun 运行时的解析开销。
+3. **断点防御**：逆向工程虽然能阅读 `false` 分支的源代码，但这些代码在正式构建产物中已不存在，无法通过补丁简单启用。
+
 在反编译版本中，这个函数没有实际实现，而是通过运行时兜底返回 `false`。类型声明位于 [`src/types/internal-modules.d.ts#L10-L12`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/types/internal-modules.d.ts#L10-L12)：
 
 ```typescript
@@ -178,7 +183,7 @@ declare module "bun:bundle" {
 
 ## 代码中的典型模式
 
-Feature flags 在代码中主要有三种使用模式：
+Feature flags 在代码中主要有五种使用模式：
 
 ### 模式一：条件加载工具
 
@@ -252,16 +257,16 @@ const COMMANDS = memoize((): Command[] => [
 在 [`src/constants/betas.ts`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/constants/betas.ts) 中，feature flags 控制发送给 API 的 beta header：
 
 ```typescript
-// src/constants/betas.ts — 第 24-27 行
+// src/constants/betas.ts — 第 23-25 行
 export const AFK_MODE_BETA_HEADER = feature('TRANSCRIPT_CLASSIFIER')
   ? 'afk-mode-2026-01-31'
   : ''
 ```
 
-在 [`src/utils/betas.ts`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/utils/betas.ts#L160) 中，feature flag 控制 auto mode 的可用性判断：
+在 [`src/utils/betas.ts`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/utils/betas.ts#L159) 中，feature flag 控制 auto mode 的可用性判断：
 
 ```typescript
-// src/utils/betas.ts — 第 160 行
+// src/utils/betas.ts — 第 159-170 行
 export function modelSupportsAutoMode(model: string): boolean {
   if (feature('TRANSCRIPT_CLASSIFIER')) {
     const m = getCanonicalName(model)
@@ -323,7 +328,7 @@ if (
 
 ### Dev 模式默认 Features
 
-在 [`scripts/dev.ts#L20-L35`](/Users/lionad/Github/Run/claw-code/packages/ccb/scripts/dev.ts#L20-L35) 中定义了开发模式下默认启用的 features：
+在 [`scripts/dev.ts#L26-L43`](/Users/lionad/Github/Run/claw-code/packages/ccb/scripts/dev.ts#L26-L43) 中定义了开发模式下默认启用的 features：
 
 ```typescript
 const DEFAULT_FEATURES = [
@@ -345,7 +350,7 @@ const DEFAULT_FEATURES = [
 
 ### Build 模式默认 Features
 
-在 [`build.ts#L12-L28`](/Users/lionad/Github/Run/claw-code/packages/ccb/build.ts#L12-L28) 中定义了构建模式下默认启用的 features：
+在 [`build.ts#L13-L37`](/Users/lionad/Github/Run/claw-code/packages/ccb/build.ts#L13-L37) 中定义了构建模式下默认启用的 features：
 
 ```typescript
 const DEFAULT_BUILD_FEATURES = [
@@ -509,9 +514,9 @@ WORKFLOW_SCRIPTS
 | [`src/tools.ts`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools.ts) | 工具注册表，条件加载工具的主战场 |
 | [`src/commands.ts`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/commands.ts) | 命令注册表，条件注册斜杠命令 |
 | [`src/constants/betas.ts`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/constants/betas.ts) | API beta headers，`AFK_MODE_BETA_HEADER` 条件定义 |
-| [`src/utils/betas.ts#L160`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/utils/betas.ts#L160) | `modelSupportsAutoMode` 函数，`TRANSCRIPT_CLASSIFIER` 门控 |
-| [`build.ts#L12-L28`](/Users/lionad/Github/Run/claw-code/packages/ccb/build.ts#L12-L28) | Build 默认 features 列表 |
-| [`scripts/dev.ts#L20-L35`](/Users/lionad/Github/Run/claw-code/packages/ccb/scripts/dev.ts#L20-L35) | Dev 默认 features 列表 |
+| [`src/utils/betas.ts#L159`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/utils/betas.ts#L159) | `modelSupportsAutoMode` 函数，`TRANSCRIPT_CLASSIFIER` 门控 |
+| [`build.ts#L13-L37`](/Users/lionad/Github/Run/claw-code/packages/ccb/build.ts#L13-L37) | Build 默认 features 列表 |
+| [`scripts/dev.ts#L26-L43`](/Users/lionad/Github/Run/claw-code/packages/ccb/scripts/dev.ts#L26-L43) | Dev 默认 features 列表 |
 
 ---
 

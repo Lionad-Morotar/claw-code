@@ -25,7 +25,7 @@ BASH_CLASSIFIER 使用 LLM 对 bash 命令进行意图分类（允许/拒绝/询
 
 | 模块 | 文件 | 状态 | 说明 |
 |------|------|------|------|
-| Bash 分类器 | `packages/ccb/src/utils/permissions/bashClassifier.ts` | Stub | 所有函数返回空操作。注释："ANT-ONLY" |
+| Bash 分类器 | `packages/ccb/src/utils/permissions/bashClassifier.ts` | Stub | 所有函数返回空操作/默认值。注释："ANT-ONLY" |
 | YOLO 分类器 | `packages/ccb/src/utils/permissions/yoloClassifier.ts` | 完整 | 1495 行，两阶段 XML 分类器 |
 | 审批信号 | `packages/ccb/src/utils/classifierApprovals.ts` | 完整 | Map + 信号管理分类器决策 |
 | 权限 UI | `packages/ccb/src/components/permissions/BashPermissionRequest/BashPermissionRequest.tsx` | 布线 | 分类器状态显示、审核选项 |
@@ -47,7 +47,10 @@ BASH_CLASSIFIER 使用 LLM 对 bash 命令进行意图分类（允许/拒绝/询
 - GrowthBook 配置和指标
 - 错误处理和降级
 
-### 2.3 分类器在权限管道中的位置
+### 2.3 分类器在权限管道中的位置与实现风险
+
+> **风险提醒**：`bashClassifier.ts` 当前为全 stub（ANT-ONLY 标记）。这意味着在当前 TypeScript 构建中开启 `FEATURE_BASH_CLASSIFIER=1` 后，分类器不会调用任何 LLM，而是直接返回 `matches: false` 的默认结果；权限决策将回退到传统规则匹配或完全缺失，可能产生安全真空。实现一个生产级 LLM 分类器需要解决延迟（每次 Bash 调用增加一次 sideQuery）、错误降级（LLM 幻觉导致的自动 allow）、上下文窗口成本（注入完整对话记录）以及可解释性（用户可审计分类理由）等问题，其工作量应评估为「大」而非「中」。claw-code 的 Rust 端仅提供规则驱动分类（`bash_validation.rs`），不含 LLM 分类器。
+
 
 ```
 bash 命令到达

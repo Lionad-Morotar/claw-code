@@ -1,22 +1,18 @@
-# Unit 57: LSP Integration Technical Report
+# Unit 57: LSP Integration 技术报告
 
 **Source URL**: https://ccb.agent-aura.top/docs/lsp-integration  
 **Report Generated**: 2026-04-09  
-**Unit**: 57-lsp-integration
+**Unit**: 57-lsp-integration  
 
 ---
 
-## Executive Summary
+## 概述
 
-The claw-code codebase implements a comprehensive Language Server Protocol (LSP) integration layer that provides code intelligence capabilities including diagnostics, hover, definition lookup, references, completion, symbols, and formatting. The implementation consists of three primary components:
-
-1. **LSP Registry** (`lsp_client.rs`) - Server registration and dispatch
-2. **LSP Tool** (`tools/src/lib.rs`) - Tool interface for model access
-3. **MCP stdio Transport** (`mcp_stdio.rs`) - LSP-framed JSON-RPC communication
+claw-code 对 LSP 的支持目前停留在**骨架层**：`rust/crates/runtime/src/lsp_client.rs` 实现了注册表、分发接口和测试占位，`rust/crates/tools/src/lib.rs` 暴露了 `LSP` 工具入口，`rust/crates/runtime/src/mcp_stdio.rs` 提供了 LSP 兼容的 JSON-RPC 帧读写能力。实际的 language server 进程启停、文档同步、请求/响应翻译尚未实现。以下梳理现有源码结构与限制。
 
 ---
 
-## Architecture Overview
+## 架构概览
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -27,48 +23,48 @@ The claw-code codebase implements a comprehensive Language Server Protocol (LSP)
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                    tools/src/lib.rs                             │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
-│  │   ToolSpec      │  │   run_lsp()     │  │   LspInput      │ │
-│  │   "LSP"         │──│   #L1600-L1620  │  │   #L2302-L2312  │ │
-│  └─────────────────┘  └────────┬────────┘  └─────────────────┘ │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
+│  │   ToolSpec      │  │   run_lsp()     │  │   LspInput      │  │
+│  │   "LSP"         │──│   #L1606-L1620  │──│   #L2303-L2312  │  │
+│  └─────────────────┘  └────────┬────────┘  └─────────────────┘  │
 └─────────────────────────────────┼────────────────────────────────┘
                                   │
                                   ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                  runtime/src/lsp_client.rs                      │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
-│  │  LspRegistry    │  │  LspAction      │  │  LspServerState │ │
-│  │  #L110-L112     │  │  #L12-L20       │  │  #L101-L107     │ │
-│  └────────┬────────┘  └─────────────────┘  └─────────────────┘ │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
+│  │  LspRegistry    │  │  LspAction      │  │  LspServerState │  │
+│  │  #L110-L112     │  │  #L12-L20       │  │  #L101-L107     │  │
+│  └────────┬────────┘  └─────────────────┘  └─────────────────┘  │
 │           │                                                     │
 │           ▼ dispatch() #L236-L296                               │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │  • Diagnostics: return cached results                    │   │
-│  │  • Other actions: require connected server               │   │
-│  │  • File extension → language mapping                     │   │
-│  └─────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │  • Diagnostics: return cached results                    │    │
+│  │  • Other actions: require connected server               │    │
+│  │  • File extension → language mapping                     │    │
+│  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               │ (future: actual LSP JSON-RPC)
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │              runtime/mcp_stdio.rs - LSP Framing                 │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
-│  │  McpStdioProcess│  │  read_frame()   │  │  write_frame()  │ │
-│  │  #L1143-L1148   │  │  #L1215-L1247   │  │  #L1209-L1213   │ │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
-│                                                                 │
-│  LSP Frame Format: Content-Length header + JSON-RPC body        │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
+│  │  McpStdioProcess│  │  read_frame()   │  │  write_frame()  │  │
+│  │  #L1143-L1148   │  │  #L1215-L1247   │  │  #L1209-L1213   │  │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
+│                                                                   │
+│  LSP Frame Format: Content-Length header + JSON-RPC body          │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Component Analysis
+## 组件分析
 
 ### 1. LSP Registry (`rust/crates/runtime/src/lsp_client.rs`)
 
-#### Core Data Structures
+#### 核心数据结构
 
 **LspAction** (#L12-L20)
 ```rust
@@ -78,7 +74,7 @@ pub enum LspAction {
 }
 ```
 
-String parsing with aliases (#L23-L35):
+字符串解析与别名 (#L23-L35)：
 - `definition` / `goto_definition` → `LspAction::Definition`
 - `references` / `find_references` → `LspAction::References`
 - `completion` / `completions` → `LspAction::Completion`
@@ -89,7 +85,7 @@ String parsing with aliases (#L23-L35):
 ```rust
 pub struct LspServerState {
     pub language: String,
-    pub status: LspServerStatus,  // Connected, Disconnected, Starting, Error
+    pub status: LspServerStatus,
     pub root_path: Option<String>,
     pub capabilities: Vec<String>,
     pub diagnostics: Vec<LspDiagnostic>,
@@ -97,18 +93,18 @@ pub struct LspServerState {
 ```
 
 **LspRegistry** (#L110-L112)
-- Thread-safe registry using `Arc<Mutex<RegistryInner>>`
-- Supports multiple language servers simultaneously
+- 使用 `Arc<Mutex<RegistryInner>>` 的线程安全注册表
+- 未实现多语言 server 的并发生命周期管理
 
-#### Key Methods
+#### 关键方法
 
 **register()** (#L125-L143)
-Registers a language server with its capabilities.
+注册语言 server 的能力声明。
 
 **find_server_for_path()** (#L151-L172)
-Maps file extensions to language servers:
-| Extension | Language |
-|-----------|----------|
+按扩展名映射语言 server：
+| 扩展名 | 语言 |
+|--------|------|
 | `.rs` | rust |
 | `.ts`, `.tsx` | typescript |
 | `.js`, `.jsx` | javascript |
@@ -121,13 +117,13 @@ Maps file extensions to language servers:
 | `.lua` | lua |
 
 **dispatch()** (#L236-L296)
-Core dispatch logic with two paths:
+核心分发逻辑，当前仅返回占位数据：
 
-1. **Diagnostics path** (#L248-L270): Returns cached diagnostics without requiring live LSP connection
-2. **Action path** (#L272-L295): Requires connected server, returns structured placeholder
+1. **Diagnostics 路径** (#L248-L270): 直接返回缓存的 diagnostics，不要求 live server
+2. **Action 路径** (#L272-L295): 仅检查 server 存在且处于 `Connected` 状态，随后返回结构化占位
 
 ```rust
-// Lines 285-295 - Placeholder response structure
+// Lines 285-295 - 结构化占位响应
 Ok(serde_json::json!({
     "action": action,
     "path": path,
@@ -139,15 +135,15 @@ Ok(serde_json::json!({
 }))
 ```
 
-**Test Coverage** (#L299-L747)
-- 20+ unit tests covering registration, dispatch, diagnostics, and error cases
-- Test `dispatch_diagnostics_without_path_aggregates()` (#L486-L527) validates multi-server aggregation
+**测试覆盖** (#L299-L747)
+- 20+ 单元测试覆盖注册、分发、diagnostics 聚合与错误路径
+- `dispatch_diagnostics_without_path_aggregates()` (#L486-L527) 验证多 server 聚合
 
 ---
 
-### 2. LSP Tool Interface (`rust/crates/tools/src/lib.rs`)
+### 2. LSP Tool 接口 (`rust/crates/tools/src/lib.rs`)
 
-#### Tool Definition (#L1052-L1071)
+#### Tool 定义 (#L1052-L1071)
 
 ```rust
 ToolSpec {
@@ -169,7 +165,7 @@ ToolSpec {
 }
 ```
 
-#### Input Structure (#L2302-L2312)
+#### 输入结构 (#L2303-L2312)
 
 ```rust
 #[derive(Debug, Deserialize)]
@@ -186,11 +182,11 @@ struct LspInput {
 }
 ```
 
-#### Execution Handler (#L1600-L1620)
+#### 执行处理函数 (#L1606-L1620)
 
 ```rust
 fn run_lsp(input: LspInput) -> Result<String, String> {
-    let registry = global_lsp_registry();  // #L35-L42: static OnceLock<LspRegistry>
+    let registry = global_lsp_registry();  // #L35-L42
     let action = &input.action;
     let path = input.path.as_deref();
     let line = input.line;
@@ -208,7 +204,7 @@ fn run_lsp(input: LspInput) -> Result<String, String> {
 }
 ```
 
-#### Tool Dispatch Integration (#L1254)
+#### Tool 调度集成 (#L1254)
 
 ```rust
 "LSP" => from_value::<LspInput>(input).and_then(run_lsp),
@@ -218,19 +214,16 @@ fn run_lsp(input: LspInput) -> Result<String, String> {
 
 ### 3. MCP stdio Transport (`rust/crates/runtime/src/mcp_stdio.rs`)
 
-#### LSP Frame Format
+MCP stdio 实现复用了 LSP 的 `Content-Length` 帧格式，说明底层传输层已具备与 LSP server 对话的能力，但上层 LSP 生命周期管理尚未接入。
 
-The MCP stdio implementation uses LSP-compatible framing with `Content-Length` headers:
-
-**Frame Structure** (#L1209-L1247):
+**帧结构** (#L1209-L1247)
 ```
 Content-Length: <byte-count>\r\n
 \r\n
 <JSON-RPC payload>
 ```
 
-#### McpStdioProcess (#L1143-L1148)
-
+**McpStdioProcess** (#L1143-L1148)
 ```rust
 pub struct McpStdioProcess {
     child: Child,
@@ -267,7 +260,7 @@ pub async fn read_frame(&mut self) -> io::Result<Vec<u8>> {
         let header = line.trim_end_matches(['\r', '\n']);
         if let Some((name, value)) = header.split_once(':') {
             if name.trim().eq_ignore_ascii_case("Content-Length") {
-                let parsed = value.trim().parse::<usize>()...;
+                let parsed = value.trim().parse::<usize>()?;
                 content_length = Some(parsed);
             }
         }
@@ -279,21 +272,20 @@ pub async fn read_frame(&mut self) -> io::Result<Vec<u8>> {
 }
 ```
 
-**JSON-RPC Message Handling** (#L1249-L1267)
+**JSON-RPC Message 处理** (#L1249-L1267)
 ```rust
 pub async fn write_jsonrpc_message<T: Serialize>(&mut self, message: &T) -> io::Result<()> {
-    let body = serde_json::to_vec(message)...;
+    let body = serde_json::to_vec(message)?;
     self.write_frame(&body).await
 }
 
 pub async fn read_jsonrpc_message<T: DeserializeOwned>(&mut self) -> io::Result<T> {
     let payload = self.read_frame().await?;
-    serde_json::from_slice(&payload)...
+    serde_json::from_slice(&payload).map_err(...)
 }
 ```
 
-#### spawn_mcp_stdio_process() (#L1371-L1385)
-
+**spawn_mcp_stdio_process()** (#L1371-L1385)
 ```rust
 pub fn spawn_mcp_stdio_process(bootstrap: &McpClientBootstrap) -> io::Result<McpStdioProcess> {
     match &bootstrap.transport {
@@ -308,7 +300,7 @@ pub fn spawn_mcp_stdio_process(bootstrap: &McpClientBootstrap) -> io::Result<Mcp
 
 ---
 
-## Integration Points
+## 集成点
 
 ### Global Registry Pattern
 
@@ -321,58 +313,46 @@ fn global_lsp_registry() -> &'static LspRegistry {
 }
 ```
 
-### Permission Model
+### 权限模型
 
-The LSP tool requires `PermissionMode::ReadOnly` (#L1071), ensuring LSP queries cannot modify filesystem state.
-
----
-
-## Current Limitations
-
-### 1. Placeholder Dispatch (#L285-#L295)
-
-The current `dispatch()` implementation returns structured placeholders rather than actual LSP JSON-RPC calls:
-
-```rust
-// rust/crates/runtime/src/lsp_client.rs:285-295
-// Return structured placeholder — actual LSP JSON-RPC calls would
-// go through the real LSP process here.
-```
-
-### 2. No Live LSP Server Management
-
-The `lsp_client.rs` registry does not:
-- Spawn actual language server processes (rust-analyzer, typescript-language-server, etc.)
-- Maintain live JSON-RPC connections
-- Handle LSP protocol messages (textDocument/didOpen, textDocument/didChange, etc.)
-
-### 3. Cached Diagnostics Only
-
-Diagnostics are manually added via `add_diagnostics()` (#L181-L193) rather than pulled from live LSP servers.
+`LSP` 工具要求 `PermissionMode::ReadOnly` (#L1071)。
 
 ---
 
-## Future Implementation Path
+## 当前限制
 
-To complete the LSP integration, the following components would need implementation:
+1. **占位分发** (#L285-L295)：
+   `dispatch()` 目前返回固定格式的 JSON 占位，未触发任何真实 LSP JSON-RPC 调用。
 
-1. **LSP Server Spawner**: Wrapper around `McpStdioProcess` for launching language servers
-2. **LSP Session Manager**: Track open documents, send didOpen/didChange notifications
-3. **Request Router**: Map `LspAction` to JSON-RPC methods:
+2. **无 live server 生命周期管理**：
+   `lsp_client.rs` 尚未实现启动 `rust-analyzer`、`typescript-language-server` 等进程、维护连接、发送 `textDocument/didOpen` / `didChange`。
+
+3. **Diagnostics 为手动缓存**：
+   diagnostics 通过 `add_diagnostics()` (#L181-L193) 写入，而非从 live server 拉取。
+
+---
+
+## 待实现路径
+
+若要将 LSP 支持真正落地，需补齐：
+
+1. **LSP Server Spawner**：基于 `McpStdioProcess` 启动 language server 进程
+2. **LSP Session Manager**：追踪已打开文档，发送 didOpen/didChange
+3. **Request Router**：映射 `LspAction` 到 JSON-RPC 方法
    - `hover` → `textDocument/hover`
    - `definition` → `textDocument/definition`
    - `references` → `textDocument/references`
    - `completion` → `textDocument/completion`
    - `symbols` → `textDocument/documentSymbol`
    - `format` → `textDocument/formatting`
-4. **Response Parser**: Convert LSP JSON responses to structured Rust types
+4. **Response Parser**：将 LSP JSON 响应转为 Rust 结构化类型
 
 ---
 
-## Source File Reference
+## 源码索引
 
-| Component | File | Lines |
-|-----------|------|-------|
+| 组件 | 文件 | 行号 |
+|------|------|------|
 | LspAction enum | `rust/crates/runtime/src/lsp_client.rs` | #L12-L20 |
 | LspAction::from_str | `rust/crates/runtime/src/lsp_client.rs` | #L23-L35 |
 | LspServerState | `rust/crates/runtime/src/lsp_client.rs` | #L101-L107 |
@@ -381,8 +361,8 @@ To complete the LSP integration, the following components would need implementat
 | LspRegistry tests | `rust/crates/runtime/src/lsp_client.rs` | #L299-L747 |
 | global_lsp_registry | `rust/crates/tools/src/lib.rs` | #L35-L42 |
 | LSP ToolSpec | `rust/crates/tools/src/lib.rs` | #L1052-L1071 |
-| LspInput struct | `rust/crates/tools/src/lib.rs` | #L2302-L2312 |
-| run_lsp handler | `rust/crates/tools/src/lib.rs` | #L1600-L1620 |
+| LspInput struct | `rust/crates/tools/src/lib.rs` | #L2303-L2312 |
+| run_lsp handler | `rust/crates/tools/src/lib.rs` | #L1606-L1620 |
 | Tool dispatch | `rust/crates/tools/src/lib.rs` | #L1254 |
 | McpStdioProcess | `rust/crates/runtime/src/mcp_stdio.rs` | #L1143-L1148 |
 | read_frame | `rust/crates/runtime/src/mcp_stdio.rs` | #L1215-L1247 |
@@ -391,24 +371,24 @@ To complete the LSP integration, the following components would need implementat
 
 ---
 
-## Parity Documentation Reference
+## Parity 文档参考
 
-From `rust/PARITY.md` (#L73):
+`rust/PARITY.md` (#L73):
 
 > | **LSP** | `runtime::lsp_client` + `tools` | registry + dispatch for diagnostics, hover, definition, references, completion, symbols, formatting — **good parity** |
 
-This indicates the current implementation achieves "good parity" for the registry and dispatch layer, with actual LSP protocol communication marked as future work.
+该描述与实际代码一致：注册表与分发层已具备测试与线程安全结构，但 live LSP server 通信仍标记为未来工作。
 
 ---
 
-## Conclusion
+## 结论
 
-The LSP integration in claw-code provides a well-structured foundation for language server capabilities. The architecture cleanly separates:
-- **Registry layer** (`lsp_client.rs`): Server state management and dispatch logic
-- **Tool layer** (`tools/src/lib.rs`): Model-facing interface with permission controls
-- **Transport layer** (`mcp_stdio.rs`): LSP-compatible JSON-RPC framing
+claw-code 的 LSP 相关代码提供了**结构清晰但功能未完整**的基础：
+- **Registry 层** (`lsp_client.rs`)：server 状态管理与分发占位逻辑已就绪
+- **Tool 层** (`tools/src/lib.rs`)：模型调用入口已暴露
+- **Transport 层** (`mcp_stdio.rs`)：LSP 兼容的 JSON-RPC 帧读写已具备
 
-The implementation is testable (20+ unit tests), thread-safe, and ready for extension to support live LSP server connections.
+距离真正支持 live LSP server connections，仍需实现 server spawner、session manager 和 JSON-RPC request router。
 
 ---
 

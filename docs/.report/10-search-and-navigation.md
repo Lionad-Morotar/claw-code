@@ -41,7 +41,7 @@ pub struct GrepSearchInput {
 }
 ```
 
-- `GlobSearchOutput`（[`L120-L127`](/rust/crates/runtime/src/file_ops.rs#L120-L127)）和 `GrepSearchOutput`（[`L157-L173`](/rust/crates/runtime/src/file_ops.rs#L157-L173)）返回搜索的元数据、匹配文件列表以及可选内容。
+- `GlobSearchOutput`（[`L120-L127`](/rust/crates/runtime/src/file_ops.rs#L120-L127)）和 `GrepSearchOutput`（[`L157-L173`](/rust/crates/runtime/src/file_ops.rs#L157-L172)）返回搜索的元数据、匹配文件列表以及可选内容。
 
 注意 `GrepSearchInput` 中的 `head_limit` 和 `offset` —— 这是 token 预算控制的关键阀门。`output_mode` 支持 `files_with_matches`（仅文件名）、`content`（含上下文行）、`count`（仅计数）三种模式，与 `ripgrep` 的参数语义完全一致。
 
@@ -90,7 +90,7 @@ pub fn grep_search(input: &GrepSearchInput) -> io::Result<GrepSearchOutput> {
 }
 ```
 
-没有 fork/exec 开销，也不需要处理 macOS 代码签名或 Windows `.exe` 分发问题。`regex` crate 本身的性能在百万行代码搜索场景下与 `ripgrep` 处于同一量级，因为两者共享了类似的 SIMD 前缀过滤和 NFA/DFA 混合引擎。
+没有 fork/exec 开销，也不需要处理 macOS 代码签名或 Windows `.exe` 分发问题。`regex` crate 的性能在大多数工作区规模下足够高效，但 `ripgrep` 拥有更成熟的并行目录遍历和基于 SIMD 的字节码预过滤，在超大规模代码库中仍可能显著更快。
 
 ### 源码映射：文件收集与过滤
 
@@ -329,7 +329,7 @@ DuckDuckGo 的重定向解码在 `decode_duckduckgo_redirect`（[`L2883-L2901`](
 
 ### 源码映射：LSP Registry 与 Action 分发
 
-`lsp_client.rs` 定义了 `LspRegistry`（[`L109-L234`](/rust/crates/runtime/src/lsp_client.rs#L109-L234)）和 `LspAction` 枚举（[`L10-L35`](/rust/crates/runtime/src/lsp_client.rs#L10-L35)）：
+`lsp_client.rs` 定义了 `LspRegistry`（[`L109-L234`](/rust/crates/runtime/src/lsp_client.rs#L109-L233)）和 `LspAction` 枚举（[`L10-L35`](/rust/crates/runtime/src/lsp_client.rs#L10-L35)）：
 
 ```rust
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -357,7 +357,7 @@ impl LspAction {
 }
 ```
 
-`LspRegistry::find_server_for_path`（[`L150-L173`](/rust/crates/runtime/src/lsp_client.rs#L150-L173)）根据文件扩展名匹配语言服务器：
+`LspRegistry::find_server_for_path`（[`L150-L173`](/rust/crates/runtime/src/lsp_client.rs#L150-L172)）根据文件扩展名匹配语言服务器：
 
 ```rust
 pub fn find_server_for_path(&self, path: &str) -> Option<LspServerState> {
@@ -376,7 +376,7 @@ pub fn find_server_for_path(&self, path: &str) -> Option<LspServerState> {
 }
 ```
 
-`dispatch` 方法（[`L235-L348`](/rust/crates/runtime/src/lsp_client.rs#L235-L348)）目前返回结构化的占位结果，真实的 LSP JSON-RPC 调用链路尚未完全接入。这意味着 Rust 实现中 LSP 导航能力的骨架已经搭好（状态追踪、扩展名路由、Action 解析），但完整走到 `rust-analyzer` / `typescript-language-server` 还需要后续工作。
+`dispatch` 方法（[`L235-L348`](/rust/crates/runtime/src/lsp_client.rs#L235-L348)）目前返回结构化的占位结果或基于内部调试接口的简化响应，真实的 LSP JSON-RPC 调用链路尚未完全接入。这意味着 Rust 实现中 LSP 导航能力的骨架已经搭好（状态追踪、扩展名路由、Action 解析），但完整走到 `rust-analyzer` / `typescript-language-server` 还需要后续工作。当前状态更接近"概念验证"而非"生产可用"的 LSP 客户端。
 
 ---
 
@@ -413,6 +413,10 @@ impl GitContext {
 - `read_staged_files`：获取已暂存的文件列表
 
 `render` 方法将这些信息格式化为人类可读的文本，注入到 system prompt 中，帮助 AI 理解"当前工作在哪个分支上"、"最近动了哪些文件"。
+
+### 审视角：进程内搜索的性能天花板
+
+`grep_search` 使用 `regex` + `walkdir` 在单线程上下文中逐文件匹配。虽然省去了 fork/exec 的开销，但在超大规模代码库（数十万文件）中，它无法利用 `ripgrep` 的并行目录遍历、基于 `.gitignore` 的智能跳过和 SIMD 字节码预过滤。这意味着 `claw-code` 的搜索工具在大多数日常项目中足够快，但在极端规模下可能成为交互瓶颈。如果将来需要支撑企业级 monorepo，直接调用系统 `rg` 或引入 ` ignore` crate 的并行扫描可能是必要的性能投资。
 
 ---
 

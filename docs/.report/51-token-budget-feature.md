@@ -10,7 +10,7 @@
 
 ## 一、功能概述
 
-TOKEN_BUDGET 允许用户在 prompt 中通过简写语法（如 `+500k`）或自然语言（如 `spend 2M tokens`）指定一个 output token 预算目标。当模型单轮输出尚未用完预算时，系统会在后台自动追加 nudge 消息以提示继续工作，减少用户手动输入的次数。该功能适用于大规模代码重构、批量生成等需要长输出的任务。
+TOKEN_BUDGET 允许用户在 prompt 中通过简写语法（如 `+500k`）或自然语言（如 `spend 2M tokens`）指定一个 output token 预算目标。当模型单轮输出尚未用完预算时，系统会在后台自动追加 nudge 消息以提示继续工作，减少用户手动输入的次数。该机制适用于需要长输出的任务，但实际效果取决于模型对重复 nudge 的响应稳定性，并不能保证每次都能精准填满预算。
 
 ---
 
@@ -46,7 +46,7 @@ const VERBOSE_RE = /\b(?:use|spend)\s+(\d+(?:\.\d+)?)\s*(k|m|b)\s*tokens?\b/i
 核心函数：
 
 - `parseTokenBudget(text: string): number | null` — L21-L29：按优先级尝试 start / end / verbose 匹配。
-- `findTokenBudgetPositions(text: string): Array<{ start, end }>` — L31-L64：返回所有匹配位置，用于输入框高亮，避免对纯 `+500k` 重复计数。
+- `findTokenBudgetPositions(text: string): Array<{ start, end }>` — L31-L64：返回所有匹配位置，用于输入框高亮。
 - `getBudgetContinuationMessage(pct, turnTokens, budget): string` — L66-L73：生成继续工作的 nudge 消息，例如 `"Stopped at 50% of token target (250,000 / 500,000). Keep working — do not summarize."`
 
 测试覆盖见：
@@ -137,13 +137,13 @@ export function checkTokenBudget(
 
 **停止条件**（返回 `action: 'stop'`）：
 1. 在子 agent 中（`agentId` 存在）— L51
-2. 无预算或预算 `<= 0` — L51
+2. 无预算或预算 `<= 0` — L54
 3. 当前 turn 产出已达预算的 `90%`（`COMPLETION_THRESHOLD`）— L64
 4. **收益递减**：已连续自动续接 `>= 3` 次，且最近两次 delta 均 `< 500 tokens` — L59-L62
 
 **继续条件**（返回 `action: 'continue'`）：
-- 未达 90% 且非收益递减 — L64-L75
-- 返回的 nudgeMessage 通过 `getBudgetContinuationMessage` 格式化
+- 未达 90% 且非收益递减 — L70-L75
+- 返回的 `nudgeMessage` 通过 `getBudgetContinuationMessage` 格式化
 
 **完成事件**（停止时附带 `completionEvent`）：
 - 包含 `continuationCount`、`pct`、`turnTokens`、`budget`、`diminishingReturns`、`durationMs` — L78-L89
@@ -202,7 +202,7 @@ if (feature('TOKEN_BUDGET')) {
 
 ### API task_budget 区分
 
-`query.ts` L193–L197 和 L699–L703 还存在一个**独立的** `taskBudget` 字段（`output_config.task_budget`），属于 Anthropic API Beta 功能（`task-budgets-2026-03-13`），用于让 API 端侧感知剩余预算。该字段与 `+500k` 的 token budget auto-continue 是不同层面的机制，名称相近但职责不重叠。`taskBudget` 通过 `configureTaskBudgetParams` 注入到 API 请求中（见 `src/services/api/claude.ts` L455–L483）。
+`query.ts` L193–L197 和 L699–L703 还存在一个**独立的** `taskBudget` 字段（`output_config.task_budget`），属于 Anthropic API Beta 功能（`task-budgets-2026-03-13`），用于让 API 端侧感知剩余预算。该字段与 `+500k` 的 token budget auto-continue 是不同层面的机制：前者是向 API 声明剩余预算的调用参数，后者是本地循环层的自动续接策略。`taskBudget` 通过 `configureTaskBudgetParams` 注入到 API 请求中（见 `src/services/api/claude.ts` L455–L483）。
 
 ---
 
@@ -311,7 +311,7 @@ if (feature('TOKEN_BUDGET')) {
   : []),
 ```
 
-**关键设计决策**：这段 prompt 被**无条件缓存**（不随 `getCurrentTurnTokenBudget()` 的变化而 toggle），因为 `"When the user specifies..."` 的措辞在没有预算时是空操作。若根据预算有无动态开关，会导致每次翻转产生约 20K token 的 cache miss。
+**关键设计决策**：这段 prompt 被**无条件缓存**（不随 `getCurrentTurnTokenBudget()` 的变化而 toggle）。原因是 `"When the user specifies..."` 的措辞在没有预算时近似空操作；动态开关反而会在每次翻转时产生约 20K token 的 cache miss。
 
 ---
 
@@ -348,11 +348,11 @@ function getOutputTokenUsageAttachment(): Attachment[] {
 
 | 决策 | 说明 |
 |------|------|
-| **90% 阈值** | `COMPLETION_THRESHOLD = 0.9`，避免最后一轮 nudge 导致远超预算的 token 爆发 |
-| **收益递减保护** | 连续 3 轮续接且每轮 `< 500 tokens` 时提前终止，防止模型"空转" |
+| **90% 阈值** | `COMPLETION_THRESHOLD = 0.9`，降低最后一轮 nudge 导致远超预算的风险 |
+| **收益递减保护** | 连续 3 轮续接且每轮 `< 500 tokens` 时提前终止，防止模型空转消耗 token |
 | **子 agent 豁免** | `agentId` 存在时直接跳过预算检查，避免 `AgentTool` 内部子任务重复触发续接 |
-| **无条件缓存提示** | `token_budget` 系统提示始终注入，防止 cache miss |
-| **用户取消清预算** | 按 Escape 取消时调用 `snapshotOutputTokensForTurn(null)`，防止残留预算触发续接 |
+| **无条件缓存提示** | `token_budget` 系统提示始终注入，避免动态开关造成的 cache miss |
+| **用户取消清预算** | 按 Escape 取消时调用 `snapshotOutputTokensForTurn(null)`，防止残留预算触发不必要的续接 |
 
 ---
 

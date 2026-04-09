@@ -183,7 +183,7 @@ fn validate_workspace_boundary(resolved: &Path, workspace_root: &Path) -> io::Re
 }
 ```
 
-结合 [`is_symlink_escape`](/rust/crates/runtime/src/file_ops.rs#L610-L620) 可以进一步检测通过符号链接指向工作区外部的路径：
+结合 [`is_symlink_escape`](/rust/crates/runtime/src/file_ops.rs#L610-L620) 可以进一步检测通过符号链接指向工作区外部的路径。需要注意的是，`starts_with` 检查要求路径和根目录都经过 `canonicalize()`；如果 `workspace_root` 本身不存在或不可规范化，检查可能产生误报或漏报：
 
 ```rust
 pub fn is_symlink_escape(path: &Path, workspace_root: &Path) -> io::Result<bool> {
@@ -253,7 +253,7 @@ pub fn edit_file(
 3. `contains` / `replacen` → 内存中计算更新后文本
 4. `fs::write(&absolute_path, &updated)?` → 一次性覆盖写回磁盘
 
-虽然这里没有显式的文件锁，但整个操作在单线程同步上下文中完成，因此具备了**近似原子性**：在第 3 步和第 4 步之间不会插入其他进程写操作。
+虽然这里没有显式的文件锁，但整个操作在单线程同步上下文中完成，因此具备了**近似原子性**：在第 3 步和第 4 步之间不会插入其他进程写操作。不过需要注意的是，这并不能防御同一文件被外部进程并发修改——`edit_file` 本身不持有文件锁。
 
 `EditFileOutput` 还附带了一个 `structured_patch` 字段，由 [`make_patch`](/rust/crates/runtime/src/file_ops.rs#L510-L526) 生成：
 
@@ -384,7 +384,7 @@ let regex = RegexBuilder::new(&input.pattern)
 
 ### 五级权限模型
 
-定义于 [`runtime/src/permissions.rs#L9-L16`](/rust/crates/runtime/src/permissions.rs#L9-L16)：
+定义于 [`runtime/src/permissions.rs#L9-L16`](/rust/crates/runtime/src/permissions.rs#L9-L15)：
 
 ```rust
 pub enum PermissionMode {
@@ -440,6 +440,10 @@ policy.authorize("bash", r#"{"command":"rm -rf /tmp/x"}"#, None)
 - `bash.rs` 防的是 **AI 通过 shell 命令逃逸到宿主系统**
 
 两者共同构成了 claw-code 的本地安全边界。
+
+### 审视角：边界检查的符号链接盲区
+
+`is_symlink_escape` 和 `validate_workspace_boundary` 的组合在大多数情况下有效，但存在一个已知盲区：如果攻击者（或模型）在工作区内创建一个指向工作区外的符号链接，然后通过 `read_file` 读取该链接的目标文件，`canonicalize()` 会解析到真实路径。在 `read_file_in_workspace` 中，如果传入的路径本身在工作区内，即使它是指向外部的符号链接，当前实现也可能放行，因为检查的是传入路径而非 `canonicalize` 后的路径。这是一个 TOCTOU 类的设计细节，需要在使用高敏感数据的工作站环境中额外注意。
 
 ---
 

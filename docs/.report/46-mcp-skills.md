@@ -3,7 +3,7 @@
 ## 1. 功能概述
 
 **Feature Flag**: `FEATURE_MCP_SKILLS=1`  
-**状态**: 配置门控完整，核心 fetcher 为 stub（`src/skills/mcpSkills.ts`），其余集成链路已贯通。
+**状态**: 配置门控完整，核心 fetcher 为 stub（`packages/ccb/src/skills/mcpSkills.ts`），其余集成链路已贯通。
 
 `MCP_SKILLS` 尝试将 MCP 服务器暴露的 `skill://` URI 方案资源发现并转换为 Claude Code 内部可调用的 `prompt` 类型 `Command` 对象。 MCP 服务器通常同时暴露 tools、prompts 和 resources；当启用此特性后，符合 `skill://` 方案的资源被识别为技能，并进入模型的 SkillTool 可用列表。
 
@@ -57,7 +57,7 @@ useManageMCPConnections.ts
 
 ## 3. 源码锚点逐层解析
 
-### 3.1 技能命令过滤 — `src/commands.ts`
+### 3.1 技能命令过滤 — `packages/ccb/src/commands.ts`
 
 #### `getMcpSkillCommands()` — `#L549-561`
 
@@ -84,7 +84,7 @@ export function getMcpSkillCommands(
 
 `getSkillToolCommands` 返回本地及 MCP 所有可展示给模型的 prompt 命令。在 `SkillTool.ts` 中，通过 `getAllCommands` 显式把 `AppState.mcp.commands.filter(cmd => cmd.type === 'prompt' && cmd.loadedFrom === 'mcp')` 与 `getCommands(getProjectRoot())` 做 `uniqBy` 合并（见 `#L81-94`）。这意味着 MCP skills 不是通过 `getCommands()` 路径混入，而是在 SkillTool 调用侧被显式拼接。
 
-### 3.2 MCP Client 连接层 — `src/services/mcp/client.ts`
+### 3.2 MCP Client 连接层 — `packages/ccb/src/services/mcp/client.ts`
 
 #### 条件 require — `#L117-121`
 
@@ -98,7 +98,7 @@ const fetchMcpSkillsForClient = feature('MCP_SKILLS')
 
 当 feature 关闭时，模块不会被加载，运行时无额外开销。
 
-#### 连接建立时获取 skills — `#L2168-2190`
+#### 连接建立时获取 skills — `#L2177-2190`
 
 ```ts
 const supportsResources = !!client.capabilities?.resources
@@ -131,11 +131,11 @@ if (feature('MCP_SKILLS')) {
 
 两处均执行：一处为连接 `onClose` 回调中的清理，一处为 `disconnectMcpServer(name)`。保证重新连接时不会读到旧会话的 stale 数据。
 
-#### 刷新 prompts 时并行获取 skills — `#L2346-2358`
+#### 刷新 prompts 时并行获取 skills — `#L2351-2358`
 
 与连接建立时逻辑相同，在 reconnect pipeline 中再次并联获取 skills，确保重连后 commands 列表完整。
 
-### 3.3 实时刷新 Hook — `src/services/mcp/useManageMCPConnections.ts`
+### 3.3 实时刷新 Hook — `packages/ccb/src/services/mcp/useManageMCPConnections.ts`
 
 #### 条件 require — `#L22-26`
 
@@ -189,7 +189,7 @@ if (feature('MCP_SKILLS')) {
 
 resources 变化时skills必须强制刷新（因为 skill:// 资源可能增删）。同时刷新 prompts cache 以避免并发 `prompts/list_changed` 通知导致的数据覆盖问题。
 
-### 3.4 Stub 实现 — `src/skills/mcpSkills.ts`
+### 3.4 Stub 实现 — `packages/ccb/src/skills/mcpSkills.ts`
 
 ```ts
 // src/skills/mcpSkills.ts
@@ -204,7 +204,9 @@ export const fetchMcpSkillsForClient: ((...args: unknown[]) => Promise<Command[]
 2. 返回 `Promise<Command[]>`；
 3. 挂载一个 `.cache: Map<string, unknown>` 属性供外部清理。
 
-### 3.5 循环依赖规避 — `src/skills/mcpSkillBuilders.ts`
+> **实现风险**：`fetchMcpSkillsForClient` 仅返回空数组，意味着 `skill://` URI 到 `Command` 的完整转换链路尚未实现。开启 `FEATURE_MCP_SKILLS=1` 后，模型不会从 MCP 服务器发现任何技能，因为所有 plumbing 都通但核心转换器为空。实现者需要补充：resource 遍历过滤、`resource.read()` 获取 SKILL.md 内容、frontmatter 解析、`createSkillCommand` 调用并设置 `loadedFrom === 'mcp'`。
+
+### 3.5 循环依赖规避 — `packages/ccb/src/skills/mcpSkillBuilders.ts`
 
 ```ts
 // src/skills/mcpSkillBuilders.ts
@@ -239,7 +241,7 @@ registerMCPSkillBuilders({
 
 注释详细说明了为什么不能使用动态 import(variable)（Bun bundling 后会在 `/$bunfs/root/…` 路径下解析失败），以及为什么不能用字面量动态 import（`dependency-cruiser` 会追踪并导致大量 cycle violation）。
 
-### 3.6 技能构建原语 — `src/skills/loadSkillsDir.ts`
+### 3.6 技能构建原语 — `packages/ccb/src/skills/loadSkillsDir.ts`
 
 #### `parseSkillFrontmatterFields()` — `#L183-259`
 
@@ -298,8 +300,8 @@ FEATURE_MCP_SKILLS=1 bun run dev
 
 | 文件 | 当前状态 | 需要实现 |
 |------|---------|----------|
-| `src/skills/mcpSkills.ts` | Stub | `fetchMcpSkillsForClient(client)`：从 MCP resources 列表筛选 `skill://` URI，读取内容，调用 `getMCPSkillBuilders()` 构建 `Command[]` |
-| `src/skills/mcpSkillBuilders.ts` | 框架完整 | 无需修改，已提供 `createSkillCommand` / `parseSkillFrontmatterFields` 的运行时注册机制 |
+| `packages/ccb/src/skills/mcpSkills.ts` | Stub | `fetchMcpSkillsForClient(client)`：从 MCP resources 列表筛选 `skill://` URI，读取内容，调用 `getMCPSkillBuilders()` 构建 `Command[]` |
+| `packages/ccb/src/skills/mcpSkillBuilders.ts` | 框架完整 | 无需修改，已提供 `createSkillCommand` / `parseSkillFrontmatterFields` 的运行时注册机制 |
 
 ## 6. 关键设计决策总结
 
@@ -313,13 +315,13 @@ FEATURE_MCP_SKILLS=1 bun run dev
 
 | 文件 | 职责 | 关键行号 |
 |------|------|----------|
-| `src/commands.ts` | 技能命令过滤 | `#L549-561`, `#L565-610` |
-| `src/tools/SkillTool/SkillTool.ts` | SkillTool 侧合并本地 + MCP 技能 | `#L81-94` |
-| `src/services/mcp/client.ts` | 连接建立、重连、缓存清除、skills 获取 | `#L117-121`, `#L1390-1396`, `#L1668-1673`, `#L2168-2190`, `#L2346-2358` |
-| `src/services/mcp/useManageMCPConnections.ts` | 实时刷新（list_changed 通知） | `#L22-26`, `#L682-694`, `#L718-738` |
-| `src/skills/mcpSkills.ts` | 核心转换逻辑（stub） | `#L1-7` |
-| `src/skills/mcpSkillBuilders.ts` | 循环依赖规避与技能构建器注册 | `#L1-44` |
-| `src/skills/loadSkillsDir.ts` | `createSkillCommand` / `parseSkillFrontmatterFields` 定义与注册 | `#L183-259`, `#L270-404`, `#L1083-1086` |
+| `packages/ccb/src/commands.ts` | 技能命令过滤 | `#L549-561`, `#L565-610` |
+| `packages/ccb/src/tools/SkillTool/SkillTool.ts` | SkillTool 侧合并本地 + MCP 技能 | `#L81-94` |
+| `packages/ccb/src/services/mcp/client.ts` | 连接建立、重连、缓存清除、skills 获取 | `#L117-121`, `#L1390-1396`, `#L1668-1673`, `#L2177-2190`, `#L2351-2358` |
+| `packages/ccb/src/services/mcp/useManageMCPConnections.ts` | 实时刷新（list_changed 通知） | `#L22-26`, `#L682-694`, `#L718-738` |
+| `packages/ccb/src/skills/mcpSkills.ts` | 核心转换逻辑（stub） | `#L1-7` |
+| `packages/ccb/src/skills/mcpSkillBuilders.ts` | 循环依赖规避与技能构建器注册 | `#L1-44` |
+| `packages/ccb/src/skills/loadSkillsDir.ts` | `createSkillCommand` / `parseSkillFrontmatterFields` 定义与注册 | `#L183-259`, `#L270-404`, `#L1083-1086` |
 
 ---
 

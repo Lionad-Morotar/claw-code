@@ -302,9 +302,18 @@ pub fn check_file_write(&self, path: &str, workspace_root: &str) -> EnforcementR
             if is_within_workspace(path, workspace_root) {
                 EnforcementResult::Allowed
             } else {
-                EnforcementResult::Denied { ... }
+                EnforcementResult::Denied {
+                    tool: "write_file".to_owned(),
+                    active_mode: mode.as_str().to_owned(),
+                    required_mode: PermissionMode::DangerFullAccess.as_str().to_owned(),
+                    reason: format!(
+                        "path '{}' is outside workspace root '{}'",
+                        path, workspace_root
+                    ),
+                }
             }
         }
+        // Allow and DangerFullAccess permit all writes
         PermissionMode::Allow | PermissionMode::DangerFullAccess => EnforcementResult::Allowed,
         PermissionMode::Prompt => EnforcementResult::Denied {
             tool: "write_file".to_owned(),
@@ -396,22 +405,54 @@ AI 使用全部工具执行计划
 ```rust
 #[test]
 fn enter_and_exit_plan_mode_round_trip_existing_local_override() {
-    // 测试场景：工作树原本已有本地覆盖设置
-    // 验证进入和退出后能正确恢复原有设置
+    // ... (环境准备) ...
     let enter = execute_tool("EnterPlanMode", &json!({})).expect("enter plan mode");
-    // 验证状态文件已创建
-    let state = read_plan_mode_state(&state_path).expect("plan mode state");
+    let enter_output: serde_json::Value = serde_json::from_str(&enter).expect("json");
+    assert_eq!(enter_output["changed"], true);
+    assert_eq!(enter_output["managed"], true);
+    assert_eq!(enter_output["previousLocalMode"], "acceptEdits");
+    assert_eq!(enter_output["currentLocalMode"], "plan");
+
+    let local_settings = std::fs::read_to_string(cwd.join(".claw").join("settings.local.json"))
+        .expect("local settings after enter");
+    assert!(local_settings.contains(r#""defaultMode": "plan""#));
+    let state =
+        std::fs::read_to_string(cwd.join(".claw").join("tool-state").join("plan-mode.json"))
+            .expect("plan mode state");
+    assert!(state.contains(r#""hadLocalOverride": true"#));
+    assert!(state.contains(r#""previousLocalMode": "acceptEdits""#));
+
     let exit = execute_tool("ExitPlanMode", &json!({})).expect("exit plan mode");
-    // 验证设置已恢复
+    let exit_output: serde_json::Value = serde_json::from_str(&exit).expect("json");
+    assert_eq!(exit_output["changed"], true);
+    assert_eq!(exit_output["managed"], false);
+    assert_eq!(exit_output["currentLocalMode"], "acceptEdits");
+    // ... (清理) ...
 }
 
 #[test]
 fn exit_plan_mode_clears_override_when_enter_created_it_from_empty_local_state() {
-    // 测试场景：工作树原本没有本地覆盖设置
-    // 验证退出后设置被完全清除（而非保留空值）
+    // ... (环境准备) ...
     let enter = execute_tool("EnterPlanMode", &json!({})).expect("enter plan mode");
+    let enter_output: serde_json::Value = serde_json::from_str(&enter).expect("json");
+    assert_eq!(enter_output["previousLocalMode"], serde_json::Value::Null);
+    assert_eq!(enter_output["currentLocalMode"], "plan");
+
     let exit = execute_tool("ExitPlanMode", &json!({})).expect("exit plan mode");
-    // 验证设置已被移除
+    let exit_output: serde_json::Value = serde_json::from_str(&exit).expect("json");
+    assert_eq!(exit_output["changed"], true);
+    assert_eq!(exit_output["currentLocalMode"], serde_json::Value::Null);
+
+    let local_settings = std::fs::read_to_string(cwd.join(".claw").join("settings.local.json"))
+        .expect("local settings after exit");
+    let local_settings_json: serde_json::Value =
+        serde_json::from_str(&local_settings).expect("valid settings json");
+    assert_eq!(
+        local_settings_json.get("permissions"),
+        None,
+        "permissions override should be removed on exit"
+    );
+    // ... (清理) ...
 }
 ```
 
@@ -433,7 +474,7 @@ fn exit_plan_mode_clears_override_when_enter_created_it_from_empty_local_state()
 | [`/rust/crates/runtime/src/config.rs`](/rust/crates/runtime/src/config.rs) | `"plan"` 模式解析为 `ReadOnly` | L851-L862 |
 | [`/rust/crates/runtime/src/permission_enforcer.rs`](/rust/crates/runtime/src/permission_enforcer.rs) | 文件写入检查 | L74-L108 |
 | [`/rust/crates/runtime/src/permission_enforcer.rs`](/rust/crates/runtime/src/permission_enforcer.rs) | Bash 命令检查 | L111-L139 |
-| [`/rust/crates/runtime/src/permissions.rs`](/rust/crates/runtime/src/permissions.rs) | `PermissionMode` 枚举定义 | L9-L16 |
+| [`/rust/crates/runtime/src/permissions.rs`](/rust/crates/runtime/src/permissions.rs) | `PermissionMode` 枚举定义 | L9-L15 |
 
 ---
 

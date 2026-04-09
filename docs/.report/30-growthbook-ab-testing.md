@@ -20,11 +20,11 @@
 
 ## 集成架构
 
-GrowthBook 的完整实现位于 `packages/ccb/src/services/analytics/growthbook.ts`（1156 行），工作流程如下：
+GrowthBook 的完整实现位于 `packages/ccb/src/services/analytics/growthbook.ts`（约 1256 行），工作流程如下：
 
 ### 1. 启动时获取远程配置
 
-CLI 启动时，GrowthBook SDK 通过 Anthropic API 端点获取当前的功能配置和实验分组规则。使用 `remoteEval: true` 模式——**在服务端计算分组，客户端只拿结果**。
+CLI 启动时，GrowthBook SDK 通过 Anthropic API 端点获取当前的功能配置和实验分组规则。使用 `remoteEval: true` 模式——**在服务端计算分组，客户端只拿结果**。这种方式既保护了实验算法的商业机密，又减少了客户端的计算负担。
 
 参见 `growthbook.ts#L601-L612`：
 
@@ -120,7 +120,7 @@ export type GrowthBookUserAttributes = {
 
 ### 典型运行时 flag 示例
 
-全部定义在 `growthbook.ts#L380-L446` 的 `LOCAL_GATE_DEFAULTS` 常量中（本地兜底默认值）：
+全部定义在 `growthbook.ts#L434-L479` 的 `LOCAL_GATE_DEFAULTS` 常量中（本地兜底默认值）：
 
 | Flag | 语义 | 本地默认值 |
 |------|------|------------|
@@ -251,6 +251,10 @@ GrowthBook 集成了完整的实验曝光追踪：
 - 首次 `getFeatureValue*` 或 `checkGate*` 访问该 feature 时，调用 `logExposureForFeature()`（`growthbook.ts#L287-L300`），通过 `logGrowthBookExperimentTo1P()` 以 protobuf 格式上报 `GrowthbookExperimentEvent`。
 - `variation_id` 语义：0 = 对照组，1+ = 实验组。
 - `loggedExposures` 和 `pendingExposures` 两套机制分别实现**会话内去重**和**初始化前暂存**。
+
+### 为什么需要两套曝光机制？
+
+`pendingExposures` 解决"在 GrowthBook 初始化完成前就有代码查询 flag"的竞态问题。这些早期查询会被暂存，待初始化完成后再统一补报。`loggedExposures` 则是一个 Set，确保同一个 feature 在同一次会话中只上报一次曝光，避免重复计数。
 
 ---
 

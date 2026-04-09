@@ -14,7 +14,7 @@ EXPERIMENTAL_SKILL_SEARCH 是一个实验性功能，旨在为模型提供根据
 1. **Turn-0 发现**：用户首次输入时，分析输入内容并推荐相关技能
 2. **Inter-turn 发现**：在对话过程中，检测到写操作拐点时预取相关技能
 
-当前实现状态：**8 个 Stub 模块 + 完整布线**。所有核心模块均已占位并完成了与主流程的集成，但具体实现逻辑大多为 Stub（空操作）。
+当前实现状态：**8 个 Stub 模块 + 完整布线**。这意味着虽然编译与启动路径已打通，但任何实际语义搜索能力均缺失；若在产品中误开启此 flag，模型将调用一个空名称工具或收到空附件，导致困惑循环。所有核心模块均已占位并完成了与主流程的集成，但具体实现逻辑大多为 Stub（空操作）。
 
 ---
 
@@ -105,7 +105,7 @@ SkillTool 是执行技能的核心工具，已完整集成 EXPERIMENTAL_SKILL_SE
 
 #### 3.4.1 动态模块加载
 
-**源码**: `packages/ccb/src/tools/SkillTool/SkillTool.ts#L107-L116`
+**源码**: `packages/ccb/src/tools/SkillTool/SkillTool.ts#L108-L117`
 ```typescript
 /* eslint-disable @typescript-eslint/no-require-imports */
 const remoteSkillModules = feature('EXPERIMENTAL_SKILL_SEARCH')
@@ -121,7 +121,7 @@ const remoteSkillModules = feature('EXPERIMENTAL_SKILL_SEARCH')
 
 #### 3.4.2 远程规范技能验证
 
-**源码**: `packages/ccb/src/tools/SkillTool/SkillTool.ts#L378-L397`
+**源码**: `packages/ccb/src/tools/SkillTool/SkillTool.ts#L382-L398`
 ```typescript
 if (
   feature('EXPERIMENTAL_SKILL_SEARCH') &&
@@ -151,7 +151,7 @@ if (
 
 技能调用时会记录 `was_discovered` 字段，用于追踪技能是否通过发现机制被找到。
 
-**源码**: `packages/ccb/src/tools/SkillTool/SkillTool.ts#L139-L146`
+**源码**: `packages/ccb/src/tools/SkillTool/SkillTool.ts#L139-L142`
 ```typescript
 const wasDiscoveredField =
   feature('EXPERIMENTAL_SKILL_SEARCH') &&
@@ -169,7 +169,7 @@ const wasDiscoveredField =
 
 在用户首次输入时，`processUserInputAttachments` 会调用 `getTurnZeroSkillDiscovery`。
 
-**源码**: `packages/ccb/src/utils/attachments.ts#L801-L812`
+**源码**: `packages/ccb/src/utils/attachments.ts#L792-L812`
 ```typescript
 ...(feature('EXPERIMENTAL_SKILL_SEARCH') &&
 skillSearchModules &&
@@ -218,7 +218,7 @@ const pendingSkillPrefetch = skillPrefetch?.startSkillDiscoveryPrefetch(
 
 预取在模型流式响应和工具执行时并发运行，在工具结果收集阶段等待。
 
-**源码**: `packages/ccb/src/query.ts#L1620-L1631`
+**源码**: `packages/ccb/src/query.ts#L1620-L1626`
 ```typescript
 // Inject prefetched skill discovery. collectSkillDiscoveryPrefetch emits
 // hidden_by_main_turn — true when the prefetch resolved before this point
@@ -379,13 +379,13 @@ export const isSkillSearchEnabled: () => boolean = () => false;
 | `packages/ccb/src/services/skillSearch/telemetry.ts` | L2-L11 | 遥测日志 (Stub) |
 | `packages/ccb/src/services/skillSearch/localSearch.ts` | L1-L2 | 本地搜索 (Stub) |
 | `packages/ccb/src/services/skillSearch/featureCheck.ts` | L2-L3 | 功能检查 (Stub) |
-| `packages/ccb/src/tools/SkillTool/SkillTool.ts` | L107-L116 | 动态模块加载 |
-| `packages/ccb/src/tools/SkillTool/SkillTool.ts` | L139-L146 | was_discovered 遥测 |
-| `packages/ccb/src/tools/SkillTool/SkillTool.ts` | L378-L397 | 远程规范技能验证 |
+| `packages/ccb/src/tools/SkillTool/SkillTool.ts` | L108-L117 | 动态模块加载 |
+| `packages/ccb/src/tools/SkillTool/SkillTool.ts` | L139-L142 | was_discovered 遥测 |
+| `packages/ccb/src/tools/SkillTool/SkillTool.ts` | L382-L398 | 远程规范技能验证 |
 | `packages/ccb/src/tools/SkillTool/SkillTool.ts` | L493-L505 | 远程技能自动授权 |
 | `packages/ccb/src/tools/SkillTool/SkillTool.ts` | L606-L614 | 远程技能执行路由 |
 | `packages/ccb/src/tools/SkillTool/SkillTool.ts` | L662-L669 | was_discovered 字段注入 |
-| `packages/ccb/src/tools/SkillTool/SkillTool.ts` | L970-L1109 | executeRemoteSkill 实现 |
+| `packages/ccb/src/tools/SkillTool/SkillTool.ts` | L968-L1109 | executeRemoteSkill 实现 |
 | `packages/ccb/src/utils/attachments.ts` | L95-L102 | skillSearchModules 条件加载 |
 | `packages/ccb/src/utils/attachments.ts` | L801-L812 | Turn-0 技能发现 |
 | `packages/ccb/src/utils/attachments.ts` | L2693-L2698 | Skill Listing 过滤 |

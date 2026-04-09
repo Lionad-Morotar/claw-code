@@ -79,140 +79,56 @@
 
 ---
 
-## claw-code 中的门禁实现映射
+## claw-code 中的能力管控映射
 
-`claw-code` 作为 Rust 重写版本，虽然没有直接复制原始 TypeScript 代码库的三层门禁系统，但在工具系统和服务架构中保留了类似的影子。
+`claw-code` 作为 Rust 重写版本，没有直接复制 TypeScript 代码库的三层门禁系统。它的设计哲学是**"单一构建产物，通过运行时权限策略和局部能力白名单实现精细化控制"**，而不是通过构建时宏或身份常量拆分版本。
 
-### TodoWrite 工具的门禁设计
+### 1. 权限策略 = 运行时的功能边界
 
-在 `claw-code` 的工具定义中，`TodoWrite` 工具的状态枚举体现了门禁控制的思想：
+Rust 实现中不存在 `feature()` 宏或 `USER_TYPE` 门控。功能开放与否由 `PermissionMode` + `PermissionPolicy` + `PermissionEnforcer` 三层运行时机制决定：
 
-```rust
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-enum TodoStatus {
-    Pending,      // pending: 任务未开始
-    InProgress,   // in_progress: 正在进行
-    Completed,    // completed: 任务已完成
-}
-```
+- **ReadOnly**：仅允许 `isReadOnly()` 工具（`read_file`、`grep`、`glob` 等）。
+- **WorkspaceWrite**：允许工作区内的文件写入和一般 bash。
+- **DangerFullAccess**：允许跨工作区写入和无限制 bash。
+- **Prompt**：每次权限升级都需要用户确认。
+- **Allow**：默认放行所有已知工具（但仍受 deny/ask 规则约束）。
 
-这一定义位于 [`rust/crates/tools/src/lib.rs#L2094-L2107`](/rust/crates/tools/src/lib.rs#L2094-L2107)：
+这套五级模型位于 [`runtime/src/permissions.rs#L9-L15`](/rust/crates/runtime/src/permissions.rs#L9-L15)。它替代了原始代码库中"构建时删代码"的思路，改为**运行时拒绝**，代码始终存在，但权限不足时会被拦截。
 
-```rust
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
-struct TodoItem {
-    content: String,
-    #[serde(rename = "activeForm")]
-    active_form: String,
-    status: TodoStatus,
-}
-```
+### 2. 子代理能力白名单 = 细粒度工具门控
 
-工具规格定义在 [`rust/crates/tools/src/lib.rs#L530-L555`](/rust/crates/tools/src/lib.rs#L530-L555) 附近，输入 schema 明确定义了状态枚举：
+虽然 Rust 代码没有 `feature('KAIROS')` 或 `feature('BUDDY')` 这样的编译时开关，但它通过 `allowed_tools_for_subagent` 实现了**按代理类型裁剪工具集**的动态门控。参见 [`tools/src/lib.rs#L3451-L3520`](/rust/crates/tools/src/lib.rs#L3451-L3520)：
 
-```rust
-ToolSpec {
-    name: "TodoWrite",
-    description: "Update the structured task list for the current session.",
-    input_schema: json!({
-        "type": "object",
-        "properties": {
-            "todos": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "content": { "type": "string" },
-                        "activeForm": { "type": "string" },
-                        "status": {
-                            "type": "string",
-                            "enum": ["pending", "in_progress", "completed"]
-                        }
-                    },
-                    "required": ["content", "activeForm", "status"],
-                }
-            }
-        },
-        "required": ["todos"],
-        "additionalProperties": false
-    }),
-    required_permission: PermissionMode::WorkspaceWrite,
-}
-```
+| subagent_type | 允许的工具 |
+|---|---|
+| `Explore` | `read_file`、`grep_search`、`WebFetch`、`WebSearch` 等（只读型） |
+| `Plan` | 在 Explore 基础上增加 `TodoWrite`、`SendUserMessage`（规划型） |
+| `Verification` | 在 Plan 基础上增加 `bash`、`PowerShell`（可执行验证） |
+| `general-purpose` | 全部标准工具（默认 worker） |
 
-执行实现位于 [`rust/crates/tools/src/lib.rs#L1987-L1989`](/rust/crates/tools/src/lib.rs#L1987-L1989)：
+`SubagentToolExecutor` 在运行时严格校验白名单，若工具不在列表中则直接拒绝。这实际上是原始代码库第二层（GrowthBook 运行时门控）和第三层（身份门控）的**功能等价物**——不是按用户身份删代码，而是按会话角色限制可用工具。
 
-```rust
-fn run_todo_write(input: TodoWriteInput) -> Result<String, String> {
-    to_pretty_json(execute_todo_write(input)?)
-}
-```
+### 3. 参考数据中的原始系统痕迹
 
-### Proactive 模式标记
+`claw-code` 在 `src/reference_data/` 目录中保留了原始 TypeScript 代码库的结构快照，包括：
 
-在工具的 schema 定义中，发现了与原始文档提到的 `PROACTIVE` 功能相关的标记。位于 [`rust/crates/tools/src/lib.rs#L645`](/rust/crates/tools/src/lib.rs#L645)：
+- **Buddy 系统**：[`src/reference_data/subsystems/buddy.json`](/src/reference_data/subsystems/buddy.json)
+- **GrowthBook 服务**：[`src/reference_data/subsystems/services.json#L18`](/src/reference_data/subsystems/services.json#L18)
+- **GrowthBook 实验事件类型**：[`src/reference_data/subsystems/types.json#L9`](/src/reference_data/subsystems/types.json#L9)
+- **Debug 模式命令**：[`src/reference_data/commands_snapshot.json`](/src/reference_data/commands_snapshot.json)
 
-```rust
-"status": {
-    "type": "string",
-    "enum": ["normal", "proactive"]
-}
-```
+这些 JSON 文件说明原始代码库中存在完整的三层门禁生态，但 `claw-code` 目前仅将其作为历史存档，并未在 Rust 运行时中复现对应的门控逻辑。
 
-这是一个 `normal` vs `proactive` 的模式切换，类似于原始代码库中的 `USER_TYPE` 门控——区分标准用户行为与主动/预测性模式。
+### 为什么 Rust 实现选择了不同的路径？
 
-### Buddy 系统
+| 设计目标 | 上游 TypeScript | claw-code Rust |
+|---|---|---|
+| 构建产物 | `ant` / `external` 双轨 | 单一通用二进制 |
+| 功能开关 | 编译时 DCE | 运行时权限策略 |
+| 实验发布 | GrowthBook 远程求值 | 尚不存在等价机制 |
+| 内部功能 | `USER_TYPE` 常量折叠 | 未引入身份分层 |
 
-原始文档提到的 Buddy 宠物系统在 `claw-code` 中以参考数据的形式存档。位于 [`src/reference_data/subsystems/buddy.json`](/src/reference_data/subsystems/buddy.json)：
-
-```json
-{
-  "archive_name": "buddy",
-  "package_name": "buddy",
-  "module_count": 6,
-  "sample_files": [
-    "buddy/CompanionSprite.tsx",
-    "buddy/companion.ts",
-    "buddy/prompt.ts",
-    "buddy/sprites.ts",
-    "buddy/types.ts",
-    "buddy/useBuddyNotification.tsx"
-  ]
-}
-```
-
-这表明 Buddy 是原始 TypeScript 代码库中的功能模块，`claw-code` 将其作为参考数据存档，但未在当前 Rust 实现中落地。
-
-### GrowthBook 集成点
-
-在参考数据的服务列表中，明确提到了 GrowthBook 分析服务。位于 [`src/reference_data/subsystems/services.json#L18`](/src/reference_data/subsystems/services.json#L18)：
-
-```json
-"services/analytics/growthbook.ts"
-```
-
-同时在事件类型定义中发现了 GrowthBook 实验事件。位于 [`src/reference_data/subsystems/types.json#L9`](/src/reference_data/subsystems/types.json#L9)：
-
-```json
-"types/generated/events_mono/growthbook/v1/growthbook_experiment_event.ts"
-```
-
-这证明原始代码库中存在完整的事件埋点系统，用于追踪 A/B 测试实验的效果。
-
-### Debug 模式命令
-
-在命令快照中发现了 `debug-tool-call` 命令。位于 [`src/reference_data/commands_snapshot.json`](/src/reference_data/commands_snapshot.json)：
-
-```json
-{
-  "name": "debug-tool-call",
-  "source_hint": "commands/debug-tool-call/index.js",
-  "responsibility": "Command module mirrored from archived TypeScript path commands/debug-tool-call/index.js"
-}
-```
-
-这与原始文档提到的"Debug 模式"相呼应——这类诊断工具通常只在 `ant` (内部) 构建中可用。
+`claw-code` 目前的定位是**技术探索与学习实现**。它用运行时权限系统替代了编译时门禁，用子代理白名单替代了按身份删代码。这种差异不是遗漏，而是**设计价值观的不同**——倾向于代码透明和统一构建，而非严格的版本分层。
 
 ---
 

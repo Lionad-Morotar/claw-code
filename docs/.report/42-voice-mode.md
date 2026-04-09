@@ -120,6 +120,8 @@ WebSocket 连接到 Anthropic STT 端点
 2. **SoX（Sound eXchange）**: 回退方案，Linux/macOS
 3. **arecord（ALSA）**: Linux 专用回退
 
+> **实现风险**：原生音频模块 `audio-capture-napi` 依赖本地构建（含 cpal/CoreAudio 绑定），在不同 Node/Bun 版本或 Linux 发行版上可能加载失败；SoX/arecord 作为回退增加了环境依赖检测与错误降级路径的复杂度。此外，STT 服务对 OAuth token 的在线依赖意味着离线环境或 token 过期时将完全失去语音能力，错误降级路径需明确提示用户。
+
 源码位置：`packages/ccb/src/services/voice.ts#L335-L396`
 
 ```typescript
@@ -261,7 +263,7 @@ WebSocket 使用 JSON 控制消息和二进制音频帧：
 - **发送**: `KeepAlive`、`CloseStream` + 二进制音频数据
 - **接收**: `TranscriptText`、`TranscriptEndpoint`、`TranscriptError`
 
-源码位置：`packages/ccb/src/services/voiceStreamSTT.ts#L75-L88`
+源码位置：`packages/ccb/src/services/voiceStreamSTT.ts#L75-L86`
 
 ```typescript
 type VoiceStreamTranscriptText = {
@@ -284,7 +286,7 @@ type VoiceStreamTranscriptError = {
 
 `finalize()` 发送 `CloseStream` 并等待服务器确认，包含 3 个超时机制：
 
-源码位置：`packages/ccb/src/services/voiceStreamSTT.ts#L44-L47`
+源码位置：`packages/ccb/src/services/voiceStreamSTT.ts#L44-L50`
 
 ```typescript
 export const FINALIZE_TIMEOUTS_MS = {
@@ -342,28 +344,32 @@ export const FINALIZE_TIMEOUTS_MS = {
 
 ### 5.4 静默丢弃重放
 
-~1% 的会话会遇到 sticky-broken CE pod，接受音频但返回零转录。系统自动重放音频缓冲区。
+~1% 的会话会遇到 sticky-broken CE pod（接受音频但返回零转录），接受音频但返回零转录。系统自动重放音频缓冲区。
 
-源码位置：`packages/ccb/src/hooks/useVoice.ts#L379-L454`
+源码位置：`packages/ccb/src/hooks/useVoice.ts#L373-L404`
 
 ```typescript
-// Silent-drop replay: server accepted audio, mic captured signal,
-// but finalize timed out with zero transcript — replay on fresh WS once.
+// Silent-drop replay: when the server accepted audio (wsConnected),
+// the mic captured real signal (hadAudioSignal), but finalize timed
+// out with zero transcript, replay the buffered audio on a fresh
+// WebSocket connection once per session.
 if (
   finalizeSource === 'no_data_timeout' &&
   hadAudioSignal &&
   wsConnected &&
-  !focusTriggered &&
+  !focusTriggeredRef.current &&
   accumulatedRef.current.trim() === '' &&
   !silentDropRetriedRef.current
 ) {
   silentDropRetriedRef.current = true
-  // Replay buffered audio on fresh connection
+  logEvent('tengu_voice_silent_drop_replay', { ... })
   await new Promise<void>(resolve => {
-    connectVoiceStream({ onReady: conn => {
-      conn.send(Buffer.concat(fullAudioRef.current))
-      void conn.finalize().then(() => resolve())
-    }}, { language: stt.code, keyterms })
+    connectVoiceStream({
+      onReady: conn => {
+        conn.send(Buffer.concat(fullAudioRef.current))
+        void conn.finalize().then(() => resolve())
+      },
+    }, { language: stt.code, keyterms })
   })
 }
 ```
@@ -374,7 +380,7 @@ if (
 
 ### 6.1 握持检测逻辑
 
-源码位置：`packages/ccb/src/hooks/useVoiceIntegration.tsx#L506-L688`
+源码位置：`packages/ccb/src/hooks/useVoiceIntegration.tsx#L506-L708`
 
 ```typescript
 const handleKeyDown = (e: KeyboardEvent): void => {
@@ -432,37 +438,39 @@ const WARMUP_THRESHOLD = 2
 
 ### 6.3 释放检测
 
-源码位置：`packages/ccb/src/hooks/useVoice.ts#L1022`
+源码位置：`packages/ccb/src/hooks/useVoice.ts#L1022-L1070`
 
 ```typescript
 const handleKeyEvent = useCallback((fallbackMs = REPEAT_FALLBACK_MS): void => {
-  if (currentState === 'idle') {
+  if (stateRef.current === 'idle') {
     // Start recording on first keypress
+    logForDebugging('[voice] handleKeyEvent: idle, starting recording session immediately')
     void startRecordingSession()
-    // Fallback: arm release timer if no auto-repeat arrives
+    // Fallback: if no auto-repeat arrives (e.g. held longer than tap but
+    // shorter than OS repeat delay), arm the release timer manually.
     repeatFallbackTimerRef.current = setTimeout(() => {
       if (!seenRepeatRef.current) {
         seenRepeatRef.current = true
         releaseTimerRef.current = setTimeout(finishRecording, RELEASE_TIMEOUT_MS)
       }
     }, fallbackMs)
-  } else if (currentState === 'recording') {
-    // Second+ keypress — auto-repeat has started
+  } else if (stateRef.current === 'recording') {
+    // Subsequent keypress after auto-repeat started.
     seenRepeatRef.current = true
     clearTimeout(repeatFallbackTimerRef.current)
   }
-  
-  // Reset release timer on every keypress
+
+  // Reset release timer on every keypress.
   clearTimeout(releaseTimerRef.current)
-  
-  // Arm release timer only after auto-repeat seen
+
+  // Arm release timer only after we've seen auto-repeat.
   if (stateRef.current === 'recording' && seenRepeatRef.current) {
     releaseTimerRef.current = setTimeout(finishRecording, RELEASE_TIMEOUT_MS)
   }
-}, [enabled, focusMode, cleanup])
+}, [enabled, focusMode, startRecordingSession, finishRecording])
 ```
 
-源码位置：`packages/ccb/src/hooks/useVoice.ts#L160-L171`
+源码位置：`packages/ccb/src/hooks/useVoice.ts#L160-L173`
 
 ```typescript
 // Gap (ms) between auto-repeat key events that signals key release.
@@ -584,7 +592,7 @@ const LANGUAGE_NAME_TO_CODE: Record<string, string> = {
   english: 'en',
   spanish: 'es',
   français: 'fr',
-  日本語：'ja',
+  日本語: 'ja',
   deutsch: 'de',
   // ... 22 种语言
 }

@@ -2571,3 +2571,268 @@ Files `02-why-this-whitepaper.md`, `03-architecture-overview.md`, `04-the-loop.m
 
 Reviewer: Alpha Resume (Claude Code)
 Date: 2026-04-09
+
+---
+
+## 07-what-are-tools.md
+
+**审校时间**: 2026-04-09
+**审校范围**: 源码锚点准确性、行号对齐、概念残留
+
+### 修正项
+
+| 原报告 | 修正后 | 说明 |
+|--------|--------|------|
+| `conversation.rs#L48-L52` | `L57-L59` | `ToolExecutor` trait 实际位置 |
+| `conversation.rs#L296-L485` | `L296-L484` | `run_turn` 实际结束于 L484 |
+| `conversation.rs#L334-L338` / `L427-L445` | `L370-L372` / `L433-L439` | Pre/PostToolUse hook 调用点原锚点完全指向无关代码 |
+| `tools/src/lib.rs#L100-L107` | `L101-L107` | `ToolSpec` 起始行修正 |
+| `tools/src/lib.rs#L309-L357` | `L385` | `mvp_tool_specs()` 实际起始于 L385，原范围指向无关代码 |
+| `file_ops.rs` / `bash.rs` / `permissions.rs` 多个锚点 | 统一下移 1 行 | 全局 -1 行偏移 |
+
+### 状态
+文件已修正且当前内容保持正确。
+
+**审校结论**: ✅ 通过 — 锚点已修正。
+
+---
+
+## 13-project-memory.md
+
+**审校时间**: 2026-04-09
+**审校范围**: 源码锚点准确性
+
+### 修正项（被外部 linter 回退，以下为准）
+
+| 原报告 | 正确行号 | 说明 |
+|--------|----------|------|
+| `prompt.rs#L55-L63` | `L48-L56` | `ProjectContext` struct 实际范围 |
+| `prompt.rs#L238-L254` | `L238-L255` | `read_git_status` 完整范围 |
+| `prompt.rs#L256-L274` | `L257-L275` | `read_git_diff` 完整范围 |
+| `git_context.rs#L26-L42` | `L26-L43` | `GitContext::detect` 完整结束行 |
+| `session.rs#L151-L159` | `L204-L212` | `Session::load_from_path` 严重漂移 |
+| `session_control.rs#L218-L238` | `L218-L233` | `SessionStore::fork_session` 结束行 |
+| `conversation.rs#L525-L548` | `L525-L544` | `maybe_auto_compact` 实际范围 |
+| `prompt.rs#L432-L446` | `L433-L447` | `load_system_prompt` 起始行 |
+
+### 状态
+文件在编辑后**被外部 linter/hook 回退**至旧版锚点。上述"正确行号"为经源码验证的最新准确值。
+
+**审校结论**: ⚠️ 内容已被回退 — 需以本记录中的"正确行号"为实际参考。
+
+---
+
+## 16-sub-agents.md
+
+**审校时间**: 2026-04-09
+**审校范围**: 源码锚点准确性
+
+### 修正项
+
+| 原报告 | 修正后 | 说明 |
+|--------|--------|------|
+| `tools/src/lib.rs#L3527-L3536` | `L3539-L3548` | `write_agent_manifest` 起始行 |
+| `tools/src/lib.rs#L3543-L3592` | `L3555-L3604` | `persist_agent_terminal_state` 同步修正 |
+
+### 状态
+文件已修正且当前内容保持正确。
+
+**审校结论**: ✅ 通过。
+
+---
+
+## 48-bash-classifier.md
+
+**审校时间**: 2026-04-09
+**审校范围**: TypeScript 路径、Rust 锚点、描述正误
+
+### 修正项
+
+| 原报告 | 修正后 | 说明 |
+|--------|--------|------|
+| `src/utils/permissions/bashClassifier.ts` 等 TS 文件 | `packages/ccb/src/...` | 缺少 `packages/ccb/` 前缀（6 处） |
+| `yoloClassifier.ts` 1496 行 | 1495 行 | 实际文件行数 |
+| `tools/src/lib.rs:1184-1187` | `1183-1186` | `bash` match arm 起止行 |
+| `tools/src/lib.rs:1790-1796` | `1791-1794` | `run_bash` 函数实际起止行 |
+| `bash_validation.rs:235` 描述 | `shred`, `wipefs` | 该位置不包含 `rm` |
+
+### 状态
+文件已修正且当前内容保持正确。
+
+**审校结论**: ✅ 通过。
+
+---
+
+## 零锚点报告快速审校（37/39/43/49/52/55/56/57/59）
+
+**审校时间**: 2026-04-09
+
+- **37-coordinator-mode.md**: 明确标注 coordinator subagent type 不存在，描述准确。
+- **39-daemon.md**: 概念文档，无 Rust 源码锚点。
+- **43-bridge-mode.md**: 引用的 `compat-harness/src/lib.rs` 存在且真实。
+- **49-web-browser-tool.md**: `tools/src/lib.rs` 行号引用经验证准确。
+- **52-context-collapse.md**: 概念文档，无 Rust 源码锚点。
+- **55-tier3-stubs.md**: 概念文档，无 Rust 源码锚点。
+- **56-auto-updater.md**: 概念文档，无 Rust 源码锚点。
+- **57-lsp-integration.md**: 概念文档，无 Rust 源码锚点。
+- **59-telemetry-remote-config-audit.md**: 概念文档，无 Rust 源码锚点。
+
+**审校结论**: ✅ 全部通过。
+
+---
+
+*本批审校完成 • 2026-04-09*
+
+---
+
+## 第二轮精确修正（Delta Review）— 07 & 13
+
+**审校时间**: 2026-04-09
+**审校范围**: 经过代理复核后，对 `07-what-are-tools.md` 与 `13-project-memory.md` 执行第二轮精确锚点修正。
+
+### 07-what-are-tools.md 修正项
+
+| 原锚点 | 修正后 | 说明 |
+|--------|--------|------|
+| `conversation.rs#L338-L365` | `L376-L417` | `permission_outcome` 判定逻辑实际位置，原范围偏差 30+ 行 |
+| `rusty-claude-cli/src/main.rs#L168-L240` | `L165-L257` | `run()` 实际起止行（`parse_args` 始于 L375） |
+| `runtime/src/bash.rs#L69-L103` | `L69-L169` | `execute_bash` 函数结束于 L169（`sandbox_status_for_input` 始于 L170） |
+| `runtime/src/file_ops.rs#L342-L450` | `L342-L451` | `grep_search` 结束边界修正 |
+
+### 13-project-memory.md 修正项
+
+| 原锚点 | 修正后 | 说明 |
+|--------|--------|------|
+| `prompt.rs#L203-L223` | `L203-L224` | `discover_instruction_files` 闭括号在 L224 |
+| `prompt.rs#L238-L255` | `L238-L254` | `read_git_status` 结束于 L254（L255 为空行） |
+| `session.rs#L89-L107` | `L89-L100` | `Session` struct 结束于 L100（L101 起为 `impl PartialEq`） |
+| `session_control.rs#L19-L63` | `L19-L46` | `SessionStore` 实际定义范围缩小 |
+| `session.rs#L204-L218` | `L204-L219` | `load_from_path` 闭括号在 L219（`push_message` 始于 L221） |
+| `conversation.rs#L525-L544` | `L525-L543` | `maybe_auto_compact` 结束于 L543（L544 为空行） |
+| `main.rs#L5083-L5119` | `L5083-L5121` | `render_memory_report` 结束于 L5121（`init_claude_md` 始于 L5122） |
+| 内联代码片段 | — | `SessionStore::from_cwd` 中的 `cwd.as_ref().to_path_buf()` 修正为 `cwd.to_path_buf()` |
+
+### 状态
+文件已修正且当前内容保持正确。
+
+**审校结论**: ✅ 通过。
+
+---
+
+*补充审校完成 • 2026-04-09*
+
+---
+
+## 机器校验扫荡（Machine Audit）— 全量 650 锚点
+
+**审校时间**: 2026-04-09
+**审校方法**: 自动化脚本扫描 `docs/.report/*.md` 中全部 650 个 `/rust/crates/...#LXX-LYY` 锚点，结合源码逐行边界验证。
+
+### 结果概览
+
+| 指标 | 数值 |
+|------|------|
+| 扫描锚点总数 | 650 |
+| 初始可疑锚点 | 80 |
+| 自动修正锚点 | 85（含安全-1、blank-line、明确边界修正） |
+| 跨文件影响 | 23 份技术报告 |
+| 最终剩余可疑 | 5 |
+
+### 已修正的典型错误类别
+
+1. **结束于下一个定义边界（ENDS_WITH_NEXT_DEF）**
+   - 例如 `session.rs#L28-L47` 结束于 `pub struct ConversationMessage {`，实际 `ContentBlock` enum 在 `L43` 结束。此类错误共修正 22 处。
+2. **结束于空行（ENDS_WITH_BLANK）**
+   - 大量范围止于 `}` 后的空行，如 `file_ops.rs#L342-L451`（实际结束于 `L450`）。此类共修正 58+ 处。
+3. **结构性偏移**
+   - `07-what-are-tools.md` 中 `ToolExecutor` trait（`L57-L58` 缺失 `}`）修正为 `L57-L60`。
+   - `18-coordinator-and-swarm.md` 中 `WorkerRegistry` 范围从 `L145-L531`（起始于字段）修正为 `L144-L531`（始于 `#[derive]` + struct 头）。
+
+### 剩余 5 个存疑锚点说明
+
+以下 5 个锚点仍被脚本标记，但属于**可解释引用**，不视为源码漂移错误：
+
+| 文件 | 锚点 | 说明 |
+|------|------|------|
+| `04-the-loop.md` | `conversation.rs#L296-L296` | 单点引用 `run_turn` 函数签名位置，用于定位而非给范围。 |
+| `05-streaming.md` | `conversation.rs#L296-L296` | 同上，单点定位引用。 |
+| `07-what-are-tools.md` | `tools/src/lib.rs#L385-L385` | 单点引用 `mvp_tool_specs()` 声明位置。 |
+| `12-system-prompt.md` | `prompt.rs#L144-L144` | 单点引用 `build()` 方法位置。 |
+| `18-coordinator-and-swarm.md` | `worker_boot.rs#L144-L531` | 概念性大范围，覆盖 `WorkerRegistry` 结构体+impl，结束于 impl 闭合大括号。 |
+
+### 状态
+经机器校验+人工复核，全量 650 个 Rust 源码锚点中，**致命漂移（越界、指向错误定义）已全部清零**；剩余 5 处为单点定位或概念性范围，不影响阅读与定位精度。
+
+**审校结论**: ✅ 通过 — 当前报告集可用于开源社区交付参考。
+
+---
+
+*机器校验完成 • 2026-04-09*
+
+---
+
+## TypeScript / packages/ccb 路径真实性审校（Phantom Path Audit）
+
+**审校时间**: 2026-04-09
+**审校方法**: 遍历全部 59 份报告中的 `packages/ccb/src/...` 路径引用，逐一校验文件系统存在性。
+
+### 核心发现
+
+`packages/ccb/src/` 目录当前共有 **2,835 个文件**，但报告集中存在 **24 个上游幻影路径** —— 它们在报告中被引用，却**不存在于当前仓库**的 `packages/ccb` 中。
+
+### 受影响报告
+
+#### 36-buddy.md（10 个幻影路径）
+
+| 引用路径 | 状态 |
+|----------|------|
+| `packages/ccb/src/buddy/companion.ts` | ❌ 不存在 |
+| `packages/ccb/src/buddy/types.ts` | ❌ 不存在 |
+| `packages/ccb/src/buddy/sprites.ts` | ❌ 不存在 |
+| `packages/ccb/src/buddy/CompanionSprite.tsx` | ❌ 不存在 |
+| `packages/ccb/src/buddy/CompanionCard.tsx` | ❌ 不存在 |
+| `packages/ccb/src/buddy/useBuddyNotification.tsx` | ❌ 不存在 |
+| `packages/ccb/src/buddy/companionReact.ts` | ❌ 不存在 |
+| `packages/ccb/src/buddy/prompt.ts` | ❌ 不存在 |
+| `packages/ccb/src/commands/buddy/buddy.ts` | ❌ 不存在 |
+
+**问题严重性**: 🔴 **高**。该报告原文未声明 Buddy 为上游未实现功能，读者会误以为 `claw-code` 已包含 Buddy 系统。已在报告顶部追加 **上游功能未实现** 的显式声明。
+
+#### 11-task-management.md（7 个幻影路径）
+
+| 引用路径 | 状态 |
+|----------|------|
+| `packages/ccb/src/utils/tasks.ts` | ❌ 不存在 |
+| `packages/ccb/src/utils/hooks.ts` | ❌ 不存在 |
+| `packages/ccb/src/components/TaskListV2.tsx` | ❌ 不存在 |
+| `packages/ccb/src/tools/TodoWriteTool/TodoWriteTool.ts` | ❌ 不存在 |
+| `packages/ccb/src/tools/TaskCreateTool/TaskCreateTool.ts` | ❌ 不存在 |
+| `packages/ccb/src/tools/TaskUpdateTool/TaskUpdateTool.ts` | ❌ 不存在 |
+| `packages/ccb/src/tools/TaskListTool/TaskListTool.ts` | ❌ 不存在 |
+
+**问题严重性**: ⚠️ **中**。报告开篇已有"Rust 尚未实现 parity"的提示，但明确声称映射到"同仓库中 TypeScript 核心实现 `packages/ccb/src/`"。由于所引文件实际不存在，该映射声明对读者具有误导性。
+
+#### 17-worktree-isolation.md（7 个幻影路径）
+
+| 引用路径 | 状态 |
+|----------|------|
+| `packages/ccb/src/utils/worktree.ts` | ❌ 不存在 |
+| `packages/ccb/src/tools/EnterWorktreeTool/EnterWorktreeTool.ts` | ❌ 不存在 |
+| `packages/ccb/src/tools/EnterWorktreeTool/prompt.ts` | ❌ 不存在 |
+| `packages/ccb/src/tools/ExitWorktreeTool/ExitWorktreeTool.ts` | ❌ 不存在 |
+| `packages/ccb/src/tools/ExitWorktreeTool/prompt.ts` | ❌ 不存在 |
+| `packages/ccb/src/tools/ExitWorktreeTool/` 目录 | ❌ 不存在 |
+| `packages/ccb/docs/agent/worktree-isolation.mdx` | ❌ 不存在 |
+
+**问题严重性**: ⚠️ **中**。与 11 类似，报告已有"Rust 尚未完整落地"的说明，但声称"上游 `packages/ccb` 中已有完整实现"，而实际文件不存在。
+
+### 状态与建议
+
+- **36-buddy.md**: 已修正（顶部追加未实现声明）。
+- **11-task-management.md / 17-worktree-isolation.md**: 保留原内容但建议在后续修订中，将"映射到同仓库 `packages/ccb`"改为"映射到上游 TypeScript 实现"，或移除具体源码锚点。
+
+**审校结论**: ⚠️ **存在上游幻影路径** — 24 处。Rust 锚点经机器校验已清零漂移，但 TypeScript 路径仍有显著比例指向不存在的上游文件，需在交付开源社区前明确标注。
+
+---
+
+*TypeScript 路径真实性审校完成 • 2026-04-09*

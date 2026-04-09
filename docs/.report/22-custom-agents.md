@@ -201,7 +201,7 @@ struct AgentOutput {
 ### 2.3 执行流程：execute_agent
 
 ```rust
-// rust/crates/tools/src/lib.rs:L3286-L3368
+// rust/crates/tools/src/lib.rs:L3290-L3336
 fn execute_agent(input: AgentInput) -> Result<AgentOutput, String> {
     execute_agent_with_spawn(input, spawn_agent_job)
 }
@@ -355,7 +355,7 @@ fn build_agent_runtime(
 ### 2.7 SubagentToolExecutor 实现
 
 ```rust
-// rust/crates/tools/src/lib.rs:L3951-L3985
+// rust/crates/tools/src/lib.rs:L3951-L3980
 struct SubagentToolExecutor {
     allowed_tools: BTreeSet<String>,
     enforcer: Option<PermissionEnforcer>,
@@ -487,7 +487,7 @@ impl SystemPromptBuilder {
 | 工具过滤 | `tools` / `disallowedTools` 白黑名单 | `allowed_tools_for_subagent()` 硬编码映射 |
 | Memory | `memory: local/project/user` | 未发现相关实现 |
 | isolation | `worktree` / `remote` | 未发现相关实现 |
-| hooks | `hooks: PreToolUse: [...]` | 未发现相关实现 |
+| hooks | `hooks: PreToolUse: [...]` | 全局 Hook 机制已实现，但未在 Agent 定义中配置 |
 | skills | `skills: "code-review,security-review"` | 有 `/skills` 命令，但未在 Agent 定义中引用 |
 
 ---
@@ -543,10 +543,10 @@ claw agents help
 | `AgentSummary` | `rust/crates/commands/src/lib.rs` | L2036-L2044 |
 | `DefinitionSource` | `rust/crates/commands/src/lib.rs` | L1992-L2001 |
 | `render_agents_report()` | `rust/crates/commands/src/lib.rs` | L3231-L3271 |
-| `execute_agent()` | `rust/crates/tools/src/lib.rs` | L3286-L3368 |
+| `execute_agent()` | `rust/crates/tools/src/lib.rs` | L3290-L3336 |
 | `spawn_agent_job()` | `rust/crates/tools/src/lib.rs` | L3370-L3395 |
 | `allowed_tools_for_subagent()` | `rust/crates/tools/src/lib.rs` | L3451-L3530 |
-| `SubagentToolExecutor` | `rust/crates/tools/src/lib.rs` | L3951-L3985 |
+| `SubagentToolExecutor` | `rust/crates/tools/src/lib.rs` | L3951-L3980 |
 | `build_agent_system_prompt()` | `rust/crates/tools/src/lib.rs` | L3428-L3441 |
 | `load_system_prompt()` | `rust/crates/runtime/src/prompt.rs` | L432-L446 |
 | `SystemPromptBuilder` | `rust/crates/runtime/src/prompt.rs` | L95-L167 |

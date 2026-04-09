@@ -6,7 +6,7 @@
 
 ## 摘要
 
-原始文档声称 Claude Code 支持通过环境变量 `SENTRY_DSN` 连接自托管或 SaaS Sentry，实现 CLI 运行时的错误捕获与上报。但**经对当前代码库全面检索，Sentry 相关实现不存在于任何源码路径中**。本文档同时记录原始文档描述的功能架构，并明确指出其与当前代码库的差异，方便后续维护者判断是“尚未移植”还是“已废弃”。
+原始文档声称 Claude Code 支持通过环境变量 `SENTRY_DSN` 连接自托管或 SaaS Sentry，实现 CLI 运行时的错误捕获与上报。但**经对当前代码库全面检索，Sentry 相关实现不存在于任何源码路径中**。本文档同时记录原始文档描述的功能架构，并明确指出其与当前代码库的差异，方便后续维护者判断是"尚未移植"还是"已废弃"。
 
 ---
 
@@ -96,7 +96,7 @@ bun run dev
 | 错误模式 | 原因 |
 |----------|------|
 | `ECONNREFUSED` / `ECONNRESET` / `ENOTFOUND` / `ETIMEDOUT` | 网络不可达，不可操作 |
-| `AbortError` / “The user aborted a request” | 用户主动取消 |
+| `AbortError` / "The user aborted a request" | 用户主动取消 |
 | `CancelError` | 交互式取消信号 |
 
 ### 3.4 其他配置参数
@@ -105,7 +105,7 @@ bun run dev
 - **面包屑上限**：`maxBreadcrumbs: 20`
 - **性能事务**：已关闭（`beforeSendTransaction` 返回 `null`），仅上报错误事件
 
-### 3.5  claimed API 列表
+### 3.5 Claimed API 列表
 
 | 函数 | 说明 |
 |------|------|
@@ -125,6 +125,7 @@ bun run dev
 - **运行时不一致**：原始文档示例使用 `bun run dev`（Node.js 生态），而当前仓库主运行时为 **Rust**（`cargo run -p rusty-claude-cli`）。
 - **实现缺失**：无论是 TypeScript 还是 Rust 侧，当前代码库均**没有** Sentry SDK 初始化、错误边界、日志 sink 或优雅退出的对应代码。
 - **依赖缺失**：`Cargo.toml` 中未引入任何 Rust Sentry crate（如 `sentry`）；不存在 `package.json`，说明 TypeScript 前端层也未保留。
+- **设计 rationale 差异**：原始代码库使用 React + Bun，需要 `SentryErrorBoundary` 捕获渲染错误；而 `claw-code` 是纯终端 CLI（TUI 极轻量），错误主要通过 `Result<T, E>` 链式传播到顶层后渲染。Rust 生态更倾向于使用 `tracing` + OpenTelemetry 实现可观测性，因此 Sentry 的缺失反映了项目在传统错误边界模型上的路径切换，而非简单的遗漏。
 
 ### 4.2 后续行动建议
 
@@ -133,10 +134,11 @@ bun run dev
    - 在 `main.rs` 的 `main()` 入口处根据 `SENTRY_DSN` env 初始化；
    - 在 panic hook 中调用 `sentry::capture_panic`；
    - 在 CLI 退出前调用 `sentry::close(timeout)`。
+   - 剥离文件路径与命令行参数中的敏感信息（`ANTHROPIC_API_KEY`、OAuth token 等）。
 3. **文档拆分**：若未来 Rust 实现落地，应新建对应于 Rust 代码路径的单页报告，替换本文档中基于 TypeScript 路径的引用。
 
 ---
 
 ## 5. 结论
 
-原始页面描述的 Sentry 错误上报配置在当前 claw-code 代码库中**没有对应实现**。原始文档中提到的所有文件路径（`src/utils/sentry.ts`、`src/components/SentryErrorBoundary.ts` 等）均不存在。本单元报告如实记录了该差异，并提供了后续决策建议。
+原始页面描述的 Sentry 错误上报配置在当前 `claw-code` 代码库中**没有对应实现**。原始文档中提到的所有文件路径（`src/utils/sentry.ts`、`src/components/SentryErrorBoundary.ts` 等）均不存在。本单元报告如实记录了该差异，并提供了后续决策建议。

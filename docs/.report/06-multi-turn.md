@@ -24,7 +24,7 @@
 - `system_prompt: Vec<String>` —— 每次 turn 重新注入的 system prompt
 - `hook_runner: HookRunner` —— 生命周期 hooks
 
-而真正持久化的消息历史存储在 [`runtime/src/session.rs#L89-L99`](/rust/crates/runtime/src/session.rs#L89-L99) 的 `Session` 结构体中：
+而真正持久化的消息历史存储在 [`runtime/src/session.rs#L88-L99`](/rust/crates/runtime/src/session.rs#L88-L99) 的 `Session` 结构体中：
 
 ```rust
 pub struct Session {
@@ -162,7 +162,7 @@ fn append_persisted_message(&self, message: &ConversationMessage) -> Result<(), 
 
 ### 源码映射：从 JSONL 恢复会话
 
-`Session::load_from_path()`（[`session.rs#L204-L219`](/rust/crates/runtime/src/session.rs#L204-L219)）支持两种格式：
+`Session::load_from_path()`（[`session.rs#L204-L219`](/rust/crates/runtime/src/session.rs#L204-L218)）支持两种格式：
 
 - 以 `"messages"` 为顶层键的完整 JSON 对象（旧格式兼容）
 - JSONL 格式：逐行按 `type` 字段解析，拼回 `Session`
@@ -208,7 +208,7 @@ pub struct UsageCostEstimate {
 }
 ```
 
-每个 API 响应中的 `usage` 字段在 `build_assistant_message()`（[`conversation.rs#L676-L714`](/rust/crates/runtime/src/conversation.rs#L676-L714)）被提取。随后 `run_turn` 通过 `self.usage_tracker.record(usage)` 累加到会话总量（[`conversation.rs#L342`](/rust/crates/runtime/src/conversation.rs#L342)）。
+每个 API 响应中的 `usage` 字段在 `build_assistant_message()`（[`conversation.rs#L676-L723`](/rust/crates/runtime/src/conversation.rs#L676-L723)）被提取。随后 `run_turn` 通过 `self.usage_tracker.record(usage)` 累加到会话总量（[`conversation.rs#L342`](/rust/crates/runtime/src/conversation.rs#L342)）。
 
 ### 源码映射：累计层 — `UsageTracker`
 
@@ -237,7 +237,7 @@ pub fn pricing_for_model(model: &str) -> Option<ModelPricing> {
 }
 ```
 
-CLI 在 REPL 中通过 `/cost` 命令调用 `LiveCli::print_cost()`（[`main.rs#L3961-L3965`](/rust/crates/rusty-claude-cli/src/main.rs#L3961-L3965)），或者在每次 JSON 输出中附加 `estimated_cost`（[`main.rs#L3565-L3572`](/rust/crates/rusty-claude-cli/src/main.rs#L3565-L3572)）。
+CLI 在 REPL 中通过 `/cost` 命令调用 `LiveCli::print_cost()`（[`main.rs#L3961-L3965`](/rust/crates/rusty-claude-cli/src/main.rs#L3961-L3964)），或者在每次 JSON 输出中附加 `estimated_cost`（[`main.rs#L3565-L3572`](/rust/crates/rusty-claude-cli/src/main.rs#L3565-L3572)）。
 
 ### 预算熔断
 
@@ -278,7 +278,7 @@ fn set_model(&mut self, model: Option<String>) -> Result<bool, Box<dyn std::erro
 3. 在 `build_runtime()` 内部，`AnthropicRuntimeClient` 会根据新的 `model` 字符串重新选择 provider endpoint
 4. 新 `runtime` 继续引用同一 `session`，因此历史消息全部保留
 
-`system_prompt` 也可以根据模型能力重新组装。`build_system_prompt()` 在 `LiveCli::new()` 时调用一次，当前实现中不会在 `/model` 后自动刷新 system prompt，但架构上完全支持，因为 `system_prompt` 作为 `Vec<String>` 是独立传入 `ConversationRuntime` 的。
+`system_prompt` 也可以根据模型能力重新组装。`build_system_prompt()` 在 `LiveCli::new()` 时调用一次，当前实现中不会在 `/model` 后自动刷新 system prompt——架构上虽然完全支持，但这是一个尚未对齐上游的行为差异。
 
 ---
 
@@ -288,7 +288,7 @@ fn set_model(&mut self, model: Option<String>) -> Result<bool, Box<dyn std::erro
 
 ### 源码映射：自动压缩触发
 
-阈值默认为 100,000 input tokens，可通过环境变量 `CLAUDE_CODE_AUTO_COMPACT_INPUT_TOKENS` 覆盖（[`conversation.rs#L660-L675`](/rust/crates/runtime/src/conversation.rs#L660-L675)）。触发逻辑在 `maybe_auto_compact()`（[`conversation.rs#L525-L548`](/rust/crates/runtime/src/conversation.rs#L525-L548)）：
+阈值默认为 100,000 input tokens，可通过环境变量 `CLAUDE_CODE_AUTO_COMPACT_INPUT_TOKENS` 覆盖（[`conversation.rs#L660-L675`](/rust/crates/runtime/src/conversation.rs#L660-L674)）。触发逻辑在 `maybe_auto_compact()`（[`conversation.rs#L525-L548`](/rust/crates/runtime/src/conversation.rs#L525-L548)）：
 
 ```rust
 fn maybe_auto_compact(&mut self) -> Option<AutoCompactionEvent> {
@@ -411,7 +411,11 @@ pub fn fork(&self, branch_name: Option<String>) -> Self {
 
 Fork 后的会话继承原有消息历史和 prompt 历史，但拥有新的 `session_id` 和 `created_at_ms`，并通过 `SessionFork` 记录亲缘关系。`SessionStore::fork_session()` 会为新 session 分配持久化路径并立即保存（[`session_control.rs#L218-L238`](/rust/crates/runtime/src/session_control.rs#L218-L238)）。
 
-`/clear --confirm` 的逻辑在 `LiveCli::clear_session()`（[`main.rs#L3926-L3960`](/rust/crates/rusty-claude-cli/src/main.rs#L3926-L3960)）：创建全新 `Session` → 新 `session_id` → 新持久化文件 → 保留当前 model / permission mode。旧会话文件仍然保留在 `.claw/sessions/` 中，可通过 `--resume` 重新加载。
+`/clear --confirm` 的逻辑在 `LiveCli::clear_session()`（[`main.rs#L3926-L3960`](/rust/crates/rusty-claude-cli/src/main.rs#L3926-L3959)）：创建全新 `Session` → 新 `session_id` → 新持久化文件 → 保留当前 model / permission mode。旧会话文件仍然保留在 `.claw/sessions/` 中，可通过 `--resume` 重新加载。
+
+### 审视角：持久化的信任假设
+
+JSONL 格式虽然便于追加和手动检查，但它不对记录进行签名或校验。如果恶意进程或用户修改了 `.claw/sessions/` 下的文件（例如将 `ToolResult` 替换为精心构造的 prompt 注入内容），`Session::load_from_path()` 仍会将其作为合法历史加载到上下文中。当前实现没有验证消息来源的完整性，安全边界完全依赖文件系统权限（`~/.claw/sessions/` 的访问控制）。这在一个多用户共享工作站或 CI 环境中可能构成未被充分认识到的攻击面。
 
 ---
 

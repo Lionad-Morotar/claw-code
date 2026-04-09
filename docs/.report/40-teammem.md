@@ -64,8 +64,8 @@ export function createSyncState(): SyncState {
 }
 ```
 
-- `serverChecksums` 在 pull 时由 `entryChecksums` 刷新（`#L822–#L833`）。
-- `serverMaxEntries` 仅在收到结构化 413 时写入（`#L1044–#L1048`），策略是“不预设客户端上限”。
+- `serverChecksums` 在 pull 时由 `entryChecksums` 刷新（`#L822–#L834`）。
+- `serverMaxEntries` 仅在收到结构化 413 时写入（`#L1044–#L1049`），策略是“不预设客户端上限”。
 
 ### 3.2 Pull 流程（Server → Local）
 
@@ -80,11 +80,11 @@ export function createSyncState(): SyncState {
    - 304 Not Modified → 快速返回。
    - 404 → 清除 `serverChecksums`。
    - 200 → 解析 `TeamMemoryData`。
-4. `#L822–#L833` 刷新 `serverChecksums`。
+4. `#L822–#L834` 刷新 `serverChecksums`。
 5. `#L844` 调用 `writeRemoteEntriesToLocal(entries)`（`#L689–#L760`）：
-   - 每个 entry 先经过 `validateTeamMemKey(relPath)`（`#L694–#L702`）。
-   - 超大文件（>250KB）跳过（`#L705–#L712`）。
-   - 内容相同则跳过写入，避免无效 watcher 事件（`#L715–#L727`）。
+   - 每个 entry 先经过 `validateTeamMemKey(relPath)`（`#L694–#L703`）。
+   - 超大文件（>250KB）跳过（`#L705–#L713`）。
+   - 内容相同则跳过写入，避免无效 watcher 事件（`#L715–#L728`）。
    - 并行写入所有文件（`Promise.all`，`#L689`）。
 
 关键设计：server-wins on pull。服务端内容无条件覆盖本地。
@@ -96,18 +96,18 @@ export function createSyncState(): SyncState {
 入口：`export async function pushTeamMemory(state: SyncState)`
 
 流程：
-1. `#L917–#L923` 读取本地文件（`readLocalTeamMemory`）。
-2. `#L948–#L967` 扫描密钥；若检测到，跳过该文件并记录 `tengu_team_mem_secret_skipped` 事件。
-3. `#L970–#L973` 预计算所有本地条目的 sha256。
+1. `#L917–#L924` 读取本地文件（`readLocalTeamMemory`）。
+2. `#L948–#L968` 扫描密钥；若检测到，跳过该文件并记录 `tengu_team_mem_secret_skipped` 事件。
+3. `#L976–#L980` 预计算所有本地条目的 sha256。
 4. `#L976–#L1151` 冲突重试循环（最多 `MAX_CONFLICT_RETRIES = 2` 次）：
-   - `#L987–#L992` 计算 delta：本地哈希 ≠ `serverChecksums` 的 key 才上传。
-   - `#L1006` 调用 `batchDeltaByBytes(delta)`（`#L426–#L460`）拆分为 ≤200KB 的批次。
-   - `#L1010–#L1019` 逐批 `uploadTeamMemory(...)`（`#L462–#L565`），每批使用 `If-Match` 乐观锁。
+   - `#L987–#L993` 计算 delta：本地哈希 ≠ `serverChecksums` 的 key 才上传。
+   - `#L1006–#L1007` 调用 `batchDeltaByBytes(delta)`（`#L426–#L460`）拆分为 ≤200KB 的批次。
+   - `#L1010–#L1020` 逐批 `uploadTeamMemory(...)`（`#L462–#L565`），每批使用 `If-Match` 乐观锁。
    - 若遇到 412 conflict：
-     - `#L1111–#L1114` 调用 `fetchTeamMemoryHashes(state, repoSlug)` 仅获取 checksums。
-     - `#L1115–#L1118` 刷新 `serverChecksums`，重算 delta 后重试。
+     - `#L1111–#L1115` 调用 `fetchTeamMemoryHashes(state, repoSlug)` 仅获取 checksums。
+     - `#L1115–#L1119` 刷新 `serverChecksums`，重算 delta 后重试。
    - 若遇到 413：
-     - 解析结构化错误体，学习 `serverMaxEntries`（`#L1044–#L1048`）。
+     - 解析结构化错误体，学习 `serverMaxEntries`（`#L1044–#L1049`）。
 
 关键设计：local-wins on push。用户的本地编辑不会被静默丢弃。
 
@@ -126,17 +126,17 @@ export function createSyncState(): SyncState {
 `readLocalTeamMemory(maxEntries)`：
 - 递归扫描 `memory/team/`（`walkDir`，`#L575–#L650`）。
 - 跳过超大文件（`stats.size > MAX_FILE_SIZE_BYTES`，`#L588–#L594`）。
-- `#L599–#L613` **密钥扫描**：在加入上传集之前调用 `scanForSecrets(content)`。
-- 若 `maxEntries !== null` 且本地文件数超过上限，按字典序截断并记录 `tengu_team_mem_entries_capped`（`#L653–#L680`）。
+- `#L599–#L614` **密钥扫描**：在加入上传集之前调用 `scanForSecrets(content)`。
+- 若 `maxEntries !== null` 且本地文件数超过上限，按字典序截断并记录 `tengu_team_mem_entries_capped`（`#L653–#L681`）。
 
 ### 3.5 密钥扫描器
 
 文件：`packages/ccb/src/services/teamMemorySync/secretScanner.ts`
 
-- `#L39–#L224` 定义了精选的 gitleaks 高置信度规则（AWS、GCP、Azure、Anthropic、OpenAI、GitHub、Slack、Stripe、Private Key 等）。
-- `#L229–#L237` 懒编译正则缓存。
-- `#L277–#L295` `scanForSecrets(content)` 返回命中的 ruleId 列表（不返回匹配文本）。
-- `#L312–#L324` `redactSecrets(content)` 用 `[REDACTED]` 替换捕获组。
+- `#L39–#L225` 定义了精选的 gitleaks 高置信度规则（AWS、GCP、Azure、Anthropic、OpenAI、GitHub、Slack、Stripe、Private Key 等）。
+- `#L229–#L238` 懒编译正则缓存。
+- `#L277–#L296` `scanForSecrets(content)` 返回命中的 ruleId 列表（不返回匹配文本）。
+- `#L312–#L325` `redactSecrets(content)` 用 `[REDACTED]` 替换捕获组。
 
 Anthropic 密钥前缀采用运行时拼接（`#L46`），避免字面量在 bundle 中被静态检测到：
 ```ts
@@ -147,43 +147,43 @@ const ANT_KEY_PFX = ['sk', 'ant', 'api'].join('-')
 
 文件：`packages/ccb/src/services/teamMemorySync/watcher.ts`
 
-- `#L167–#L229` `startFileWatcher(teamDir)`：
+- `#L167–#L230` `startFileWatcher(teamDir)`：
   - 使用 Node.js `fs.watch({ recursive: true })`（macOS 上走 FSEvents，保持 O(1) fd）。
   - 目录不存在时自动 `mkdir(teamDir, { recursive: true })`。
 - `#L35` debounce 时间 2000ms。
-- `#L45–#L51` `pushSuppressedReason`：当遇到不可自愈错误（no_oauth / 4xx 非 409/429）时永久抑制重试，防止会话期间产生无限 push 循环（参考 BQ Mar 14-16：一台无 OAuth 设备在 2.5 天内产生了 167K push 事件）。
-- `#L252–#L305` `startTeamMemoryWatcher()`： feature flag + OAuth + GitHub remote 检查通过后先 `pullTeamMemory`，再启动 watcher。
-- `#L314–#L319` `notifyTeamMemoryWrite()`：供 `PostToolUse` hooks 调用，显式调度 push。
-- `#L327–#L352` `stopTeamMemoryWatcher()`：清理 debounce timer、关闭 watcher、等待 in-flight push、flush pending changes（best-effort）。
+- `#L45–#L52` `pushSuppressedReason`：当遇到不可自愈错误（no_oauth / 4xx 非 409/429）时永久抑制重试，防止会话期间产生无限 push 循环（参考 BQ Mar 14-16：一台无 OAuth 设备在 2.5 天内产生了 167K push 事件）。
+- `#L252–#L306` `startTeamMemoryWatcher()`： feature flag + OAuth + GitHub remote 检查通过后先 `pullTeamMemory`，再启动 watcher。
+- `#L314–#L320` `notifyTeamMemoryWrite()`：供 `PostToolUse` hooks 调用，显式调度 push。
+- `#L327–#L353` `stopTeamMemoryWatcher()`：清理 debounce timer、关闭 watcher、等待 in-flight push、flush pending changes（best-effort）。
 
 ### 3.7 路径安全
 
 文件：`packages/ccb/src/memdir/teamMemPaths.ts`
 
-- `#L84–#L86` `getTeamMemPath()`：返回 `<autoMem>/team/`（NFC 规范化）。
-- `#L22–#L64` `sanitizePathKey(key)`：防御 null byte、URL-encoded traversal（`%2e%2e%2f`）、Unicode normalization attack（全角 `．．／` NFKC 后变为 `../`）、反斜杠、绝对路径。
-- `#L109–#L171` `realpathDeepestExisting(absolutePath)`：对最深存在的祖先调用 `realpath()` 解析符号链接（PSR M22186）。检测 dangling symlink 与 symlink loop。
-- `#L228–#L256` `validateTeamMemWritePath(filePath)`：
+- `#L84–#L87` `getTeamMemPath()`：返回 `<autoMem>/team/`（NFC 规范化）。
+- `#L22–#L65` `sanitizePathKey(key)`：防御 null byte、URL-encoded traversal（`%2e%2e%2f`）、Unicode normalization attack（全角 `．．／` NFKC 后变为 `../`）、反斜杠、绝对路径。
+- `#L109–#L172` `realpathDeepestExisting(absolutePath)`：对最深存在的祖先调用 `realpath()` 解析符号链接（PSR M22186）。检测 dangling symlink 与 symlink loop。
+- `#L228–#L257` `validateTeamMemWritePath(filePath)`：
   - 第一遍 `path.resolve()` 做字符串级 containment 检查。
   - 第二遍 `realpathDeepestExisting()` 解析 symlink 后再确认仍在 teamDir 内。
-- `#L265–#L284` `validateTeamMemKey(relativeKey)`：供 pull 时使用，对服务端下发的相对 key 做同样两阶段验证。
+- `#L265–#L285` `validateTeamMemKey(relativeKey)`：供 pull 时使用，对服务端下发的相对 key 做同样两阶段验证。
 
 ### 3.8 类型定义
 
 文件：`packages/ccb/src/services/teamMemorySync/types.ts`
 
-- `#L16–#L24` `TeamMemoryContentSchema`：`entries` + 可选 `entryChecksums`。
-- `#L29–#L38` `TeamMemoryDataSchema`：完整 GET 响应（含 `organizationId`、`repo`、`version`、`lastModified`、`checksum`、`content`）。
-- `#L47–#L57` `TeamMemoryTooManyEntriesSchema`：结构化 413 错误体（`error_code = 'team_memory_too_many_entries'`、`max_entries`、`received_entries`）。
-- `#L77–#L87` `TeamMemorySyncFetchResult`：pull 结果。
-- `#L107–#L124` `TeamMemorySyncPushResult`：push 结果（含 `skippedSecrets`）。
-- `#L129–#L156` `TeamMemorySyncUploadResult`：单批次 PUT 结果（含 `serverErrorCode`、`serverMaxEntries`、`serverReceivedEntries`）。
+- `#L16–#L25` `TeamMemoryContentSchema`：`entries` + 可选 `entryChecksums`。
+- `#L29–#L39` `TeamMemoryDataSchema`：完整 GET 响应（含 `organizationId`、`repo`、`version`、`lastModified`、`checksum`、`content`）。
+- `#L47–#L58` `TeamMemoryTooManyEntriesSchema`：结构化 413 错误体（`error_code = 'team_memory_too_many_entries'`、`max_entries`、`received_entries`）。
+- `#L77–#L88` `TeamMemorySyncFetchResult`：pull 结果。
+- `#L107–#L125` `TeamMemorySyncPushResult`：push 结果（含 `skippedSecrets`）。
+- `#L129–#L157` `TeamMemorySyncUploadResult`：单批次 PUT 结果（含 `serverErrorCode`、`serverMaxEntries`、`serverReceivedEntries`）。
 
 ### 3.9 写入时的密钥拦截
 
 文件：`packages/ccb/src/services/teamMemorySync/teamMemSecretGuard.ts`
 
-`checkTeamMemSecrets(filePath, content)`（`#L15–#L44`）：
+`checkTeamMemSecrets(filePath, content)`（`#L15–#L45`）：
 - 被 `FileWriteTool` 和 `FileEditTool` 在 `validateInput` 阶段调用。
 - 若内容包含密钥，返回错误信息阻止写入。
 
@@ -191,7 +191,7 @@ const ANT_KEY_PFX = ['sk', 'ant', 'api'].join('-')
 
 文件：`packages/ccb/src/memdir/teamMemPrompts.ts`
 
-`buildCombinedMemoryPrompt()`（`#L22–#L100`）：
+`buildCombinedMemoryPrompt()`（`#L22–#L101`）：
 - 当 auto memory 与 team memory 同时启用时，生成组合 prompt。
 - 定义了 four-type taxonomy（user / feedback / project / reference）及 `<scope>` 指导（private vs team）。
 - 告知模型团队记忆存储在 `teamDir`，会跨会话同步。
@@ -200,9 +200,9 @@ const ANT_KEY_PFX = ['sk', 'ant', 'api'].join('-')
 
 文件：`packages/ccb/src/utils/teamMemoryOps.ts`
 
-- `isTeamMemorySearch(toolInput)`（`#L10–#L21`）
-- `isTeamMemoryWriteOrEdit(toolName, toolInput)`（`#L26–#L37`）
-- `appendTeamMemorySummaryParts(...)`（`#L39–#L62`）
+- `isTeamMemorySearch(toolInput)`（`#L10–#L22`）
+- `isTeamMemoryWriteOrEdit(toolName, toolInput)`（`#L26–#L38`）
+- `appendTeamMemorySummaryParts(...)`（`#L39–#L63`）
 
 供搜索/读写摘要渲染使用。
 
@@ -222,23 +222,25 @@ const ANT_KEY_PFX = ['sk', 'ant', 'api'].join('-')
 |------|------|----------|
 | Server-wins on pull | 服务端内容覆盖本地；pull 是只读合并 | `#L770–#L867` |
 | Local-wins on push | 用户本地编辑优先，不会被并发 push 静默丢弃 | `#L889–#L1151` |
-| Delta upload | 仅上传哈希不同的条目，通过 `serverChecksums` 比较 | `#L987–#L992` |
+| Delta upload | 仅上传哈希不同的条目，通过 `serverChecksums` 比较 | `#L987–#L993` |
 | 分批 PUT | `batchDeltaByBytes` 拆分为 ≤200KB 批次 | `#L426–#L460` |
-| 密钥扫描在 upload 前 | `readLocalTeamMemory` 中调用 `scanForSecrets` | `#L599–#L613` |
+| 密钥扫描在 upload 前 | `readLocalTeamMemory` 中调用 `scanForSecrets` | `#L599–#L614` |
 | ETag 乐观锁 | `uploadTeamMemory` 使用 `If-Match` header | `#L478–#L483` |
 | 412 轻量探针 | `fetchTeamMemoryHashes` 只取 checksums | `#L315–#L385` |
-| 服务端容量动态学习 | 从 413 解析 `extra_details.max_entries` | `#L1044–#L1048` |
-| 路径穿越 + symlink 防护 | `validateTeamMemKey` 两阶段验证（resolve + realpath） | `#L265–#L284` |
-| Watcher debounce + 永久失败抑制 | `pushSuppressedReason` 防止 no_oauth 无限重试 | `#L45–#L51`, `#L103–#L117` |
+| 服务端容量动态学习 | 从 413 解析 `extra_details.max_entries` | `#L1044–#L1050` |
+| 路径穿越 + symlink 防护 | `validateTeamMemKey` 两阶段验证（resolve + realpath） | `#L265–#L285` |
+| Watcher debounce + 永久失败抑制 | `pushSuppressedReason` 防止 no_oauth 无限重试 | `#L45–#L52`, `#L103–#L117` |
 
 ---
 
-## 六、外部依赖
+## 六、外部依赖与缺失项
 
-- **Anthropic OAuth**：first-party 认证（`isUsingOAuth`，`#L151–#L161`）。
+- **Anthropic OAuth**：first-party 认证（`isUsingOAuth`，`#L151–#L162`）。
 - **GitHub Remote**：`getGithubRepo()` 获取 `owner/repo` 作为同步 scope。
 - **Team Memory API**：`/api/claude_code/team_memory` 端点。
 - **gitleaks**：规则模式来源（MIT license），仅选取高置信度前缀规则。
+
+> **实现风险**：当前密钥扫描器仅覆盖 gitleaks 高置信度前缀规则子集，新型密钥格式（如自定义 JWT、短-lived 云令牌）可能漏检。迁移到完整 gitleaks 规则集或引入熵检测可提升覆盖率，但会增加误报。
 
 ---
 

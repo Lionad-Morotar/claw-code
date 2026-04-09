@@ -25,7 +25,7 @@ Hook 的核心实现位于 [`runtime/src/hooks.rs`](/rust/crates/runtime/src/hoo
 
 ### HookEvent 枚举
 
-[`hooks.rs#L18-L34`](/rust/crates/runtime/src/hooks.rs#L18-L34) 定义了三个生命周期事件：
+[`hooks.rs#L19-L34`](/rust/crates/runtime/src/hooks.rs#L19-L34) 定义了三个生命周期事件：
 
 ```rust
 pub enum HookEvent {
@@ -52,7 +52,7 @@ pub enum HookEvent {
 1. **PreToolUse Hook**（[`conversation.rs#L370-L371`](/rust/crates/runtime/src/conversation.rs#L370-L371)）
 2. 权限检查（`permission_policy.authorize_with_context`）
 3. 工具实际执行（`tool_executor.execute`）
-4. **PostToolUse Hook 或 PostToolUseFailure Hook**（[`conversation.rs#L434-L438`](/rust/crates/runtime/src/conversation.rs#L434-L438)）
+4. **PostToolUse Hook 或 PostToolUseFailure Hook**（[`conversation.rs#L371-L375`](/rust/crates/runtime/src/conversation.rs#L371-L375)）
 
 ### 详细调用链
 
@@ -237,12 +237,16 @@ let post_hook_result = if is_error {
 };
 ```
 
-如果 PostHook 返回 `denied`、`failed` 或 `cancelled`，运行时会将工具结果标记为 `is_error = true`，并把 Hook 反馈追加到输出中（[`conversation.rs#L439-L447`](/rust/crates/runtime/src/conversation.rs#L439-L447)）。
+如果 PostHook 返回 `denied`、`failed` 或 `cancelled`，运行时会将工具结果标记为 `is_error = true`，并把 Hook 反馈追加到输出中（[`conversation.rs#L414-L422`](/rust/crates/runtime/src/conversation.rs#L414-L422)）。
 
 反馈合并逻辑在 [`conversation.rs#L744-L755`](/rust/crates/runtime/src/conversation.rs#L744-L755)：
 
 ```rust
 fn merge_hook_feedback(messages: &[String], output: String, is_error: bool) -> String {
+    let mut sections = Vec::new();
+    if !output.trim().is_empty() {
+        sections.push(output);
+    }
     let label = if is_error { "Hook feedback (error)" } else { "Hook feedback" };
     sections.push(format!("{label}:\n{}", messages.join("\n")));
     sections.join("\n\n")

@@ -1,6 +1,8 @@
 # 任务管理系统 - TodoWrite 与 Tasks 双轨架构
 
-> 本报告将 [Claude Code 中文文档](https://ccb.agent-aura.top/docs/tools/task-management) 中描述的双轨任务系统，映射到 `claw-code`（Claude Code 的重写实现）源码层。所有源码路径均指向 `packages/ccb`。
+> 本报告基于 [Claude Code 中文文档](https://ccb.agent-aura.top/docs/tools/task-management) 的目录结构进一步深化。
+>
+> **源码映射说明**：任务管理（TodoWrite / Tasks V2）在 `claw-code` 的 Rust 重写版（`rust/`）中目前尚未完全实现 parity。因此，本报告映射到同仓库中 TypeScript 核心实现 `packages/ccb/src/` 的源码，并在涉及架构对照时明确指出与 Rust 实现的差异。
 > 文末附 [源码索引](#源码索引)。
 
 ---
@@ -29,6 +31,10 @@ export function isTodoV2Enabled(): boolean {
 ```
 
 交互式会话默认启用 V2，SDK/pipe 模式回落 V1。两者互斥 —— `TodoWriteTool.isEnabled` 返回 `!isTodoV2Enabled()`（[`packages/ccb/src/tools/TodoWriteTool/TodoWriteTool.ts#L52-L54`](/packages/ccb/src/tools/TodoWriteTool/TodoWriteTool.ts#L52-L54)），而 `TaskCreateTool.isEnabled` 返回 `isTodoV2Enabled()`（[`packages/ccb/src/tools/TaskCreateTool/TaskCreateTool.ts#L68-L70`](/packages/ccb/src/tools/TaskCreateTool/TaskCreateTool.ts#L68-L70)）。
+
+### 与 Rust 实现的对比
+
+`claw-code` 的 Rust 侧（`rust/crates/`）目前主要实现了 `ConversationRuntime` 级别的单会话循环和 `UsageTracker` 的成本追踪，但尚未将 `TaskRegistry`、`TeamCreate`、`CronCreate` 等 V2 任务基础设施落地为持久化文件系统状态机。Rust 代码中存在 `TaskCreate` / `TaskList` 等工具的 schema 和 CLI stub，但其底层持久化逻辑仍指向内存或简化 store，而非 `packages/ccb` 中这套完整的并发文件锁协议。这意味着当前 `claw-code` 的任务管理能力实际上由 TypeScript 运行时层承载。
 
 ---
 
@@ -294,6 +300,46 @@ V2 任务列表在终端中的 UI 由 `TaskListV2` 组件负责，位于 [`packa
 
 ---
 
+## 审视角：未声明的假设与风险
+
+本节以对抗性视角审视任务系统的隐藏前提与设计代价。
+
+### 1. V2 "持久化" 假设了可写的持久 home 目录
+
+任务文件存储在 `~/.claude/tasks/`。如果 `claw` 运行在临时容器、CI runner 或无状态沙箱中，home 目录可能是每次启动时重建的卷。此时 V2 的"跨进程存活"优势会瞬间消失，而用户不会收到任何警告。
+
+**建议**：在高可用或自动化部署文档中应显式提示挂载 `~/.claude` 目录。
+
+### 2. 锁超时不是排队，而是失败
+
+`LOCK_OPTIONS` 的总等待时间仅约 2.6 秒。若某个 Agent 因调试、断点或极端 I/O 延迟长时间持有锁，其他并发创建者会直接抛出锁获取失败错误，而不是进入队列等待。
+
+**后果**：在 10+ Agent 的 swarm 场景中，突发写入高峰可能导致部分 `TaskCreate` 调用异常中断，依赖调用方自行重试。
+
+### 3. TOCTOU 防护的实质是文件锁，而非高水位标记
+
+文档中提到"文件锁 + 高水位标记 + TOCTOU 防护"，但真正消除竞态的是 `lockfile.lock()`。高水位标记仅防止 ID 复用，本身并不提供原子性；如果没有文件锁，两个进程仍可能同时读取同一高水位并分配重复 ID。
+
+**建议**：技术描述应避免将三者并列成独立的防护层级。
+
+### 4. `verificationNudge` 依赖可能过期的特征值
+
+V1 的验证推动使用了 `getFeatureValue_CACHED_MAY_BE_STALE(...)`。这意味着在特征开关动态翻转后，Agent 可能在一个过时的策略下运行数秒到数分钟，导致验证提示被错误地抑制或重复触发。
+
+### 5. Hook 失败回滚不彻底
+
+当 `executeTaskCreatedHooks` 返回 `blockingError` 时，系统会调用 `deleteTask()` 删除刚创建的任务文件。然而，如果 hook 已经触发了外部副作用（例如启动 CI pipeline、发送 Slack 通知、写入远端审计日志），这些副作用不会自动撤销。任务系统的原子性只保证本地 JSON 文件级别，不保证外部系统一致。
+
+### 6. V1/V2 互斥导致模式切换时上下文丢失
+
+`isTodoV2Enabled()` 是按会话计算的。若用户在一个长会话中通过环境变量或交互模式切换从 V1 切到 V2（或反之），旧的 todo/task 上下文不会自动迁移。Agent 可能"失忆"——之前用 `TodoWrite` 建立的进度列表不会被转换成 `TaskCreate` 任务实体。
+
+### 7. Rust 重写中的功能缺口
+
+如前所述，`claw-code` 的 Rust 侧尚未实现与 `packages/ccb` 对等的任务持久化、团队锁协议和 cron 调度持久化。如果用户通过 Rust CLI 启动 swarm，任务元数据可能仅存在于内存或 fallback store 中，导致 `--resume` 或跨 worktree 的任务状态无法恢复。这是一个需要持续关注的设计缺口。
+
+---
+
 ## 源码索引
 
 | 文件 | 核心内容 |
@@ -305,3 +351,4 @@ V2 任务列表在终端中的 UI 由 `TaskListV2` 组件负责，位于 [`packa
 | [`packages/ccb/src/tools/TaskListTool/TaskListTool.ts`](/packages/ccb/src/tools/TaskListTool/TaskListTool.ts) | V2 任务列表查询、过滤已完成阻塞项 |
 | [`packages/ccb/src/components/TaskListV2.tsx`](/packages/ccb/src/components/TaskListV2.tsx) | 终端内任务列表渲染、 teammate 颜色/活动/截断 |
 | [`packages/ccb/src/utils/hooks.ts`](/packages/ccb/src/utils/hooks.ts) | `executeTaskCreatedHooks`、`executeTaskCompletedHooks` 声明 |
+| [`rust/crates/runtime/src/conversation.rs`](/rust/crates/runtime/src/conversation.rs) | Rust 侧 `ConversationRuntime`、turn 循环（任务持久化尚未完全对齐） |

@@ -41,7 +41,7 @@ ToolSpec {
 }
 ```
 
-#### 2.1.2 输入结构 (L2076-L2080)
+#### 2.1.2 输入结构 (L2077-L2080)
 
 ```rust
 #[derive(Debug, Deserialize)]
@@ -59,7 +59,7 @@ fn run_web_fetch(input: WebFetchInput) -> Result<String, String> {
 }
 ```
 
-#### 2.1.4 核心执行逻辑 (L2556-L2588)
+#### 2.1.4 核心执行逻辑 (L2556-L2590)
 
 ```rust
 fn execute_web_fetch(input: &WebFetchInput) -> Result<WebFetchOutput, String> {
@@ -121,7 +121,7 @@ fn normalize_fetch_url(url: &str) -> Result<String, String> {
 - 支持重定向跟踪
 - 20 秒超时
 
-#### 2.1.6 内容处理 (L2682-L2802)
+#### 2.1.6 内容处理 (L2681-L2754)
 
 ```rust
 fn normalize_fetched_content(body: &str, content_type: &str) -> String {
@@ -168,7 +168,7 @@ fn html_to_text(html: &str) -> String {
 - HTML 实体解码
 - 空白字符折叠
 
-#### 2.1.7 智能摘要 (L2695-L2716)
+#### 2.1.7 智能摘要 (L2689-L2716)
 
 ```rust
 fn summarize_web_fetch(
@@ -337,7 +337,7 @@ fn build_search_url(query: &str) -> Result<reqwest::Url, String> {
 }
 ```
 
-#### 2.2.6 DuckDuckGo 结果解析 (L2797-L2834)
+#### 2.2.6 DuckDuckGo 结果解析 (L2790-L2827)
 
 ```rust
 fn extract_search_hits(html: &str) -> Vec<SearchHit> {
@@ -369,7 +369,7 @@ fn extract_search_hits(html: &str) -> Vec<SearchHit> {
 }
 ```
 
-#### 2.2.7 重定向 URL 解码 (L2878-L2905)
+#### 2.2.7 重定向 URL 解码 (L2879-L2905)
 
 ```rust
 fn decode_duckduckgo_redirect(url: &str) -> Option<String> {
@@ -471,7 +471,7 @@ fn build_http_client() -> Result<Client, String> {
 
 ## 6. 输出结构
 
-### 6.1 WebFetchOutput (L2354-L2364)
+### 6.1 WebFetchOutput (L2353-L2364)
 
 ```rust
 #[derive(Debug, Serialize)]
@@ -485,7 +485,7 @@ struct WebFetchOutput {
 }
 ```
 
-### 6.2 WebSearchOutput (L2366-L2374)
+### 6.2 WebSearchOutput (L2365-L2374)
 
 ```rust
 #[derive(Debug, Serialize)]
@@ -525,8 +525,8 @@ let result = execute_tool("WebSearch", &json!({
 
 | 工具 | 状态 | 源码位置 |
 |------|------|----------|
-| WebFetch | ✅ 完整实现 | `rust/crates/tools/src/lib.rs:L493-L507`, `L2556-L2588` |
-| WebSearch | ✅ 完整实现 | `rust/crates/tools/src/lib.rs:L508-L528`, `L2590-L2642` |
+| WebFetch | ✅ 完整实现 | `rust/crates/tools/src/lib.rs:L493-L507`, `L2556-L2580` |
+| WebSearch | ✅ 完整实现 | `rust/crates/tools/src/lib.rs:L508-L528`, `L2590-L2631` |
 
 ### 未实现功能
 
@@ -537,11 +537,12 @@ let result = execute_tool("WebSearch", &json!({
 | 浏览器截图 | ❌ 未发现 | commands 中有 screenshot 命令定义，但未找到浏览器集成 |
 | DOM 操作 | ❌ 未发现 | - |
 
-### 建议
+### 建议与实现风险
 
-1. **若需浏览器自动化**: 考虑通过 MCP 协议集成外部浏览器工具 (如 `mcp__safari` 或 `mcp__plugin_playwright`)
-2. **扩展现有能力**: 当前 WebFetch 和 WebSearch 已满足基本的 Web 信息获取需求
-3. **文档补充**: 建议在官方文档中明确区分 HTTP 级别工具与浏览器自动化工具的边界
+1. **DuckDuckGo HTML 解析脆弱性**：`extract_search_hits` 直接对 DuckDuckGo HTML 做字符串扫描（`result__a`、`href=`）。DDG 前端改版将导致搜索工具零结果，且当前无版本化回退或 API 契约。若搜索是核心工作流，建议添加 `CLAWD_WEB_SEARCH_BASE_URL` 指向自有搜索代理。
+2. **若需浏览器自动化**: 考虑通过 MCP 协议集成外部浏览器工具 (如 `mcp__safari` 或 `mcp__plugin_playwright`)
+3. **扩展现有能力***: 当前 WebFetch 和 WebSearch 已满足基本的 Web 信息获取需求
+4. **文档补充***: 建议在官方文档中明确区分 HTTP 级别工具与浏览器自动化工具的边界
 
 ---
 

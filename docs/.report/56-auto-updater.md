@@ -8,7 +8,10 @@
 
 ## 1. 自动更新机制概述
 
-Claude Code 的自动更新系统支持三种安装方式：`native`（二进制原生安装）、`npm-global/local`（JS/npm 安装）和 `package-manager`（包管理器安装）。核心目标是在最小用户干预下保持 CLI 最新，同时保留手动控制与回滚能力。
+Claude Code 的自动更新系统区分三种安装方式处理：`native`（二进制原生安装）、`npm-global/local`（JS/npm 安装）和 `package-manager`（包管理器安装）。
+
+- `native` 与 `npm-*` 安装支持后台自动更新（30 分钟轮询）。
+- `package-manager` 安装**仅展示升级命令**，不会自动执行安装，因为包管理器版本需要用户侧权限与一致性保证。
 
 ---
 
@@ -17,7 +20,7 @@ Claude Code 的自动更新系统支持三种安装方式：`native`（二进制
 安装类型检测入口在 `getCurrentInstallationType()`（`src/utils/doctorDiagnostic.ts#L86-L148`）：
 
 - `development`：`NODE_ENV === 'development'` 时直接返回
-- `package-manager`：通过 `detectHomebrew()`、`detectWinget()`、`detectPacman()`、`detectDeb()`、`detectRpm()`、`detectApk()` 等检测
+- `package-manager`：通过 `detectHomebrew()`、`detectWinget()`、`detectPacman()`、`detectDeb()`、`detectRpm()`、`detectApk()` 检测
 - `npm-local`：`isRunningFromLocalInstallation()` 判断
 - `npm-global`：通过路径前缀（`/usr/local/lib/node_modules`、nvm 路径等）或 `npm config get prefix` 判断
 - `native`：`isInBundledMode()` 为真且未命中包管理器检测
@@ -45,11 +48,11 @@ setIsPackageManager(installationType === 'package-manager');
 
 ### 3.2 最大版本上限
 
-`getMaxVersion()`（`src/utils/autoUpdater.ts#L107-L114`）从 GrowthBook 动态配置读取 `tengu_max_version_config`，按用户类型（`ant` / `external`）返回服务端熔断版本。
+`getMaxVersion()`（`src/utils/autoUpdater.ts#L108-L114`）从 GrowthBook 读取 `tengu_max_version_config`，按用户类型（`ant` / `external`）返回服务端熔断版本。用于在 incidents 期间暂停自动更新。
 
 ### 3.3 跳过版本检查
 
-`shouldSkipVersion()`（`src/utils/autoUpdater.ts#L144-L158`）读取用户 `settings.minimumVersion`，通过 `semver.gte()` 判断目标版本是否低于用户设定的最低版本，防止切换频道时意外降级。
+`shouldSkipVersion()`（`src/utils/autoUpdater.ts#L145-L158`）读取用户 `settings.minimumVersion`，通过 `semver.gte()` 判断目标版本是否低于用户设定的最低版本，防止切换频道时意外降级。
 
 ---
 
@@ -62,7 +65,7 @@ setIsPackageManager(installationType === 'package-manager');
 ```tsx
 const checkForUpdates = React.useCallback(async () => {
   // 100ms 间隔轮询使用 isUpdatingRef 防止并发
-  if (isAutoUpdaterDisabled()) return;
+  if (isUpdatingRef.current) return;
   onChangeIsUpdating(true);
   logEvent('tengu_native_auto_updater_start', {});
 
@@ -153,8 +156,8 @@ const checkForUpdates = React.useCallback(async () => {
 |------|------|------|
 | `getLatestVersion()` | `#L319-L345` | `npm view @anthropic-ai/claude-code@<tag> version` |
 | `getNpmDistTags()` | `#L355-L383` | 获取 `latest` 和 `stable` dist-tags |
-| `installGlobalPackage()` | `#L448-L503` | 全局 `npm install -g` / `bun install -g`，含权限检查和文件锁 |
-| `checkGlobalInstallPermissions()` | `#L291-L318` | 调用 `npm -g config get prefix` 并检查写权限 |
+| `installGlobalPackage()` | `#L456-L503` | 全局 `npm install -g` / `bun install -g`，含权限检查和文件锁 |
+| `checkGlobalInstallPermissions()` | `#L292-L318` | 调用 `npm -g config get prefix` 并检查写权限 |
 
 ### 5.3 本地安装器
 
@@ -180,7 +183,7 @@ const updateCommand =
 
 ## 7. 启动版本门控
 
-`assertMinVersion()`（`src/utils/autoUpdater.ts#L69-L98`）定义了启动时最低版本检查逻辑：
+`assertMinVersion()`（`src/utils/autoUpdater.ts#L70-L98`）定义了启动时最低版本检查逻辑：
 
 ```ts
 export async function assertMinVersion(): Promise<void> {
@@ -192,7 +195,7 @@ export async function assertMinVersion(): Promise<void> {
 }
 ```
 
-> **注**：在当前 decompiled 源码中，`assertMinVersion()` 的显式调用点已不可见（原文档标注为 `src/main.tsx:1775`），但函数定义本身保留了完整的硬性门控逻辑——若被调用，低于最低版本的 CLI 将直接终止进程。
+> **注**：`assertMinVersion()` 保留了完整的硬性门控逻辑。当前实际调用点是否活跃，需结合具体构建版本确认。
 
 ---
 
@@ -221,7 +224,7 @@ export async function assertMinVersion(): Promise<void> {
 
 ## 9. 文件锁机制
 
-`acquireLock()` / `releaseLock()`（`src/utils/autoUpdater.ts#L175-L267`）用于防止并发更新：
+`acquireLock()` / `releaseLock()`（`src/utils/autoUpdater.ts#L176-L267`）用于防止并发更新：
 
 - 锁文件路径：`~/.claude/.update.lock`
 - 5 分钟超时：超过 5 分钟的锁视为过期，强制获取
@@ -292,7 +295,7 @@ autoUpdatesProtectedForNative?: boolean
 
 ### 13.3 配置迁移
 
-`migrateConfigFields()`（`src/utils/config.ts#L909-L969`）将旧版 `autoUpdaterStatus` 字段一次性迁移为 `installMethod` + `autoUpdates`。
+`migrateConfigFields()`（`src/utils/config.ts#L912-L960`）将旧版 `autoUpdaterStatus` 字段一次性迁移为 `installMethod` + `autoUpdates`。
 
 ---
 

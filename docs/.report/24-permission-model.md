@@ -15,7 +15,7 @@
 
 ### 五级 PermissionMode
 
-核心枚举定义在 [`runtime/src/permissions.rs#L9-L16`](/rust/crates/runtime/src/permissions.rs#L9-L16)：
+核心枚举定义在 [`runtime/src/permissions.rs#L9-L16`](/rust/crates/runtime/src/permissions.rs#L9-L15)：
 
 ```rust
 pub enum PermissionMode {
@@ -81,7 +81,7 @@ if let Some(rule) = Self::find_matching_rule(&self.deny_rules, tool_name, input)
 
 #### 2. Hook Override
 
-`PermissionContext` 可以携带 `PermissionOverride`（Deny / Ask / Allow），由 `PreToolUse` hook 注入。这是运行时动态策略的入口。参见 [`runtime/src/permissions.rs#L31-L36`](/rust/crates/runtime/src/permissions.rs#L31-L36)：
+`PermissionContext` 可以携带 `PermissionOverride`（Deny / Ask / Allow），由 `PreToolUse` hook 注入。这是运行时动态策略的入口。参见 [`runtime/src/permissions.rs#L32-L36`](/rust/crates/runtime/src/permissions.rs#L32-L36)：
 
 ```rust
 pub enum PermissionOverride {
@@ -182,7 +182,7 @@ PermissionOutcome::Deny {
 
 ### Allow / Deny / Ask 规则配置
 
-规则存储在 `RuntimePermissionRuleConfig` 中，结构如下（[`runtime/src/config.rs#L87-L91`](/rust/crates/runtime/src/config.rs#L87-L91)）：
+规则存储在 `RuntimePermissionRuleConfig` 中，结构如下（[`runtime/src/config.rs#L89-L93`](/rust/crates/runtime/src/config.rs#L89-L93)）：
 
 ```rust
 pub struct RuntimePermissionRuleConfig {
@@ -192,7 +192,7 @@ pub struct RuntimePermissionRuleConfig {
 }
 ```
 
-从配置文件解析的位置在 [`runtime/src/config.rs#L780-L795`](/rust/crates/runtime/src/config.rs#L780-L795)：
+从配置文件解析的位置在 [`runtime/src/config.rs#L782-L795`](/rust/crates/runtime/src/config.rs#L782-L795)：
 
 ```json
 {
@@ -207,7 +207,7 @@ pub struct RuntimePermissionRuleConfig {
 
 ### 规则语法
 
-规则解析器在 [`runtime/src/permissions.rs#L350-L401`](/rust/crates/runtime/src/permissions.rs#L350-L401)：
+规则解析器在 [`runtime/src/permissions.rs#L343-L401`](/rust/crates/runtime/src/permissions.rs#L343-L401)：
 
 - `Bash` — 匹配工具名 `Bash`，对任意输入放行
 - `bash(git:*)` — 匹配工具 `bash`，且输入中提取的 `command` 字段以 `git:` 开头
@@ -268,20 +268,37 @@ pub fn check(&self, tool_name: &str, input: &str) -> EnforcementResult {
 
 ```rust
 pub fn check_file_write(&self, path: &str, workspace_root: &str) -> EnforcementResult {
+    let mode = self.policy.active_mode();
+
     match mode {
-        PermissionMode::ReadOnly => EnforcementResult::Denied { ... },
+        PermissionMode::ReadOnly => EnforcementResult::Denied {
+            tool: "write_file".to_owned(),
+            active_mode: mode.as_str().to_owned(),
+            required_mode: PermissionMode::WorkspaceWrite.as_str().to_owned(),
+            reason: format!("file writes are not allowed in '{}' mode", mode.as_str()),
+        },
         PermissionMode::WorkspaceWrite => {
             if is_within_workspace(path, workspace_root) {
                 EnforcementResult::Allowed
             } else {
                 EnforcementResult::Denied {
-                    reason: format!("path '{}' is outside workspace root '{}'", path, workspace_root),
-                    ...
+                    tool: "write_file".to_owned(),
+                    active_mode: mode.as_str().to_owned(),
+                    required_mode: PermissionMode::DangerFullAccess.as_str().to_owned(),
+                    reason: format!(
+                        "path '{}' is outside workspace root '{}'",
+                        path, workspace_root
+                    ),
                 }
             }
         }
         PermissionMode::Allow | PermissionMode::DangerFullAccess => EnforcementResult::Allowed,
-        PermissionMode::Prompt => EnforcementResult::Denied { reason: "file write requires confirmation in prompt mode".to_owned(), ... },
+        PermissionMode::Prompt => EnforcementResult::Denied {
+            tool: "write_file".to_owned(),
+            active_mode: mode.as_str().to_owned(),
+            required_mode: PermissionMode::WorkspaceWrite.as_str().to_owned(),
+            reason: "file write requires confirmation in prompt mode".to_owned(),
+        },
     }
 }
 ```
@@ -300,7 +317,7 @@ fn is_within_workspace(path: &str, workspace_root: &str) -> bool {
 
 ### Bash 只读命令启发式检查
 
-[`runtime/src/permission_enforcer.rs#L111-L139`](/rust/crates/runtime/src/permission_enforcer.rs#L111-L139)：
+[`runtime/src/permission_enforcer.rs#L158-L210`](/rust/crates/runtime/src/permission_enforcer.rs#L158-L210)：
 
 在 `ReadOnly` 模式下，Bash 命令并非一概拒绝。`check_bash` 使用 `is_read_only_command` 做启发式检查，允许白名单内的一组安全命令：
 
@@ -333,7 +350,7 @@ pub enum FilesystemIsolationMode {
 }
 ```
 
-参见 [`runtime/src/sandbox.rs#L9-L15`](/rust/crates/runtime/src/sandbox.rs#L9-L15)。
+参见 [`runtime/src/sandbox.rs#L9-L15`](/rust/crates/runtime/src/sandbox.rs#L9-L14)。
 
 - **Off**：不限制文件系统访问
 - **WorkspaceOnly**：只允许访问工作区目录
@@ -394,7 +411,7 @@ pub struct PermissionRequest {
 4. 若需要 prompter，传入 `prompter.as_mut()`
 5. 若结果为 `Allow`，执行工具；若为 `Deny`，将拒绝原因作为 `ToolResult` 返回给模型
 
-代码参见 [`runtime/src/conversation.rs#L386-L417`](/rust/crates/runtime/src/conversation.rs#L386-L417)。
+代码参见 [`runtime/src/conversation.rs#L414-L445`](/rust/crates/runtime/src/conversation.rs#L414-L445)。
 
 ### prompt_or_deny 的具体行为
 

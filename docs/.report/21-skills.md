@@ -15,8 +15,8 @@
 | 粒度 | 单个原子操作（读文件、执行命令） | 一套完整的工作流（代码审查、创建 PR） |
 | 触发方式 | AI 自主选择 | 用户 `/skill-name` 或 AI 通过 `SkillTool` 自动匹配 |
 | 本质 | TypeScript/Rust 执行逻辑 | **Prompt + 权限配置** 的声明式封装 |
-| 注册位置 | `tools/src/lib.rs` → `mvp_tool_specs()` | `commands/src/lib.rs` → `discover_skill_roots()` |
-| 执行器 | 各 Tool 的 `run_*()` 函数 | `SkillTool.call()` → 两条分支（inline / fork） |
+| 注册位置 | `tools/src/lib.rs` → `mvp_tool_specs()`（L385-L1159） | `commands/src/lib.rs` → `resume_supported_slash_commands()`（L1809-L1895） / `discover_skill_roots()`（L2654-L2817） |
+| 执行器 | 各 Tool 的 `run_*()` 函数 | `run_skill()` → `execute_skill()` 单一路径读取并返回 Prompt 内容 |
 
 **核心洞见**：复杂任务的关键不在代码逻辑，而在 Prompt 质量。一个代码审查 Skill 不需要审查引擎，只需告诉 AI "审查什么、按什么顺序、输出什么格式"——Skill 把这种"经验"封装为可复用的 Markdown。
 
@@ -26,11 +26,11 @@
 
 ### 1. 内置命令（Built-in Commands）
 
-硬编码在 [`commands/src/lib.rs#L247-L251`](/rust/crates/commands/src/lib.rs#L247-L251) 的 `COMMANDS` 数组中，包含 70+ 条命令（`/commit`、`/review`、`/compact` 等）。这些是 Rust 模块而非 Markdown，但实现了相同的 `SlashCommand` 接口。
+硬编码在 [`commands/src/lib.rs#L1809-L1895`](/rust/crates/commands/src/lib.rs#L1809-L1895) 的 `resume_supported_slash_commands()` 函数返回的数组中，包含 70+ 条命令（`/commit`、`/review`、`/compact` 等）。这些是 Rust 模块而非 Markdown，但实现了相同的 `SlashCommand` 接口。
 
 ### 2. 磁盘 Skills（`.claw/skills/`）
 
-这是最重要的加载路径，由 [`commands/src/lib.rs#L2654-L2796`](/rust/crates/commands/src/lib.rs#L2654-L2796) 的 `discover_skill_roots()` 函数实现：
+这是最重要的加载路径，由 [`commands/src/lib.rs#L2654-L2816`](/rust/crates/commands/src/lib.rs#L2654-L2816) 的 `discover_skill_roots()` 函数实现：
 
 ```rust
 fn discover_skill_roots(cwd: &Path) -> Vec<SkillRoot> {
@@ -64,7 +64,7 @@ fn discover_skill_roots(cwd: &Path) -> Vec<SkillRoot> {
 
 ### 3. Legacy Commands（`/commands/` 目录）
 
-向后兼容的旧格式，由 [`commands/src/lib.rs#L2688-L2818`](/rust/crates/commands/src/lib.rs#L2688-L2818) 加载。同时支持 `SKILL.md` 目录格式和单 `.md` 文件格式。标记为 `SkillOrigin::LegacyCommandsDir`。
+向后兼容的旧格式由 `load_skills_from_roots()` 内部分支处理，同时支持 `SKILL.md` 目录格式和单 `.md` 文件格式。标记为 `SkillOrigin::LegacyCommandsDir`（参见 `commands/src/lib.rs#L2402-L2410`）。
 
 ### 4. MCP Skills（动态发现）
 
@@ -107,7 +107,7 @@ ToolSpec {
 
 ### Skill 执行逻辑
 
-[`tools/src/lib.rs#L1992-L1997`](/rust/crates/tools/src/lib.rs#L1992-L1997) 的 `execute_skill()` 函数：
+[`tools/src/lib.rs#L2985-L2997`](/rust/crates/tools/src/lib.rs#L2985-L2997) 的 `execute_skill()` 函数：
 
 ```rust
 fn execute_skill(input: SkillInput) -> Result<SkillOutput, String> {
@@ -127,7 +127,7 @@ fn execute_skill(input: SkillInput) -> Result<SkillOutput, String> {
 
 ### Skill 路径解析
 
-[`tools/src/lib.rs#L3021-L3043`](/rust/crates/tools/src/lib.rs#L3021-L3043) 的 `resolve_skill_path()` 函数实现了两级查找：
+[`tools/src/lib.rs#L3021-L3044`](/rust/crates/tools/src/lib.rs#L3021-L3044) 的 `resolve_skill_path()` 函数实现了两级查找：
 
 ```rust
 fn resolve_skill_path(skill: &str) -> Result<std::path::PathBuf, String> {
@@ -141,11 +141,11 @@ fn resolve_skill_path(skill: &str) -> Result<std::path::PathBuf, String> {
 }
 ```
 
-**兼容模式回退** 由 [`tools/src/lib.rs#L3029-L3043`](/rust/crates/tools/src/lib.rs#L3029-L3043) 的 `resolve_skill_path_from_compat_roots()` 实现，遍历所有可能的技能目录。
+**兼容模式回退** 由 [`tools/src/lib.rs#L3029-L3044`](/rust/crates/tools/src/lib.rs#L3029-L3044) 的 `resolve_skill_path_from_compat_roots()` 实现，遍历所有可能的技能目录。
 
 ### 技能目录解析
 
-[`tools/src/lib.rs#L3167-L3197`](/rust/crates/tools/src/lib.rs#L3167-L3197) 的 `resolve_skill_path_in_skills_dir()`：
+[`tools/src/lib.rs#L3167-L3196`](/rust/crates/tools/src/lib.rs#L3167-L3196) 的 `resolve_skill_path_in_skills_dir()`：
 
 ```rust
 fn resolve_skill_path_in_skills_dir(
@@ -173,7 +173,7 @@ fn resolve_skill_path_in_skills_dir(
 
 ### Frontmatter 解析
 
-[`commands/src/lib.rs#L3186-L3225`](/rust/crates/commands/src/lib.rs#L3186-L3225) 的 `parse_skill_frontmatter()`：
+[`commands/src/lib.rs#L3186-L3215`](/rust/crates/commands/src/lib.rs#L3186-L3215) 的 `parse_skill_frontmatter()`：
 
 ```rust
 fn parse_skill_frontmatter(contents: &str) -> (Option<String>, Option<String>) {
@@ -254,7 +254,7 @@ pub enum SkillSlashDispatch {
 
 ### 技能加载与渲染
 
-[`commands/src/lib.rs#L3085-L3159`](/rust/crates/commands/src/lib.rs#L3085-L3159) 的 `load_skills_from_roots()`：
+[`commands/src/lib.rs#L3085-L3160`](/rust/crates/commands/src/lib.rs#L3085-L3160) 的 `load_skills_from_roots()`：
 
 ```rust
 fn load_skills_from_roots(roots: &[SkillRoot]) -> std::io::Result<Vec<SkillSummary>> {
@@ -310,24 +310,20 @@ CliAction::Skills {
 
 ### Skills 打印实现
 
-[`rusty-claude-cli/src/main.rs#L4026-L4037`](/rust/crates/rusty-claude-cli/src/main.rs#L4026-L4037)：
+[`rusty-claude-cli/src/main.rs#L4052-L4065`](/rust/crates/rusty-claude-cli/src/main.rs#L4052-L4065)：
 
 ```rust
 fn print_skills(
     args: Option<&str>,
     output_format: CliOutputFormat,
-) -> Result<(), String> {
-    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
+) -> Result<(), Box<dyn std::error::Error>> {
+    let cwd = env::current_dir()?;
     match output_format {
-        CliOutputFormat::Text => {
-            println!("{}", handle_skills_slash_command(args, &cwd)?);
-        }
-        CliOutputFormat::Json => {
-            println!(
-                "{}",
-                serde_json::to_string_pretty(&handle_skills_slash_command_json(args, &cwd)?)?
-            );
-        }
+        CliOutputFormat::Text => println!("{}", handle_skills_slash_command(args, &cwd)?),
+        CliOutputFormat::Json => println!(
+            "{}",
+            serde_json::to_string_pretty(&handle_skills_slash_command_json(args, &cwd)?)?
+        ),
     }
     Ok(())
 }
@@ -335,7 +331,7 @@ fn print_skills(
 
 ### REPL 中的 Skills
 
-[`rusty-claude-cli/src/main.rs#L3652-L3658`](/rust/crates/rusty-claude-cli/src/main.rs#L3652-L3658) 的 REPL 处理：
+[`rusty-claude-cli/src/main.rs#L3678-L3684`](/rust/crates/rusty-claude-cli/src/main.rs#L3678-L3684) 的 REPL 处理：
 
 ```rust
 SlashCommand::Skills { args } => {
@@ -354,7 +350,7 @@ SlashCommand::Skills { args } => {
 
 ### Skill 加载测试
 
-[`tools/src/lib.rs#L6511-L6543`](/rust/crates/tools/src/lib.rs#L6511-L6543) 的 `skill_loads_local_skill_prompt()`：
+[`tools/src/lib.rs#L6511-L6567`](/rust/crates/tools/src/lib.rs#L6511-L6567) 的 `skill_loads_local_skill_prompt()`：
 
 ```rust
 #[test]
@@ -382,7 +378,7 @@ fn skill_loads_local_skill_prompt() {
 
 ### 项目级技能测试
 
-[`tools/src/lib.rs#L6568-L6612`](/rust/crates/tools/src/lib.rs#L6568-L6612) 的 `skill_resolves_project_local_skills_and_legacy_commands()`：
+[`tools/src/lib.rs#L6568-L6611`](/rust/crates/tools/src/lib.rs#L6568-L6611) 的 `skill_resolves_project_local_skills_and_legacy_commands()`：
 
 ```rust
 #[test]
@@ -431,16 +427,17 @@ fn skill_resolves_project_local_skills_and_legacy_commands() {
 
 | 文件 | 核心内容 | 行号 |
 |------|----------|------|
-| [`/rust/crates/commands/src/lib.rs`](/rust/crates/commands/src/lib.rs) | `discover_skill_roots()` | L2654-L2796 |
+| [`/rust/crates/commands/src/lib.rs`](/rust/crates/commands/src/lib.rs) | `discover_skill_roots()` | L2654-L2817 |
 | [`/rust/crates/commands/src/lib.rs`](/rust/crates/commands/src/lib.rs) | `handle_skills_slash_command()` | L2262-L2291 |
 | [`/rust/crates/commands/src/lib.rs`](/rust/crates/commands/src/lib.rs) | `classify_skills_slash_command()` | L2325-L2343 |
-| [`/rust/crates/commands/src/lib.rs`](/rust/crates/commands/src/lib.rs) | `load_skills_from_roots()` | L3085-L3159 |
-| [`/rust/crates/commands/src/lib.rs`](/rust/crates/commands/src/lib.rs) | `parse_skill_frontmatter()` | L3186-L3225 |
+| [`/rust/crates/commands/src/lib.rs`](/rust/crates/commands/src/lib.rs) | `load_skills_from_roots()` | L3085-L3161 |
+| [`/rust/crates/commands/src/lib.rs`](/rust/crates/commands/src/lib.rs) | `parse_skill_frontmatter()` | L3186-L3216 |
 | [`/rust/crates/commands/src/lib.rs`](/rust/crates/commands/src/lib.rs) | `SkillSlashDispatch` | L54-L60 |
 | [`/rust/crates/tools/src/lib.rs`](/rust/crates/tools/src/lib.rs) | `Skill` ToolSpec | L558-L569 |
-| [`/rust/crates/tools/src/lib.rs`](/rust/crates/tools/src/lib.rs) | `execute_skill()` | L1992-L1997 |
-| [`/rust/crates/tools/src/lib.rs`](/rust/crates/tools/src/lib.rs) | `resolve_skill_path()` | L3021-L3043 |
-| [`/rust/crates/tools/src/lib.rs`](/rust/crates/tools/src/lib.rs) | `resolve_skill_path_in_skills_dir()` | L3167-L3197 |
-| [`/rust/crates/tools/src/lib.rs`](/rust/crates/tools/src/lib.rs) | Skill tests | L6511-L6765 |
-| [`/rust/crates/rusty-claude-cli/src/main.rs`](/rust/crates/rusty-claude-cli/src/main.rs) | CLI `print_skills()` | L4026-L4037 |
-| [`/rust/crates/rusty-claude-cli/src/main.rs`](/rust/crates/rusty-claude-cli/src/main.rs) | REPL Skills 处理 | L3652-L3658 |
+| [`/rust/crates/tools/src/lib.rs`](/rust/crates/tools/src/lib.rs) | `execute_skill()` | L2985-L2998 |
+| [`/rust/crates/tools/src/lib.rs`](/rust/crates/tools/src/lib.rs) | `resolve_skill_path()` | L3021-L3044 |
+| [`/rust/crates/tools/src/lib.rs`](/rust/crates/tools/src/lib.rs) | `resolve_skill_path_in_skills_dir()` | L3167-L3198 |
+| [`/rust/crates/tools/src/lib.rs`](/rust/crates/tools/src/lib.rs) | `skill_loads_local_skill_prompt()` | L6511-L6567 |
+| [`/rust/crates/tools/src/lib.rs`](/rust/crates/tools/src/lib.rs) | `skill_resolves_project_local_skills_and_legacy_commands()` | L6568-L6611 |
+| [`/rust/crates/rusty-claude-cli/src/main.rs`](/rust/crates/rusty-claude-cli/src/main.rs) | CLI `print_skills()` | L4052-L4065 |
+| [`/rust/crates/rusty-claude-cli/src/main.rs`](/rust/crates/rusty-claude-cli/src/main.rs) | REPL Skills 处理 | L3678-L3684 |

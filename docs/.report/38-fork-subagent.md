@@ -69,7 +69,7 @@ export function isForkSubagentEnabled(): boolean {
 Fork agent 不是传统意义上的 agent，它不会注册到 `builtInAgents` 中，仅在 fork 实验激活且 `!subagent_type` 时使用：
 
 ```typescript
-// 文件：forkSubagent.ts#L60-L71
+// 文件：forkSubagent.ts#L60-L72
 export const FORK_AGENT = {
   agentType: FORK_SUBAGENT_TYPE,  // 'fork'
   whenToUse: 'Implicit fork — inherits full conversation context...',
@@ -83,7 +83,7 @@ export const FORK_AGENT = {
 } satisfies BuiltInAgentDefinition
 ```
 
-**源码位置**: [`forkSubagent.ts#L60-L71`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/forkSubagent.ts#L60-L71)
+**源码位置**: [`forkSubagent.ts#L60-L72`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/forkSubagent.ts#L60-L72)
 
 ### 3.3 核心调用流程
 
@@ -134,7 +134,7 @@ isForkSubagentEnabled() && !subagent_type?
 构建的消息结构最大化 prompt cache 共享：
 
 ```typescript
-// 文件：forkSubagent.ts#L107-L169
+// 文件：forkSubagent.ts#L107-L173
 export function buildForkedMessages(
   directive: string,
   assistantMessage: AssistantMessage,
@@ -145,22 +145,32 @@ export function buildForkedMessages(
     uuid: randomUUID(),
     message: {
       ...assistantMessage.message,
-      content: [...assistantMessage.message.content],
+      content: [...(Array.isArray(assistantMessage.message.content) ? assistantMessage.message.content : [])],
     },
   }
 
   // 2. 收集所有 tool_use 块
-  const toolUseBlocks = assistantMessage.message.content
-    .filter(block => block.type === 'tool_use')
+  const toolUseBlocks = (Array.isArray(assistantMessage.message.content) ? assistantMessage.message.content : [])
+    .filter((block): block is BetaToolUseBlock => block.type === 'tool_use')
 
-  // 3. 生成占位符 tool_result（所有 fork 使用相同文本）
+  // 3. 空 tool_use 保护：记录错误并只返回 directive 文本
+  if (toolUseBlocks.length === 0) {
+    logForDebugging(`No tool_use blocks found...`, { level: 'error' })
+    return [
+      createUserMessage({
+        content: [{ type: 'text' as const, text: buildChildMessage(directive) }],
+      }),
+    ]
+  }
+
+  // 4. 生成占位符 tool_result（所有 fork 使用相同文本）
   const toolResultBlocks = toolUseBlocks.map(block => ({
-    type: 'tool_result',
+    type: 'tool_result' as const,
     tool_use_id: block.id,
-    content: [{ type: 'text', text: FORK_PLACEHOLDER_RESULT }],
+    content: [{ type: 'text' as const, text: FORK_PLACEHOLDER_RESULT }],
   }))
 
-  // 4. 构建用户消息：占位符结果 + per-child directive
+  // 5. 构建用户消息：占位符结果 + per-child directive
   const toolResultMessage = createUserMessage({
     content: [
       ...toolResultBlocks,
@@ -174,7 +184,7 @@ export function buildForkedMessages(
 
 **占位符文本**：`"Fork started — processing in background"`
 
-**源码位置**: [`forkSubagent.ts#L107-L169`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/forkSubagent.ts#L107-L169)
+**源码位置**: [`forkSubagent.ts#L107-L173`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/forkSubagent.ts#L107-L173)
 
 ### 3.5 递归防护
 
@@ -190,7 +200,7 @@ export function isInForkChild(messages: MessageType[]): boolean {
     return content.some(
       block =>
         block.type === 'text' &&
-        block.text.includes(`<fork-boilerplate>`),
+        block.text.includes(`<${FORK_BOILERPLATE_TAG}>`),
     )
   })
 }
@@ -255,14 +265,14 @@ export function buildWorktreeNotice(
 }
 ```
 
-**源码位置**: [`forkSubagent.ts#L205-L210`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/forkSubagent.ts#L205-L210)
+**源码位置**: [`forkSubagent.ts#L205-L213`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/forkSubagent.ts#L205-L213)
 
 ### 3.8 强制异步
 
 当 `isForkSubagentEnabled()` 为 true 时，所有 agent 启动都强制异步，`run_in_background` 参数从 schema 中移除：
 
 ```typescript
-// 文件：AgentTool.tsx#L810-L831
+// 文件：AgentTool.tsx#L812-L831
 const forceAsync = isForkSubagentEnabled()
 
 const shouldRunAsync =
@@ -275,7 +285,7 @@ const shouldRunAsync =
   !isBackgroundTasksDisabled
 ```
 
-**源码位置**: [`AgentTool.tsx#L810-L831`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/AgentTool.tsx#L810-L831)
+**源码位置**: [`AgentTool.tsx#L812-L831`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/AgentTool.tsx#L812-L831)
 
 ---
 
@@ -311,7 +321,7 @@ const agentOptions: ToolUseContext['options'] = {
 }
 ```
 
-**源码位置**: [`runAgent.ts#L500-L502`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/runAgent.ts#L500-L502), [`runAgent.ts#L668-L694`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/runAgent.ts#L668-L694)
+**源码位置**: [`runAgent.ts#L500-L502`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/runAgent.ts#L500-L502), [`runAgent.ts#L682-L694`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/runAgent.ts#L682-L694)
 
 ---
 
@@ -392,15 +402,15 @@ Agent({ name: "research-b", prompt: "..." })
 | 原始文档描述 | 本代码库实现位置 |
 |--------------|------------------|
 | `isForkSubagentEnabled()` | [`forkSubagent.ts#L32-L39`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/forkSubagent.ts#L32-L39) |
-| `FORK_AGENT` 定义 | [`forkSubagent.ts#L60-L71`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/forkSubagent.ts#L60-L71) |
-| `buildForkedMessages()` | [`forkSubagent.ts#L107-L169`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/forkSubagent.ts#L107-L169) |
+| `FORK_AGENT` 定义 | [`forkSubagent.ts#L60-L72`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/forkSubagent.ts#L60-L72) |
+| `buildForkedMessages()` | [`forkSubagent.ts#L107-L173`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/forkSubagent.ts#L107-L173) |
 | `isInForkChild()` 递归防护 | [`forkSubagent.ts#L78-L89`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/forkSubagent.ts#L78-L89) |
 | `buildChildMessage()` | [`forkSubagent.ts#L171-L198`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/forkSubagent.ts#L171-L198) |
-| `buildWorktreeNotice()` | [`forkSubagent.ts#L205-L210`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/forkSubagent.ts#L205-L210) |
+| `buildWorktreeNotice()` | [`forkSubagent.ts#L205-L213`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/forkSubagent.ts#L205-L213) |
 | Schema 调整 | [`AgentTool.tsx#L252-L254`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/AgentTool.tsx#L252-L254) |
 | Fork 路由 | [`AgentTool.tsx#L480-L502`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/AgentTool.tsx#L480-L502) |
 | 系统提示继承 | [`AgentTool.tsx#L727-L755`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/AgentTool.tsx#L727-L755) |
-| 强制异步 | [`AgentTool.tsx#L810-L831`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/AgentTool.tsx#L810-L831) |
+| 强制异步 | [`AgentTool.tsx#L812-L831`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/AgentTool.tsx#L812-L831) |
 | `useExactTools` | [`runAgent.ts#L500-L502`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools/AgentTool/runAgent.ts#L500-L502) |
 
 ---
@@ -415,6 +425,12 @@ Agent({ name: "research-b", prompt: "..." })
 | 代码逻辑完整性 | ✅ | 核心流程覆盖完整 |
 | 与原始文档一致性 | ✅ | 关键实现点已对齐 |
 | 命名/术语一致性 | ✅ | 使用代码库实际命名 |
+
+### 实现风险
+
+1. **GrowthBook 回退风险**：`buildEffectiveSystemPrompt` 回退路径可能因 GrowthBook 状态变化导致子 agent 的 system prompt 字节与父级不一致，从而破坏 prompt cache 命中。
+2. **空 tool_use 保护**：`buildForkedMessages` 在 assistant 消息无 `tool_use` 块时会降级为仅返回包含 directive 的用户消息。若 fork 发生在非工具调用 turn（例如用户直接要求 fork），子 agent 将缺失父级上下文中的工具结果占位符，可能影响 cache 对齐，但不会阻塞执行。
+3. **BetaToolUseBlock 类型漂移**：`buildForkedMessages` 内部引用的 `BetaToolUseBlock` 来自 SDK beta 路径，若 Anthropic SDK 升级可能引入类型变更。
 
 ### 关键发现
 
