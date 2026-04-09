@@ -1306,3 +1306,79 @@ None — all source anchors verified against packages/ccb HEAD.
 Proceed to commit/push.
 
 *审校完成。*
+
+---
+
+# Unit 42 Review — Voice Mode
+
+**Reviewed**: 2026-04-09
+**Subject**: docs/.report/42-voice-mode.md
+**Status**: Approved
+
+## Corrections Made
+
+1. **`src/` path prefix统一修正为 `packages/ccb/src/`**：与当前仓库结构一致（ccb 子项目）。
+2. **`useVoice.ts` 行数精确化**：文档引用 `L1-L1144`，实际文件为 1144 行，锚点有效。
+3. **`voiceStreamSTT.ts` finalize 描述补充**：原文仅提到 "等待最终转录"，报告中细化了 3 个超时机制（safety 5s, noData 1.5s, ws_close ~3-5s）及其触发条件。
+4. **Focus 模式补充**：原文档 "实现架构" 小节未提及 focus 模式，补充了 focus-driven recording（`useVoice.ts#L543-L604`）及 5s 静默超时自动结束的源码锚点。
+5. **语言支持列表扩展**：报告中 supplement 了 `normalizeLanguageForSTT` 的 20 种语言映射及 `SUPPORTED_LANGUAGE_CODES` 的源码位置。
+6. **Analytics 事件补充**：补充了 5 个 voice 相关 analytics 事件及其源码锚点。
+
+## Verification Checklist
+
+- [x] 所有行号引用均通过 Read / sed 在源码中二次验证
+- [x] `#LXX-LYY` 锚点精确到函数或代码块
+- [x] 架构描述与源码实现一致（门控层→音频层→WebSocket 层→UI 层）
+- [x] 无敏感信息泄露（OAuth token 仅描述流程，无真实密钥）
+- [x] Feature flag / GrowthBook / Auth 三层门控描述准确
+
+## Notable Findings
+
+| 发现 | 意义 |
+|------|------|
+| `tengu_amber_quartz_disabled` 默认 false | 新安装免等 GB 初始化即可用语音 |
+| silent-drop replay 机制 | ~1% 会话的 CE pod sticky bug 自动修复（`useVoice.ts#L385-L450`） |
+| `FINALIZE_TIMEOUTS_MS.noData = 1500ms` | 在 "无转录数据" 时比标准 5s 更快降级，避免用户长时间等待 |
+| `fullAudioRef` 32KB/s 上限 | 录制 60s 最大约 2MB 内存缓冲，控制峰值内存 |
+| `stopImmediatePropagation()` 在 key handler 中使用 | 防止握持键的自动重复事件泄漏到输入框 |
+
+## Action
+
+Proceed to commit/push.
+
+---
+
+## Unit 45: 45-ultraplan
+
+**审校日期**: 2026-04-09  
+**审校人**: Claude Code Agent
+
+### 审查结果
+
+| 检查项 | 状态 |
+|--------|------|
+| 原始页面已完整抓取 | ✅ |
+| 源码定位准确 (packages/ccb/src) | ✅ |
+| 行号锚点精确 (#LXX-LYY) | ✅ |
+| 架构分解完整 | ✅ |
+| 数据流描述准确 | ✅ |
+| 文件索引完整 | ✅ |
+| 无敏感信息泄露 | ✅ |
+
+### 修正与补充
+
+1. **行号精确性确认**: 所有引用行号均通过 `grep -n` / `Read` 在 `packages/ccb/src` 中二次验证，锚点有效。
+2. **状态修正**: 原文档称 `src/commands/ultraplan/` 为空目录，实际源码为单文件 `src/commands/ultraplan.tsx`，已在技术报告中修正并说明。
+3. **对话框组件**: 原文仅标记为 "布线"，报告中补充了精确源码位置及行为说明 (`UltraplanLaunchDialog.tsx` 和 `UltraplanChoiceDialog.tsx`)。
+4. **数据流细化**: 补充了 `preExpansionInput` 的检测时机、关键字替换 (`replaceUltraplanKeyword`) 和 `processSlashCommand` 重定向链路。
+5. **事件追踪补充**: 补充了完整的 analytics 事件列表与 feature flags 关系。
+
+### 输出文件
+
+- `docs/.report/45-ultraplan.md`
+
+### 内容评定
+
+报告完整覆盖了 ULTRAPLAN 的关键字检测、`ExitPlanModeScanner` 状态机、`/ultraplan` 命令处理器、REPL 对话框集成、RemoteAgentTask 轮询机制及彩虹高亮反馈，源码锚点精确，架构图与数据流描述与源码一致，**达到对外发布标准**。
+
+*审校完成。*
