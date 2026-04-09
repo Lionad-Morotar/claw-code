@@ -1,6 +1,8 @@
 # Worktree 隔离
 
 > 本报告基于 [Claude Code 中文文档](https://ccb.agent-aura.top/docs/agent/worktree-isolation) 的章节，映射到 `claw-code`（Claude Code 的 Rust 重写版）及其上游 TypeScript 实现（`packages/ccb`）的源码。
+>
+> **源码映射说明**：Worktree 生命周期管理是 Claude Code 上游（TypeScript 版）的功能。`claw-code`（Rust 重写版）目前尚未完整落地 worktree 隔离工具。**本报告引用的 `packages/ccb/src/utils/worktree.ts`、`packages/ccb/src/tools/EnterWorktreeTool/...`、`packages/ccb/src/tools/ExitWorktreeTool/...` 等路径在上游实现中存在，但在当前仓库中不存在对应源码文件。** 阅读时请注意区分上游与 Rust 实现的覆盖范围。
 > 文末附 [源码索引](#源码索引)。
 
 ---

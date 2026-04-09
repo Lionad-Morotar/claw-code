@@ -2,7 +2,7 @@
 
 > 本报告基于 [Claude Code 中文文档](https://ccb.agent-aura.top/docs/tools/task-management) 的目录结构进一步深化。
 >
-> **源码映射说明**：任务管理（TodoWrite / Tasks V2）在 `claw-code` 的 Rust 重写版（`rust/`）中目前尚未完全实现 parity。因此，本报告映射到同仓库中 TypeScript 核心实现 `packages/ccb/src/` 的源码，并在涉及架构对照时明确指出与 Rust 实现的差异。
+> **源码映射说明**：任务管理（TodoWrite / Tasks V2）是 Claude Code 上游（TypeScript 版）的功能。`claw-code`（Rust 重写版）目前尚未完全实现 parity。**本报告引用的 `packages/ccb/src/utils/tasks.ts`、`packages/ccb/src/tools/TodoWriteTool/...`、`packages/ccb/src/components/TaskListV2.tsx` 等路径在上游实现中存在，但在当前仓库中不存在对应源码文件。** 阅读时请注意区分上游与 Rust 实现的覆盖范围。
 > 文末附 [源码索引](#源码索引)。
 
 ---
