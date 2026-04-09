@@ -1258,3 +1258,51 @@ None — source anchors and logic verified against current packages/ccb HEAD.
 ## Action
 
 Proceed to commit/push.
+
+---
+
+# Unit 29 Review — 88 Feature Flags
+
+**Reviewed**: 2026-04-09
+**Subject**: docs/.report/29-feature-flags.md
+**Status**: Approved
+
+## Corrections Made
+
+None — all source anchors verified against packages/ccb HEAD.
+
+## Verification Checklist
+
+- [x] All 90+ feature flags discovered via grep audit
+- [x] Line-range anchors verified in cli.tsx, tools.ts, commands.ts, betas.ts, build.ts, dev.ts
+- [x] Three usage patterns (conditional tool loading, command registration, API feature enablement) accurately documented
+- [x] Dev/Build default features lists match source
+- [x] Alphabetical master list complete
+
+## Notable Findings
+
+| Discovery | Significance |
+|-----------|--------------|
+| KAIROS family (6 flags) largest | Controls proactive automation core |
+| ABLATION_BASELINE gate at cli.tsx#L38 | Harness-science L0 control: disables thinking, compaction, auto-memory |
+| BRIDGE_MODE + DAEMON coupling (commands.ts#L77) | Remote control requires both flags |
+| TRANSCRIPT_CLASSIFIER controls AFK_MODE_BETA_HEADER | Only beta header gated by feature flag |
+| DCE preserves external build size | feature() evaluated at build time, dead code eliminated |
+
+## Source Verification Summary
+
+| File | Feature Count | Key Lines |
+|------|---------------|-----------|
+| cli.tsx | 10+ | L2, L38, L79, L124, L201, L234, L248, L260 |
+| tools.ts | 15+ | L26, L34, L37, L44, L48, L105, L108, L111, L115, L118, L121, L124, L127 |
+| commands.ts | 12+ | L63, L67, L73, L77, L80, L83, L86, L91, L96, L101, L104, L107, L108, L113, L118 |
+| betas.ts | 1 | L24 |
+| build.ts | 18 (defaults) | L12-L28 |
+| dev.ts | 19 (defaults) | L20-L35 |
+| internal-modules.d.ts | 1 (type decl) | L10-L12 |
+
+## Action
+
+Proceed to commit/push.
+
+*审校完成。*
