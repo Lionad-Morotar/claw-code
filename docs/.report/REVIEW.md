@@ -265,3 +265,132 @@ if (feature('CONTEXT_COLLAPSE')) {  // ✅
 - CLI 通过 `/memory` 命令调用 `render_memory_report`（`rusty-claude-cli/src/main.rs#L5057-L5082`）实现人机双可见的记忆展示。
 
 文档技术准确、结构完整、源码锚点全部经过 `#LXX-LYY` 格式校验，**达到对外发布标准**。 *审校完成。*
+## 审校摘要
+
+**报告文件**: `docs/.report/22-custom-agents.md`  
+**原文**: https://ccb.agent-aura.top/docs/extensibility/custom-agents  
+**审校者**: Agent (Unit 22)  
+**审校日期**: 2026-04-09
+
+---
+
+## 发现的关键差异
+
+### 1. 定义格式差异
+
+| 原文描述 | claw-code 实际实现 |
+|----------|-------------------|
+| Markdown + YAML frontmatter | **TOML** |
+| `.claude/agents/*.md` | `.claw/agents/*.toml`、`.codex/agents/*.toml`、`.claude/agents/*.toml` |
+
+**证据**：
+```rust
+// rust/crates/commands/src/lib.rs:L3052-L3055
+if entry.path().extension().is_none_or(|ext| ext != "toml") {
+    continue;
+}
+```
+
+### 2. 字段差异
+
+原文提到的以下字段在 claw-code 中**未发现实现**：
+
+- `tools` / `disallowedTools` — claw-code 使用硬编码的 `allowed_tools_for_subagent()` 映射
+- `maxTurns` — 未发现，统一使用 `DEFAULT_AGENT_MAX_ITERATIONS = 32`
+- `memory: local/project/user` — 未发现相关实现
+- `isolation: worktree/remote` — 未发现相关实现
+- `hooks: PreToolUse: [...]` — 未发现相关实现
+- `skills: "code-review,..."` — 有 `/skills` 命令，但未在 Agent 定义中引用
+- `mcpServers` — 未发现相关实现
+- `background` — 未发现相关实现
+- `initialPrompt` — 未发现相关实现
+- `color` — 未发现相关实现
+- `permissionMode` — 未发现相关实现
+
+### 3. 工具过滤机制
+
+原文描述的白名单/黑名单动态过滤：
+```
+全部工具 ↓ disallowedTools 移除 ↓ tools 白名单过滤 → 可用工具
+```
+
+claw-code 实际实现为**硬编码映射**：
+```rust
+// rust/crates/tools/src/lib.rs:L3451-L3530
+fn allowed_tools_for_subagent(subagent_type: &str) -> BTreeSet<String> {
+    let tools = match subagent_type {
+        "Explore" => vec![...],
+        "Plan" => vec![...],
+        "Verification" => vec![...],
+        _ => vec![...],
+    };
+    tools.into_iter().map(str::to_string).collect()
+}
+```
+
+### 4. System Prompt 注入
+
+原文描述的闭包延迟注入与 Memory 指令追加：
+```
+getSystemPrompt() → if memory { systemPrompt + memoryPrompt }
+```
+
+claw-code 实际实现为**静态追加**：
+```rust
+// rust/crates/tools/src/lib.rs:L3437-L3440
+prompt.push(format!(
+    "You are a background sub-agent of type `{subagent_type}`. ..."
+));
+```
+
+---
+
+## 已验证的源码锚点
+
+| 组件 | 文件 | 行号 | 验证状态 |
+|------|------|------|---------|
+| `discover_definition_roots()` | `rust/crates/commands/src/lib.rs` | L2586-L2652 | ✓ |
+| `load_agents_from_roots()` | `rust/crates/commands/src/lib.rs` | L3042-L3083 | ✓ |
+| `AgentSummary` | `rust/crates/commands/src/lib.rs` | L2036-L2044 | ✓ |
+| `DefinitionSource` | `rust/crates/commands/src/lib.rs` | L1992-L2001 | ✓ |
+| `execute_agent()` | `rust/crates/tools/src/lib.rs` | L3286-L3368 | ✓ |
+| `allowed_tools_for_subagent()` | `rust/crates/tools/src/lib.rs` | L3451-L3530 | ✓ |
+| `SubagentToolExecutor` | `rust/crates/tools/src/lib.rs` | L3951-L3985 | ✓ |
+| `build_agent_system_prompt()` | `rust/crates/tools/src/lib.rs` | L3428-L3441 | ✓ |
+| `load_system_prompt()` | `rust/crates/runtime/src/prompt.rs` | L432-L446 | ✓ |
+| `SystemPromptBuilder` | `rust/crates/runtime/src/prompt.rs` | L95-L167 | ✓ |
+
+---
+
+## 未找到的原文特性
+
+| 原文特性 | 搜索结果 |
+|----------|---------|
+| `AGENT_MEMORY_SNAPSHOT` | 仅在注释中出现，无实际实现 |
+| `getActiveAgentsFromList()` | 未找到此函数 |
+| `loadMarkdownFilesForSubdir('agents', ...)` | 未找到此函数 |
+| `parseAgentToolsFromFrontmatter()` | 未找到此函数 |
+| `loadAgentMemoryPrompt()` | 未找到此函数 |
+| `setAgentColor()` | 未找到此函数 |
+| `isAutoMemoryEnabled()` | 未找到此函数 |
+| `requiredMcpServers` | 未找到此字段 |
+
+---
+
+## 结论
+
+原文描述的是 **ccb (Claude Code Best) 项目的理想化 Agent 系统**，而 claw-code 实现的是一个**简化版本**：
+
+1. ✅ 已实现：Agent 定义发现、TOML 格式解析、子 Agent 派生、工具白名单过滤、System Prompt 构建
+2. ❌ 未实现：Memory 持久化、Worktree 隔离、Hooks 拦截、Skills 预加载、MCP 服务器引用、自定义权限模式
+
+**建议**：如需完整实现原文描述的功能，需扩展以下内容：
+- 支持 Markdown + YAML frontmatter 格式解析
+- 实现 `memory` 字段的持久化存储与注入
+- 实现 `isolation: worktree` 的 Git Worktree 隔离
+- 实现 `hooks` 生命周期拦截器
+- 实现 `tools` / `disallowedTools` 的动态过滤逻辑
+
+---
+
+*审校完成 • 2026-04-09*

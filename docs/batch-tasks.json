@@ -270,9 +270,9 @@
       "title": "\u81ea\u5b9a\u4e49 Agent - \u4ece Markdown \u5230\u8fd0\u884c\u65f6\u7684\u5b8c\u6574\u94fe\u8def",
       "url": "https://ccb.agent-aura.top/docs/extensibility/custom-agents",
       "output_file": "docs/.report/22-custom-agents.md",
-      "status": "running",
+      "status": "completed",
       "assigned_at": "2026-04-09T12:20:00+08:00",
-      "completed_at": null,
+      "completed_at": "2026-04-09T12:00:00Z",
       "pr_url": null,
       "review_issues": 0
     },
