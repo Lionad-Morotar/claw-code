@@ -217,3 +217,51 @@ if (feature('CONTEXT_COLLAPSE')) {  // ✅
 ---
 
 **审校结论**: ✅ 通过 — 报告准确完整，可用于后续开发与参考。
+
+---
+
+## Unit 12 — project-memory
+
+- **评定**: Pass
+- **修正总数**: 0 处
+- **自审问题**: 3 项（均不涉及源码锚点修正）
+  1. 文首 `"Based on ..."` 宜改为中文语境 `"基于 ..."`（文体问题，非技术错误）。
+  2. `compact_session` 的 `max_estimated_tokens: 0` 需额外说明——这是“尽可能压缩到最简”的意图，否则读者可能误会为 budget 设为 0。
+  3. `SessionStore::from_cwd` 中对 `.claw/sessions/<fingerprint>` 的目录创建逻辑未在报告中显式展示，可补充一行以说明“首次访问即自动建目录”。
+
+### 抽检链接验证清单
+
+| 链接 | 对应内容 | 状态 |
+|------|----------|------|
+| `prompt.rs#L55-L62` | `ProjectContext` 结构体定义 | ✅ |
+| `prompt.rs#L81-L91` | `discover_with_git` 增强发现 | ✅ |
+| `prompt.rs#L203-L224` | `discover_instruction_files` 遍历逻辑 | ✅ |
+| `prompt.rs#L238-L254` | `read_git_status` | ✅ |
+| `prompt.rs#L256-L274` | `read_git_diff` | ✅ |
+| `prompt.rs#L288-L328` | `render_project_context` | ✅ |
+| `prompt.rs#L330-L351` | `render_instruction_files` | ✅ |
+| `prompt.rs#L353-L368` | `dedupe_instruction_files` 去重 | ✅ |
+| `prompt.rs#L432-L446` | `load_system_prompt` 入口 | ✅ |
+| `git_context.rs#L26-L42` | `GitContext::detect` | ✅ |
+| `session.rs#L89-L107` | `Session` 结构体 | ✅ |
+| `session.rs#L151-L159` | `Session::load_from_path` | ✅ |
+| `session.rs#L484-L498` | `append_persisted_message` JSONL 追加 | ✅ |
+| `session_control.rs#L19-L63` | `SessionStore` 结构体与 `from_cwd` | ✅ |
+| `session_control.rs#L218-L238` | `fork_session` | ✅ |
+| `session_control.rs#L246-L254` | `workspace_fingerprint` FNV-1a | ✅ |
+| `conversation.rs#L548-L568` | `maybe_auto_compact` 触发逻辑 | ✅ |
+| `compact.rs#L96-L139` | `compact_session` 压缩摘要 | ✅ |
+| `rusty-claude-cli/src/main.rs#L5057-L5082` | `render_memory_report` /memory 命令 | ✅ |
+
+### 内容评定
+
+报告准确还原了原始文档中 Claude Code 项目记忆系统的核心架构，并将 TypeScript 上游实现映射到 `claw-code` 的 Rust 实现：
+- `ProjectContext`（`prompt.rs#L55-L62`）及其指令文件发现链路构成了 Rust 版的记忆入口；
+- `discover_instruction_files` 向上遍历+reverse 保证父级规则先注入，子级可覆盖（`L203-L224`）；
+- `dedupe_instruction_files`（`L353-L368`）通过 `stable_content_hash` 去重，并受 4KB/12KB 硬上限约束；
+- Git 感知增强由 `read_git_status` / `read_git_diff` / `GitContext::detect` 三层快照实现；
+- Session 持久化采用 JSONL 增量写入（`session.rs#L484-L498`），配合 `SessionStore` 的 FNV-1a 工作区指纹隔离（`session_control.rs#L246-L254`）；
+- 长会话自动压缩由 `maybe_auto_compact`（`conversation.rs#L548-L568`）触发 `compact_session`（`compact.rs#L96-L139`），将早期消息压缩为 System 摘要并保留最近 4 条；
+- CLI 通过 `/memory` 命令调用 `render_memory_report`（`rusty-claude-cli/src/main.rs#L5057-L5082`）实现人机双可见的记忆展示。
+
+文档技术准确、结构完整、源码锚点全部经过 `#LXX-LYY` 格式校验，**达到对外发布标准**。 *审校完成。*
