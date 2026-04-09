@@ -1127,3 +1127,48 @@
 报告完整覆盖了 KAIROS 的 feature flag 体系、系统提示注入、SleepTool tick 驱动机制、Bridge API 数据流、BriefTool 实现、Channel Notification gate 逻辑，并精确指出了 `src/assistant/` 与 `src/proactive/` 当前为 stub 的状态。源码锚点精确，架构图与数据流描述与源码一致，**达到对外发布标准**。
 
 *审校完成。*
+
+## 31-growthbook-adapter.md
+
+- **评定**: Pass
+- **修正总数**: 审校阶段修正 6 处行号引用
+
+### 审校修正记录
+
+- **issue 1**: `packages/ccb/src/services/analytics/growthbook.ts#L486-L496` 更正为 `L488-L496`。实际 `isGrowthBookEnabled()` 位于第 488 行，与引用精确对齐。
+- **issue 2**: `packages/ccb/src/services/analytics/growthbook.ts#L813-L868` 更正为 `L814-L868`。
+- **issue 3**: `packages/ccb/src/services/analytics/growthbook.ts#L397-L413` 更正为 `L407-L418`。`syncRemoteEvalToDisk()` 实际定义在第 407 行。
+- **issue 4**: `packages/ccb/src/services/analytics/growthbook.ts#L1183-L1214` 更正为 `L1114-L1122`。
+- **issue 5**: `packages/ccb/src/services/analytics/growthbook.ts#L415-L477` 更正为 `L434-L490`。`LOCAL_GATE_DEFAULTS` 实际定义在第 434 行。
+- **issue 6**: `packages/ccb/src/constants/keys.ts#L5-L15` 更正为 `L5-L16`。`getGrowthBookClientKey()` 函数结束于第 16 行。
+
+### 抽检链接验证清单
+
+| 链接 | 对应内容 | 状态 |
+|------|----------|------|
+| `packages/ccb/src/constants/keys.ts#L5-L16` | `getGrowthBookClientKey()` 适配器 Key 优先 | ✅ |
+| `packages/ccb/src/services/analytics/growthbook.ts#L488-L496` | `isGrowthBookEnabled()` 适配器模式启用 | ✅ |
+| `packages/ccb/src/services/analytics/growthbook.ts#L560-L697` | `getGrowthBookClient()` 客户端创建配置 | ✅ |
+| `packages/ccb/src/services/analytics/growthbook.ts#L79-L81` | `remoteEvalFeatureValues` 内存缓存 Map | ✅ |
+| `packages/ccb/src/services/analytics/growthbook.ts#L407-L418` | `syncRemoteEvalToDisk()` 磁盘缓存同步 | ✅ |
+| `packages/ccb/src/services/analytics/growthbook.ts#L814-L868` | `getFeatureValue_CACHED_MAY_BE_STALE()` 非阻塞读取 | ✅ |
+| `packages/ccb/src/services/analytics/growthbook.ts#L434-L490` | `LOCAL_GATE_DEFAULTS` 本地默认门控 | ✅ |
+| `packages/ccb/src/services/analytics/growthbook.ts#L1114-L1122` | `GROWTHBOOK_REFRESH_INTERVAL_MS` 刷新间隔 | ✅ |
+
+### 内容评定
+
+报告将 GrowthBook 适配器文档完整映射到了 `claw-code` 源码（子项目 `packages/ccb`）：
+- **适配器 Key 注入**：`getGrowthBookClientKey()` 在 `keys.ts` 中优先读取 `CLAUDE_GB_ADAPTER_KEY`（覆盖原生 Anthropic SDK Key）；
+- **模式切换**：`isGrowthBookEnabled()` 通过两个环境变量同时存在判断适配器模式，直接绕过 `is1PEventLoggingEnabled()` 要求；
+- **客户端差异**：适配器模式下 `remoteEval: false`、`cacheKeyAttributes` 不设置、`hasAuth` 无需 `getAuthHeaders()`，与 Anthropic 内部模式形成 4 个关键差异点；
+- **优先级链**：完整描述了 5 层 fallback（env override → config override → memory cache → disk cache → defaultValue/LOCAL_GATE_DEFAULTS）；
+- **缓存机制**：`remoteEvalFeatureValues` 内存 Map 与 `syncRemoteEvalToDisk()` 持久化到 `~/.claude.json` 的 `cachedGrowthBookFeatures`，以及 6 小时/20 分钟的周期性刷新；
+- **Feature Key 表格**：从原文提取的 40+ 个 feature/gate 及其类型、默认值、用途全部保留；
+- **本地默认**：`LOCAL_GATE_DEFAULTS` 中 P0/P1/KS 三类、40+ 个 gate 的本地默认策略得到完整解析；
+- **调用方兼容**：130+ 个调用方文件无需改动，仅修改 `keys.ts` 与 `growthbook.ts` 共 3 处。
+
+所有源码锚点指向 `packages/ccb/` 子项目，行号经过精确校验，文档结构清晰，技术内容完整。**达到对外发布标准**。
+
+*审校完成。*
+
+---
