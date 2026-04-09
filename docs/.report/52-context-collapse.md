@@ -182,7 +182,7 @@ const snipProjection = feature('HISTORY_SNIP')
 
 ```ts
 // packages/ccb/src/services/compact/autoCompact.ts#L215-L225
-if (feature('CONTEXT_COLAPSE')) {
+if (feature('CONTEXT_COLLAPSE')) {
   const { isContextCollapseEnabled } =
     require('../contextCollapse/index.js') as typeof import('../contextCollapse/index.js')
   if (isContextCollapseEnabled()) {

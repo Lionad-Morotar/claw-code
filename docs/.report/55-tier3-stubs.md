@@ -32,13 +32,13 @@ export {};
 export const MonitorTool: Record<string, unknown> = {};
 ```
 
-**分析**: 完全的 auto-generated stub 文件，仅导出空对象。该工具设计用于文件/进程监控，检测变更并通知，但目前无任何实现。
+**分析**: 完全的 auto-generated stub 文件，仅导出空对象。设计用途是文件/进程监控与变更通知，但当前无任何实现。
 
 **引用点**:
 - `packages/ccb/src/tools.ts#L37-L38` — 条件加载
 - `packages/ccb/src/tools.ts#L235` — 加入工具列表
 - `packages/ccb/src/tools/AgentTool/runAgent.ts#L849` — feature 检查
-- `packages/ccb/src/tools/BashTool/prompt.ts#L312,L320` — prompt 注入
+- `packages/ccb/src/tools/BashTool/prompt.ts#L312-L320` — prompt 注入
 
 ---
 
