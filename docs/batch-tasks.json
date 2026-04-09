@@ -192,9 +192,9 @@
       "title": "\u5b50 Agent \u673a\u5236 - AgentTool \u7684\u6267\u884c\u94fe\u8def\u4e0e\u9694\u79bb\u67b6\u6784",
       "url": "https://ccb.agent-aura.top/docs/agent/sub-agents",
       "output_file": "docs/.report/16-sub-agents.md",
-      "status": "running",
+      "status": "completed",
       "assigned_at": "2026-04-09T12:15:00+08:00",
-      "completed_at": null,
+      "completed_at": "2026-04-09T12:00:00Z",
       "pr_url": null,
       "review_issues": 0
     },
