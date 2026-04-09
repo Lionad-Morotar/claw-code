@@ -1016,3 +1016,114 @@
 *审校完成。*
 
 ---
+
+---
+
+## 26-plan-mode.md
+
+- **审校时间**: 2026-04-09
+- **审校结果**: 通过
+- **修正总数**: 写作阶段自审 2 处
+- **说明**:
+  1. 源码锚点已逐行核对，全部位于 `rust/crates/tools/src/lib.rs`（EnterPlanMode / ExitPlanMode 实现、状态持久化、测试）以及 `rust/crates/runtime/src/`（config.rs 模式解析、permission_enforcer.rs 门控、permissions.rs 枚举），行号范围有效且与源码内容精确对应。
+  2. **写作阶段自审 issue 1**：原文提到 `isReadOnly()` 检查，但 Rust 实现中实际由 `PermissionEnforcer` 的 `check_file_write` 与 `check_bash` 对 `PermissionMode::ReadOnly` 进行显式拒绝。已调整表述为"`PermissionMode::ReadOnly` 时显式拒绝写操作"，更准确。
+  3. **写作阶段自审 issue 2**：原文提到 `ExitPlanModeV2Tool` 中的 `allowedPrompts` 和 `planWasEdited` 字段。经核对源码，当前 `claw-code` Rust 重写版仅实现了基础版 `ExitPlanMode`（无 `allowedPrompts` 参数）。报告已明确区分上游 TypeScript 架构的 `ExitPlanModeV2Tool` 与本仓库 Rust 实现的 `ExitPlanMode`，避免概念混淆。
+  4. 报告覆盖了 Plan Mode 的核心 Rust 实现链路：EnterPlanMode/ExitPlanMode 工具定义与分发、状态持久化（plan-mode.json）与恢复逻辑、settings.local.json 局部覆盖机制、权限级别映射（"plan" → ResolvedPermissionMode::ReadOnly）、权限执行器对文件写和 Bash 的门控策略、往返测试用例验证。
+  5. 格式参考了 `01-what-is-claude-code.md` 的标杆结构：含引言一句话定义、问题场景、源码深度解析、完整生命周期时序图、测试用例、源码索引表、关键设计洞察。
+
+### 抽检链接验证清单
+
+| 链接 | 对应内容 | 状态 |
+|------|----------|------|
+| `tools/src/lib.rs#L670-L681` | `EnterPlanMode` / `ExitPlanMode` 工具定义 | ✅ |
+| `tools/src/lib.rs#L1218-L1219` | 工具调用分发 | ✅ |
+| `tools/src/lib.rs#L2182-L2186` | 输入结构体定义 | ✅ |
+| `tools/src/lib.rs#L2491-L2510` | `PlanModeState` / `PlanModeOutput` 结构 | ✅ |
+| `tools/src/lib.rs#L4584-L4651` | `execute_enter_plan_mode` 实现 | ✅ |
+| `tools/src/lib.rs#L4653-L4721` | `execute_exit_plan_mode` 实现 | ✅ |
+| `tools/src/lib.rs#L5075-L5081` | `plan_mode_state_file` 路径函数 | ✅ |
+| `tools/src/lib.rs#L5083-L5115` | 状态读写清除函数 | ✅ |
+| `tools/src/lib.rs#L7958-L8068` | 往返测试用例 | ✅ |
+| `runtime/src/config.rs#L851-L863` | `"plan"` 模式解析为 `ReadOnly` | ✅ |
+| `runtime/src/permission_enforcer.rs#L78-L104` | `check_file_write` 文件写检查 | ✅ |
+| `runtime/src/permission_enforcer.rs#L115-L137` | `check_bash` Bash 命令检查 | ✅ |
+| `runtime/src/permissions.rs#L9-L16` | `PermissionMode` 枚举定义 | ✅ |
+
+### 内容评定
+
+报告将 Plan Mode 的安全文档完整映射到了 `claw-code` Rust 源码关键实现：
+- **工具层**：`tools/src/lib.rs` 中的 `EnterPlanMode` / `ExitPlanMode` 注册、分发、执行函数；
+- **状态持久化**：`plan-mode.json` 保存 `had_local_override` 和 `previous_local_mode`，退出时精确恢复或清除 `settings.local.json` 中的 `defaultMode`；
+- **权限映射**：`config.rs` 将 `"plan"` 配置别名解析为 `ResolvedPermissionMode::ReadOnly`；
+- **执行门控**：`permission_enforcer.rs` 对 `ReadOnly` 模式下的文件写和 Bash 命令进行显式拒绝（`check_file_write` / `check_bash`）；
+- **测试覆盖**：包含已有本地覆盖与空本地状态两种场景的往返测试；
+- **差异澄清**：诚实指出 Rust 侧当前仅实现基础 `ExitPlanMode`，`allowedPrompts` 与 `planWasEdited` 属于上游 TypeScript 的 `ExitPlanModeV2Tool`。
+
+文档对 Rust 实现与上游文档的差异作出了明确说明，源码锚点精确，格式与标杆一致。**达到对外发布标准**。
+
+*审校完成。*
+
+---
+
+## Unit 41 — `41-kairos.md`
+
+审校日期：2026-04-09
+审校范围：`docs/.report/41-kairos.md`
+
+### 快速结论
+
+| 检查项 | 评分 | 状态 |
+|--------|------|------|
+| 技术事实准确性 | ★★★★★ | 概念理解正确，源码映射到位 |
+| 源码链接可验证性 | ★★★★★ | 30+ 处锚点全部有效，格式统一 |
+| 开源社区可读性 | ★★★★★ | 结构清晰，从功能概述到源码锚点层次分明 |
+
+**综合评定**：文档达到开源社区可交付水准。
+
+### 已修正的问题
+
+1. **channelNotification 状态勘误**：原始 Mintlify 文档标记 `src/services/mcp/channelNotification.ts` 为 "5 行 stub"，实际源码为 317 行完整实现（含 `gateChannelServer` 七层门控、`wrapChannelMessage`、permission protocol 定义）。报告已按实际代码状态重新描述。
+2. **行号偏移修正**：由于 `research` 分支源码演进，`main.tsx` 中 KAIROS 相关逻辑行号与原始文档存在漂移，本报告已使用当前分支实际行号重新标注。
+3. **Brief 显示/行为分离的精确表述**：澄清了 `/brief` toggle 控制的是 `getUserMsgOptIn()`（进而影响 `isBriefEnabled()`），而 UI 过滤由 `isBriefOnly` 状态负责，模型是否能看到 `SendUserMessage` 取决于 `isBriefEnabled()` 返回结果。
+
+### 源码锚点验证
+
+| 锚点 | 说明 | 状态 |
+|------|------|------|
+| `src/main.tsx#L142-145` | assistant 模块动态 import | ✅ |
+| `src/main.tsx#L1004-1019` | `claude assistant` argv 预处理 | ✅ |
+| `src/main.tsx#L1793-1839` | `initializeAssistantTeam()` 调用 | ✅ |
+| `src/main.tsx#L2550-2660` | `--channels` 解析 | ✅ |
+| `src/main.tsx#L3307-3350` | Brief opt-in + assistant addendum | ✅ |
+| `src/main.tsx#L3742-3744` | `assistantActivationPath` 传递 | ✅ |
+| `src/bootstrap/state.ts#L1085-1111` | `getKairosActive` / `getUserMsgOptIn` | ✅ |
+| `src/assistant/gate.ts#L3` | `isKairosEnabled` stub | ✅ |
+| `src/assistant/index.ts#L3` | `isAssistantMode` stub | ✅ |
+| `src/proactive/index.ts#L3` | `isProactiveActive` stub | ✅ |
+| `src/constants/prompts.ts#L844-914` | `getBriefSection` / `getProactiveSection` | ✅ |
+| `src/constants/prompts.ts#L488` | `getProactiveSection()` 调用点 | ✅ |
+| `src/constants/prompts.ts#L552-554` | brief section 注册 | ✅ |
+| `src/tools/SleepTool/prompt.ts#L3` | `SLEEP_TOOL_NAME` | ✅ |
+| `src/tools/SleepTool/prompt.ts#L7-17` | SleepTool prompt 文本 | ✅ |
+| `src/constants/xml.ts#L25` | `TICK_TAG = 'tick'` | ✅ |
+| `src/cli/print.ts#L1836-1849` | tick 生成与入队 | ✅ |
+| `src/bridge/bridgeApi.ts#L199-247` | `pollForWork` | ✅ |
+| `src/bridge/bridgeApi.ts#L249-264` | `acknowledgeWork` | ✅ |
+| `src/bridge/bridgeMain.ts#L590-880` | Bridge 主轮询循环 | ✅ |
+| `src/bridge/sessionRunner.ts#L248-547` | `createSessionSpawner` | ✅ |
+| `src/bridge/replBridge.ts#L1945` | REPL pollForWork | ✅ |
+| `src/bridge/replBridge.ts#L2157` | REPL acknowledgeWork | ✅ |
+| `src/bridge/replBridge.ts#L1380-1420` | v1/v2 Transport 建立 | ✅ |
+| `src/tools/BriefTool/BriefTool.ts#L20-63` | input/output schema | ✅ |
+| `src/tools/BriefTool/BriefTool.ts#L88-99` | `isBriefEntitled` | ✅ |
+| `src/tools/BriefTool/BriefTool.ts#L126-134` | `isBriefEnabled` | ✅ |
+| `src/tools/BriefTool/BriefTool.ts#L175-203` | `call` / `mapToolResultToToolResultBlockParam` | ✅ |
+| `src/tools/BriefTool/prompt.ts#L1-22` | `BRIEF_PROACTIVE_SECTION` | ✅ |
+| `src/services/mcp/channelNotification.ts#L106-116` | `wrapChannelMessage` | ✅ |
+| `src/services/mcp/channelNotification.ts#L191-315` | `gateChannelServer` | ✅ |
+
+### 内容评定
+
+报告完整覆盖了 KAIROS 的 feature flag 体系、系统提示注入、SleepTool tick 驱动机制、Bridge API 数据流、BriefTool 实现、Channel Notification gate 逻辑，并精确指出了 `src/assistant/` 与 `src/proactive/` 当前为 stub 的状态。源码锚点精确，架构图与数据流描述与源码一致，**达到对外发布标准**。
+
+*审校完成。*
