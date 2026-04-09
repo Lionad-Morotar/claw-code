@@ -972,3 +972,47 @@
 报告基于上游 Token 预算管理文档的 ToC（上下文窗口分解、近似 vs 精确计数、Provider 差异、自动压缩阈值、全量压缩流程、Prompt Cache Sharing、Slot 优化、上下文窗口拦截器），并将每个概念精确映射到 `claw-code` Rust 源码中的对应实现。对 3P Provider 的精确计数差异作出了准确说明，对 `estimate_serialized_tokens` / `count_tokens` 两级策略进行了源码级剖析。源码锚点丰富、测试用例引用完整、端到端流程图清晰。**达到对外发布标准**。
 
 *审校完成。*
+
+---
+
+## 35-debug-mode.md
+
+- **评定**：Pass
+- **修正总数**：0 处（写作阶段自审通过，行号抽检全部命中）
+
+### 行号抽检结论
+
+文档共含 15+ 处带 `#LXX-LYY` 锚点的源码链接，经逐条验证均与 `rust/crates/` 中的源码内容精确对应。关键引用如下：
+
+| 链接 | 对应内容 | 状态 |
+|------|----------|------|
+| `commands/src/lib.rs#L1075` | `SlashCommand::DebugToolCall` 枚举变体 | ✅ |
+| `commands/src/lib.rs#L1274-L1277` | `/debug-tool-call` 解析逻辑 | ✅ |
+| `rusty-claude-cli/src/main.rs#L3589` | REPL 循环中调用 `run_debug_tool_call` | ✅ |
+| `rusty-claude-cli/src/main.rs#L4330-L4334` | `run_debug_tool_call` 函数实现 | ✅ |
+| `rusty-claude-cli/src/main.rs#L5219-L5262` | `render_last_tool_debug_report` 渲染逻辑 | ✅ |
+| `telemetry/src/lib.rs#L170-L203` | `TelemetryEvent` 枚举定义 | ✅ |
+| `telemetry/src/lib.rs#L279-L406` | `SessionTracer` 结构体与 API | ✅ |
+| `telemetry/src/lib.rs#L233-L277` | `JsonlTelemetrySink` 持久化实现 | ✅ |
+| `runtime/src/conversation.rs#L547-L556` | `record_turn_started` | ✅ |
+| `runtime/src/conversation.rs#L565-L579` | `record_assistant_iteration` | ✅ |
+| `runtime/src/conversation.rs#L583-L593` | `record_tool_started` | ✅ |
+| `runtime/src/conversation.rs#L597-L614` | `record_tool_finished` | ✅ |
+| `runtime/src/conversation.rs#L618-L639` | `record_turn_completed` | ✅ |
+| `runtime/src/conversation.rs#L643-L650` | `record_turn_failed` | ✅ |
+| `rusty-claude-cli/src/main.rs#L6732-L6735` | 错误渲染中 `Trace` 字段输出 | ✅ |
+
+### 内容评定
+
+报告将 Debug 模式的主题完整映射到了 `claw-code` Rust 源码：
+- **`/debug-tool-call`**：REPL 内建的工具调用调试命令，反向扫描 Session 消息链提取最后一个 `ToolUse` / `ToolResult` 配对并格式化为可读报告；
+- **Telemetry 子系统**：自建 `telemetry` crate 替代传统 `tracing` + `RUST_LOG`，通过 `TelemetryEvent` 枚举、`SessionTracer`、`JsonlTelemetrySink` 实现结构化事件追踪；
+- **生命周期埋点**：`ConversationRuntime` 在 turn/tool 生命周期中嵌入 6 个追踪点（turn_started、assistant_iteration_completed、tool_execution_started、tool_execution_finished、turn_completed、turn_failed）；
+- **API request_id 链路**：`ApiError` 携带服务端返回的 `request_id`，CLI 错误渲染时显式输出 `Trace <request_id>` 便于跨团队排查；
+- **架构差异说明**：诚实地指出 Rust 实现不需要 Bun `--inspect-wait` 机制，因为 Cargo 二进制可用标准 Rust 调试工具链（CodeLLDB）直接 attach。
+
+文档对 claw-code 与上游 TypeScript 实现在调试能力上的形态差异作出了准确说明，源码锚点精确，**达到对外发布标准**。
+
+*审校完成。*
+
+---
