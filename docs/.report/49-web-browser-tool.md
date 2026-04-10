@@ -525,8 +525,8 @@ let result = execute_tool("WebSearch", &json!({
 
 | 工具 | 状态 | 源码位置 |
 |------|------|----------|
-| WebFetch | ✅ 完整实现 | [`lib.rs#L493-L507`](rust/crates/tools/src/lib.rs#L493-L507), [`#L2556-L2580`](rust/crates/tools/src/lib.rs#L2556-L2580) |
-| WebSearch | ✅ 完整实现 | [`lib.rs#L508-L528`](rust/crates/tools/src/lib.rs#L508-L528), [`#L2590-L2631`](rust/crates/tools/src/lib.rs#L2590-L2631) |
+| WebFetch | ✅ 完整实现 | [`lib.rs#L493-L507`](rust/crates/tools/src/lib.rs#L493-L507), [`#L2556-L2590`](rust/crates/tools/src/lib.rs#L2556-L2590) |
+| WebSearch | ✅ 完整实现 | [`lib.rs#L508-L528`](rust/crates/tools/src/lib.rs#L508-L528), [`#L2590-L2642`](rust/crates/tools/src/lib.rs#L2590-L2642) |
 
 ### 未实现功能
 
@@ -541,8 +541,8 @@ let result = execute_tool("WebSearch", &json!({
 
 1. **DuckDuckGo HTML 解析脆弱性**：`extract_search_hits` 直接对 DuckDuckGo HTML 做字符串扫描（`result__a`、`href=`）。DDG 前端改版将导致搜索工具零结果，且当前无版本化回退或 API 契约。若搜索是核心工作流，建议添加 `CLAWD_WEB_SEARCH_BASE_URL` 指向自有搜索代理。
 2. **若需浏览器自动化**: 考虑通过 MCP 协议集成外部浏览器工具 (如 `mcp__safari` 或 `mcp__plugin_playwright`)
-3. **扩展现有能力***: 当前 WebFetch 和 WebSearch 已满足基本的 Web 信息获取需求
-4. **文档补充***: 建议在官方文档中明确区分 HTTP 级别工具与浏览器自动化工具的边界
+3. **扩展现有能力**: 当前 WebFetch 和 WebSearch 已满足基本的 Web 信息获取需求
+4. **文档补充**: 建议在官方文档中明确区分 HTTP 级别工具与浏览器自动化工具的边界
 
 ---
 
@@ -552,7 +552,7 @@ let result = execute_tool("WebSearch", &json!({
 |------|------|------|
 | `rust/crates/tools/src/lib.rs` | 8600 | 主工具实现 |
 | `rust/crates/runtime/src/mcp_server.rs` | 200+ | MCP 服务器框架 |
-| `rust/crates/runtime/src/mcp_stdio.rs` | - | MCP 客户端实现 |
+| `rust/crates/runtime/src/mcp_stdio.rs` | 2928 | MCP stdio 客户端实现 |
 
 ---
 

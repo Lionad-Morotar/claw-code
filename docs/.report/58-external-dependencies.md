@@ -28,7 +28,7 @@ claw-code 仓库包含两个主要子系统：
 
 ### 2.1 依赖统计
 
-- **总 crates 数量**: 约 230 个 (包含传递依赖，`Cargo.lock` 中 `name = ` 条目计数)
+- **总 crates 数量**: 230 个 (包含传递依赖，`Cargo.lock` 中 `name = ` 条目计数)
 - **直接依赖 crates**: ~20 个核心外部 crate
 - **内部 crates**: 10 个 (api, commands, runtime, plugins, tools, telemetry 等)
 
@@ -36,19 +36,21 @@ claw-code 仓库包含两个主要子系统：
 
 #### 2.2.1 HTTP 客户端 - `reqwest`
 
-**依赖声明** (`rust/crates/api/Cargo.toml:9`):
+**依赖声明** (`rust/crates/api/Cargo.toml#L9`):
 ```toml
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 ```
 
+注：`tools` crate 在 [`Cargo.toml#L11`](/rust/crates/tools/Cargo.toml#L11) 中声明了 `reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }`（使用 `blocking` feature 而非 `"json"`）。
+
 **用途**: 构建 HTTP 客户端，支持与 Anthropic API 等远程服务通信
 
 **源码位置**:
-- `rust/crates/api/src/http_client.rs:63-113` - `build_http_client()` 函数
+- `rust/crates/api/src/http_client.rs#L63-L113` - `build_http_client()` 函数
 - 支持代理配置 (`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`)
 - 使用 `rustls-tls` 提供 HTTPS 支持
 
-**关键实现** (`rust/crates/api/src/http_client.rs:83-112`):
+**关键实现** (`rust/crates/api/src/http_client.rs#L83-L112`):
 ```rust
 pub fn build_http_client_with(config: &ProxyConfig) -> Result<reqwest::Client, ApiError> {
     let mut builder = reqwest::Client::builder().no_proxy();
@@ -63,32 +65,32 @@ pub fn build_http_client_with(config: &ProxyConfig) -> Result<reqwest::Client, A
 #### 2.2.2 异步运行时 - `tokio`
 
 **依赖声明** (多个 crate):
-- `rust/crates/api/Cargo.toml:14`: `tokio = { version = "1", features = ["io-util", "macros", "net", "rt-multi-thread", "time"] }`
-- `rust/crates/runtime/Cargo.toml:16`: 添加 `io-std`, `process`, `rt`, `signal`
-- `rust/crates/rusty-claude-cli/Cargo.toml:24`: 添加 `signal`
+- `rust/crates/api/Cargo.toml#L14`: `tokio = { version = "1", features = ["io-util", "macros", "net", "rt-multi-thread", "time"] }`
+- `rust/crates/runtime/Cargo.toml#L16`: 添加 `io-std`, `process`, `rt`, `signal`
+- `rust/crates/rusty-claude-cli/Cargo.toml#L24`: 添加 `signal`
 
 **用途**: 提供异步 I/O、网络通信、信号处理
 
 **源码位置**:
-- `rust/crates/mock-anthropic-service/src/main.rs:5` - `#[tokio::main]` 入口
-- `rust/crates/mock-anthropic-service/src/lib.rs:8-10` - TCP 监听器实现
+- `rust/crates/mock-anthropic-service/src/main.rs#L5` - `#[tokio::main]` 入口
+- `rust/crates/mock-anthropic-service/src/lib.rs#L8-L10` - TCP 监听器实现
 
 #### 2.2.3 序列化 - `serde` / `serde_json`
 
 **依赖声明**:
-- `rust/Cargo.toml:12`: `serde_json.workspace = true`
-- `rust/crates/api/Cargo.toml:11`: `serde = { version = "1", features = ["derive"] }`
+- `rust/Cargo.toml#L12`: `serde_json.workspace = true`
+- `rust/crates/api/Cargo.toml#L11`: `serde = { version = "1", features = ["derive"] }`
 
 **用途**: JSON 序列化/反序列化，用于 API 请求/响应
 
 **源码位置**:
-- `rust/crates/telemetry/src/lib.rs:9-10`: `use serde::{Deserialize, Serialize}; use serde_json::{Map, Value};`
-- `rust/crates/runtime/src/lane_events.rs:2-3`: 事件类型序列化
-- `rust/crates/runtime/src/sandbox.rs:5`: 沙箱配置序列化
+- `rust/crates/telemetry/src/lib.rs#L9-L10`: `use serde::{Deserialize, Serialize}; use serde_json::{Map, Value};`
+- `rust/crates/runtime/src/lane_events.rs#L2-L3`: 事件类型序列化
+- `rust/crates/runtime/src/sandbox.rs#L5`: 沙箱配置序列化
 
 #### 2.2.4 CLI 交互 - `crossterm`, `rustyline`, `syntect`, `pulldown-cmark`
 
-**依赖声明** (`rust/crates/rusty-claude-cli/Cargo.toml:16-23`):
+**依赖声明** (`rust/crates/rusty-claude-cli/Cargo.toml#L16-L23`):
 ```toml
 crossterm = "0.28"
 pulldown-cmark = "0.13"
@@ -103,15 +105,15 @@ syntect = "5"
 - `pulldown-cmark`: Markdown 解析
 
 **源码位置**:
-- `rust/crates/rusty-claude-cli/src/input.rs:6-13`: rustyline 集成
+- `rust/crates/rusty-claude-cli/src/input.rs#L6-L13`: rustyline 集成
   - `Completer`, `Highlighter`, `Validator` 实现
   - 行编辑器 (`LineEditor`) 实现
 
 #### 2.2.5 文件处理 - `flate2`, `walkdir`, `glob`
 
 **依赖声明**:
-- `rust/crates/tools/Cargo.toml:11`: `flate2 = "1"`
-- `rust/crates/runtime/Cargo.toml:10,17`: `glob = "0.3"`, `walkdir = "2"`
+- `rust/crates/tools/Cargo.toml#L11`: `flate2 = "1"`
+- `rust/crates/runtime/Cargo.toml#L10,L17`: `glob = "0.3"`, `walkdir = "2"`
 
 **用途**:
 - `flate2`: PDF 解压等压缩处理
@@ -119,11 +121,11 @@ syntect = "5"
 - `walkdir`: 目录遍历
 
 **源码位置**:
-- `rust/crates/tools/src/pdf_extract.rs:363-365`: ZlibEncoder 使用
+- `rust/crates/tools/src/pdf_extract.rs#L363-L365`: ZlibEncoder 使用
 
 #### 2.2.6 加密/哈希 - `sha2`, `regex`
 
-**依赖声明** (`rust/crates/runtime/Cargo.toml:9,12`):
+**依赖声明** (`rust/crates/runtime/Cargo.toml#L9,L12`):
 ```toml
 sha2 = "0.10"
 regex = "1"
@@ -200,7 +202,7 @@ claw-code 通过网络与以下端点通信：
 
 ### 5.2 代理支持
 
-**源码**: `rust/crates/api/src/http_client.rs:3-21` - `ProxyConfig` 结构体
+**源码**: `rust/crates/api/src/http_client.rs#L3-L21` - `ProxyConfig` 结构体
 - 支持 `HTTP_PROXY`/`http_proxy`
 - 支持 `HTTPS_PROXY`/`https_proxy`
 - 支持 `NO_PROXY`/`no_proxy`
@@ -221,7 +223,7 @@ claw-code 通过网络与以下端点通信：
 | `rust/crates/rusty-claude-cli/src/input.rs` | 6-13 | rustyline 集成 |
 | `rust/crates/telemetry/src/lib.rs` | 9-10 | serde 使用 |
 | `rust/crates/tools/src/pdf_extract.rs` | 363-365 | flate2 使用 |
-| `rust/Cargo.lock` | 全文 | 约 230 个 crate 锁定 |
+| `rust/Cargo.lock` | 全文 | 230 个 crate 锁定 |
 
 ---
 

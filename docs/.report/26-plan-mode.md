@@ -400,7 +400,7 @@ AI 使用全部工具执行计划
 
 ## 测试用例验证
 
-在 [`lib.rs#L7986-L8105`](/rust/crates/tools/src/lib.rs#L7986-L8105) 中有两个测试用例验证 EnterPlanMode/ExitPlanMode 的往返行为：
+在 [`lib.rs#L7965-L8106`](/rust/crates/tools/src/lib.rs#L7965-L8106) 中有两个测试用例验证 EnterPlanMode/ExitPlanMode 的往返行为：
 
 ```rust
 #[test]
@@ -470,7 +470,7 @@ fn exit_plan_mode_clears_override_when_enter_created_it_from_empty_local_state()
 | [`/rust/crates/tools/src/lib.rs`](/rust/crates/tools/src/lib.rs) | `execute_exit_plan_mode` 实现 | L4653-L4721 |
 | [`/rust/crates/tools/src/lib.rs`](/rust/crates/tools/src/lib.rs) | `plan_mode_state_file` 路径函数 | L5075-L5077 |
 | [`/rust/crates/tools/src/lib.rs`](/rust/crates/tools/src/lib.rs) | 状态读写清除函数 | L5083-L5110 |
-| [`/rust/crates/tools/src/lib.rs`](/rust/crates/tools/src/lib.rs) | 测试用例 | L7986-L8105 |
+| [`/rust/crates/tools/src/lib.rs`](/rust/crates/tools/src/lib.rs) | 测试用例 | L7965-L8106 |
 | [`/rust/crates/runtime/src/config.rs`](/rust/crates/runtime/src/config.rs) | `"plan"` 模式解析为 `ReadOnly` | L851-L862 |
 | [`/rust/crates/runtime/src/permission_enforcer.rs`](/rust/crates/runtime/src/permission_enforcer.rs) | 文件写入检查 | L74-L108 |
 | [`/rust/crates/runtime/src/permission_enforcer.rs`](/rust/crates/runtime/src/permission_enforcer.rs) | Bash 命令检查 | L111-L139 |

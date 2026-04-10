@@ -15,7 +15,7 @@
 
 ### 五级 PermissionMode
 
-核心枚举定义在 [`runtime/src/permissions.rs#L9-L16`](/rust/crates/runtime/src/permissions.rs#L9-L15)：
+核心枚举定义在 [`runtime/src/permissions.rs#L9-L15`](/rust/crates/runtime/src/permissions.rs#L9-L15)：
 
 ```rust
 pub enum PermissionMode {
@@ -100,7 +100,7 @@ let permission_context = PermissionContext::new(
 );
 ```
 
-参见 [`runtime/src/conversation.rs#L393-L398`](/rust/crates/runtime/src/conversation.rs#L393-L398)。
+参见 [`runtime/src/conversation.rs#L370-L381`](/rust/crates/runtime/src/conversation.rs#L370-L381)。
 
 Hook 的三种覆盖行为：
 
@@ -350,7 +350,7 @@ pub enum FilesystemIsolationMode {
 }
 ```
 
-参见 [`runtime/src/sandbox.rs#L9-L15`](/rust/crates/runtime/src/sandbox.rs#L9-L14)。
+参见 [`runtime/src/sandbox.rs#L9-L14`](/rust/crates/runtime/src/sandbox.rs#L9-L14)。
 
 - **Off**：不限制文件系统访问
 - **WorkspaceOnly**：只允许访问工作区目录

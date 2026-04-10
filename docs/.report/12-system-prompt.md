@@ -96,7 +96,7 @@ AnthropicRuntimeClient::stream() →  MessageRequest { system: Option<String>, .
 
 ### 源码映射
 
-- `ProjectContext::discover_with_git()` 在 [`prompt.rs#L82-L91`](/rust/crates/runtime/src/prompt.rs#L82-L91) 一次性收集指令文件和 git 上下文。
+- `ProjectContext::discover_with_git()` 在 [`prompt.rs#L81-L91`](/rust/crates/runtime/src/prompt.rs#L81-L91) 一次性收集指令文件和 git 上下文。
 - `ConfigLoader::load()` 在 [`config.rs#L271-L340`](/rust/crates/runtime/src/config.rs#L271-L340) 读取并合并所有配置文件。
 - `SystemPromptBuilder` 在 [`prompt.rs#L95-L107`](/rust/crates/runtime/src/prompt.rs#L95-L107) 定义，Builder 方法如 `with_project_context`、`with_runtime_config` 在 L125-L135。
 
