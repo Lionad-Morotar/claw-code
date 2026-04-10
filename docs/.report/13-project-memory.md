@@ -53,7 +53,7 @@ pub struct ProjectContext {
 
 ### 指令文件发现链路
 
-`ProjectContext::discover` 调用 `discover_instruction_files`（[`L203-L223`](/rust/crates/runtime/src/prompt.rs#L203-L224)）：
+`ProjectContext::discover` 调用 `discover_instruction_files`（[`L203-L224`](/rust/crates/runtime/src/prompt.rs#L203-L224)）：
 
 ```rust
 fn discover_instruction_files(cwd: &Path) -> std::io::Result<Vec<ContextFile>> {
@@ -184,7 +184,7 @@ pub struct Session {
 }
 ```
 
-当配置了 `persistence_path` 后，每条消息会通过 `append_persisted_message`（[`session.rs#L517-531`](/rust/crates/runtime/src/session.rs#L517-531)）以 **JSONL** 格式追加写入磁盘：
+当配置了 `persistence_path` 后，每条消息会通过 `append_persisted_message`（[`session.rs#L533-L548`](/rust/crates/runtime/src/session.rs#L533-L548)）以 **JSONL** 格式追加写入磁盘：
 
 ```rust
 fn append_persisted_message(&self, message: &ConversationMessage) -> Result<(), SessionError> {
@@ -285,7 +285,7 @@ fn maybe_auto_compact(&mut self) -> Option<AutoCompactionEvent> {
 
 ## CLI 层的记忆可见性
 
-在 `rusty-claude-cli/src/main.rs` 中，`/memory` slash command 会调用 `render_memory_report`（[`L5083-L5119`](/rust/crates/rusty-claude-cli/src/main.rs#L5083-L5120)），将当前 `ProjectContext` 中发现的指令文件以报告形式展示给用户：
+在 `rusty-claude-cli/src/main.rs` 中，`/memory` slash command 会调用 `render_memory_report`（[`L5513-L5550`](/rust/crates/rusty-claude-cli/src/main.rs#L5513-L5550)），将当前 `ProjectContext` 中发现的指令文件以报告形式展示给用户：
 
 ```rust
 fn render_memory_report() -> Result<String, Box<dyn std::error::Error>> {
