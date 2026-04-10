@@ -5,6 +5,7 @@
 **原文**: https://ccb.agent-aura.top/docs/internals/growthbook-adapter  
 **生成日期**: 2026-04-09
 
+> **源码映射说明**：GrowthBook 适配器全部基于 `packages/ccb`（Claude Code 上游 TypeScript 实现）。`claw-code`（Rust 重写版）目前尚未实现此功能。本报告引用的 `packages/ccb/src/...` 路径在上游实现中存在，但在当前仓库中**不存在对应源码文件**。阅读时请注意区分上游与 Rust 实现的覆盖范围。
 ---
 
 ## 1. 概述

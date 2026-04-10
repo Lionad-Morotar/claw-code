@@ -28,7 +28,7 @@ pub enum BootstrapPhase {
     SystemPromptFastPath,
     ChromeMcpFastPath,
     DaemonWorkerFastPath,
-    BridgeFastPath,          // #L9
+    BridgeFastPath,          // [`bootstrap.rs#L9`](rust/crates/runtime/src/bootstrap.rs#L9)
     DaemonFastPath,
     BackgroundSessionFastPath,
     TemplateFastPath,
@@ -47,7 +47,7 @@ BootstrapPlan::from_phases(vec![
     BootstrapPhase::SystemPromptFastPath,
     BootstrapPhase::ChromeMcpFastPath,
     BootstrapPhase::DaemonWorkerFastPath,
-    BootstrapPhase::BridgeFastPath,  // #L32
+    BootstrapPhase::BridgeFastPath,  // [`bootstrap.rs#L32`](rust/crates/runtime/src/bootstrap.rs#L32)
     BootstrapPhase::DaemonFastPath,
     // ...
 ])
@@ -55,7 +55,7 @@ BootstrapPlan::from_phases(vec![
 
 compat-harness 通过源码字符串匹配来决定是否注入该阶段：
 
-文件：`rust/crates/compat-harness/src/lib.rs`（#L202）
+文件：[`rust/crates/compat-harness/src/lib.rs`](rust/crates/compat-harness/src/lib.rs)（[`#L202`](rust/crates/compat-harness/src/lib.rs#L202)）
 
 ```rust
 if source.contains("remote-control") {
@@ -87,7 +87,7 @@ pub enum McpConnectionStatus {
 }
 ```
 
-行号：#L25-33
+行号：[`mcp_tool_bridge.rs#L25-L33`](rust/crates/runtime/src/mcp_tool_bridge.rs#L25-L33)
 
 每个服务器的状态被封装为 `McpServerState`：
 
@@ -102,7 +102,7 @@ pub struct McpServerState {
 }
 ```
 
-行号：#L64-72
+行号：[`mcp_tool_bridge.rs#L64-L72`](rust/crates/runtime/src/mcp_tool_bridge.rs#L64-L72)
 
 ### 3.2 注册表结构
 
@@ -114,20 +114,20 @@ pub struct McpToolRegistry {
 }
 ```
 
-行号：#L74-77
+行号：[`mcp_tool_bridge.rs#L74-L77`](rust/crates/runtime/src/mcp_tool_bridge.rs#L74-L77)
 
 关键接口（节选）：
 
 | 方法 | 行号 | 说明 |
 |------|------|------|
-| `set_manager` | #L85 | 将 `McpServerManager` 注入注册表， OnceLock 保证仅初始化一次 |
-| `register_server` | #L92 | upsert 式注册服务器元数据 |
-| `get_server` / `list_servers` | #L114 / #L119 | 查询 |
-| `list_resources` / `read_resource` | #L124 / #L140 | 资源浏览与读取，要求状态为 `Connected` |
-| `list_tools` | #L161 | 工具列表 |
-| `call_tool` | #L240 | 同步调用 MCP 工具 |
-| `set_auth_status` | #L281 | 动态更新认证状态 |
-| `disconnect` | #L295 | 移除服务器 |
+| `set_manager` | [`#L85`](rust/crates/runtime/src/mcp_tool_bridge.rs#L85) | 将 `McpServerManager` 注入注册表， OnceLock 保证仅初始化一次 |
+| `register_server` | [`#L92`](rust/crates/runtime/src/mcp_tool_bridge.rs#L92) | upsert 式注册服务器元数据 |
+| `get_server` / `list_servers` | [`#L114`](rust/crates/runtime/src/mcp_tool_bridge.rs#L114) / [`#L119`](rust/crates/runtime/src/mcp_tool_bridge.rs#L119) | 查询 |
+| `list_resources` / `read_resource` | [`#L124`](rust/crates/runtime/src/mcp_tool_bridge.rs#L124) / [`#L140`](rust/crates/runtime/src/mcp_tool_bridge.rs#L140) | 资源浏览与读取，要求状态为 `Connected` |
+| `list_tools` | [`#L161`](rust/crates/runtime/src/mcp_tool_bridge.rs#L161) | 工具列表 |
+| `call_tool` | [`#L240`](rust/crates/runtime/src/mcp_tool_bridge.rs#L240) | 同步调用 MCP 工具 |
+| `set_auth_status` | [`#L281`](rust/crates/runtime/src/mcp_tool_bridge.rs#L281) | 动态更新认证状态 |
+| `disconnect` | [`#L295`](rust/crates/runtime/src/mcp_tool_bridge.rs#L295) | 移除服务器 |
 
 ### 3.3 同步调用异步 MCP 的实现细节
 
@@ -195,7 +195,7 @@ fn spawn_tool_call(
 }
 ```
 
-行号：#L177-238
+行号：[`mcp_tool_bridge.rs#L177-L238`](rust/crates/runtime/src/mcp_tool_bridge.rs#L177-L238)
 
 注意该线程每次调用都会执行完整的 `discover_tools -> call_tool -> shutdown` 生命周期。这意味着每个工具调用都会创建一个全新的 tokio `current_thread` runtime 并 spawn 一个 OS 线程，频繁调用时线程创建/销毁开销和进程重启开销可能成为瓶颈（_latencies 在毫秒级但不排除高并发时累积）。若需优化，应考虑复用 runtime 和 MCP stdio 长连接。每个工具调用结束后关闭进程，下次调用重新初始化，确保状态隔离。
 
@@ -206,12 +206,12 @@ fn spawn_tool_call(
 ```rust
 Self::spawn_tool_call(
     manager,
-    mcp_tool_name(server_name, tool_name),  // #L275
+    mcp_tool_name(server_name, tool_name),  // [`mcp_tool_bridge.rs#L275`](rust/crates/runtime/src/mcp_tool_bridge.rs#L275)
     (!arguments.is_null()).then(|| arguments.clone()),
 )
 ```
 
-`mcp_tool_name` 实现在 `rust/crates/runtime/src/mcp.rs` #L31：
+`mcp_tool_name` 实现在 [`rust/crates/runtime/src/mcp.rs`](rust/crates/runtime/src/mcp.rs) [`#L31`](rust/crates/runtime/src/mcp.rs#L31)：
 
 ```rust
 pub fn mcp_tool_name(server_name: &str, tool_name: &str) -> String {
@@ -236,7 +236,7 @@ pub struct McpServerManager {
 }
 ```
 
-行号：#L480-486
+行号：[`mcp_stdio.rs#L480-L486`](rust/crates/runtime/src/mcp_stdio.rs#L480-L486)
 
 - `from_servers` 仅支持 `McpTransport::Stdio`，其他 transport 进入 `unsupported_servers`。
 - `discover_tools` 遍历服务器，填充 `tool_index`（qualified_name -> server_name + raw_name）。
@@ -252,7 +252,7 @@ struct ManagedMcpServer {
 }
 ```
 
-行号：#L457-460（ToolRoute）、#L463-468（ManagedMcpServer）
+行号：[`mcp_stdio.rs#L457-L460`](rust/crates/runtime/src/mcp_stdio.rs#L457-L460)（ToolRoute）、[`#L463-L468`](rust/crates/runtime/src/mcp_stdio.rs#L463-L468)（ManagedMcpServer）
 
 `McpStdioProcess` 封装了 `tokio::process::Child`，通过 `ChildStdin` / `ChildStdout` 收发 JSON-RPC 消息。
 
@@ -271,23 +271,23 @@ fn global_mcp_registry() -> &'static McpToolRegistry {
 }
 ```
 
-行号：#L41-46
+行号：[`lib.rs#L41-L46`](rust/crates/tools/src/lib.rs#L41-L46)
 
 ### 5.2 四个 MCP 工具定义
 
 | 工具名 | 行号 | 权限模式 |
 |--------|------|----------|
-| `ListMcpResources` | #L1074 | `ReadOnly` |
-| `ReadMcpResource` | #L1086 | `ReadOnly` |
-| `McpAuth` | #L1100 | `DangerFullAccess` |
-| `MCP` | #L1129 | `ReadOnly` |
+| `ListMcpResources` | [`lib.rs#L1074`](rust/crates/tools/src/lib.rs#L1074) | `ReadOnly` |
+| `ReadMcpResource` | [`lib.rs#L1086`](rust/crates/tools/src/lib.rs#L1086) | `ReadOnly` |
+| `McpAuth` | [`lib.rs#L1100`](rust/crates/tools/src/lib.rs#L1100) | `DangerFullAccess` |
+| `MCP` | [`lib.rs#L1129`](rust/crates/tools/src/lib.rs#L1129) | `ReadOnly` |
 
 ### 5.3 工具处理器
 
-- `run_list_mcp_resources` — #L1625
-- `run_read_mcp_resource` — #L1656
-- `run_mcp_auth` — #L1677（当前仅返回服务器元数据，认证流未在此完成）
-- `run_mcp_tool` — #L1760
+- `run_list_mcp_resources` — [`lib.rs#L1625`](rust/crates/tools/src/lib.rs#L1625)
+- `run_read_mcp_resource` — [`lib.rs#L1656`](rust/crates/tools/src/lib.rs#L1656)
+- `run_mcp_auth` — [`lib.rs#L1677`](rust/crates/tools/src/lib.rs#L1677)（当前仅返回服务器元数据，认证流未在此完成）
+- `run_mcp_tool` — [`lib.rs#L1760`](rust/crates/tools/src/lib.rs#L1760)
 
 所有处理器都通过 `global_mcp_registry()` 访问共享注册表，返回统一 JSON 结构 `{server, tool/uri, result/error, status}`。
 
@@ -304,20 +304,20 @@ pub type ToolInfo = McpToolInfo;
 pub type ResourceInfo = McpResourceInfo;
 ```
 
-行号：#L16-17
+行号：[`plugin_lifecycle.rs#L16-L17`](rust/crates/runtime/src/plugin_lifecycle.rs#L16-L17)
 
-当部分服务器启动失败时，系统进入 `PluginState::Degraded`，并在工具响应中携带 `McpDegradedReport`。这会反映到前端：`tools/src/lib.rs` 在 `AgentState` 中通过 `pending_mcp_servers` 和 `mcp_degraded` 字段暴露降级信息（#L2438-2439）。
+当部分服务器启动失败时，系统进入 `PluginState::Degraded`，并在工具响应中携带 `McpDegradedReport`。这会反映到前端：`tools/src/lib.rs` 在 `AgentState` 中通过 `pending_mcp_servers` 和 `mcp_degraded` 字段暴露降级信息（[`lib.rs#L2438-L2439`](rust/crates/tools/src/lib.rs#L2438-L2439)）。
 
 ---
 
 ## 7. 测试覆盖
 
-`mcp_tool_bridge.rs` 自带丰富的内联单元测试（#L314-920），涵盖：
+`mcp_tool_bridge.rs` 自带丰富的内联单元测试（[`mcp_tool_bridge.rs#L314-L920`](rust/crates/runtime/src/mcp_tool_bridge.rs#L314-L920)），涵盖：
 
 - 服务器注册与查询（`registers_and_retrieves_server`）
 - 资源列表/读取，含错误分支
 - 无 manager 时的工具调用拒绝
-- **真实 stdio MCP server 集成测试**：通过生成临时 Python bridge server 脚本，验证完整的 `initialize -> tools/list -> tools/call` 链路（#L572、#L815）
+- **真实 stdio MCP server 集成测试**：通过生成临时 Python bridge server 脚本，验证完整的 `initialize -> tools/list -> tools/call` 链路（[`#L572`](rust/crates/runtime/src/mcp_tool_bridge.rs#L572)、[`#L815`](rust/crates/runtime/src/mcp_tool_bridge.rs#L815)）
 - auth 状态切换与 disconnect
 - upsert 覆盖旧状态
 

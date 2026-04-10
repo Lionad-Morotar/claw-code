@@ -1,7 +1,9 @@
 # Unit 37: Coordinator Mode 技术报告
 
-> 原始页面：https://ccb.agent-aura.top/docs/features/coordinator-mode  
+> 原始页面：https://ccb.agent-aura.top/docs/features/coordinator-mode
 > 生成日期：2026-04-09
+>
+> **源码映射说明**：Coordinator Mode 全部基于 `packages/ccb`（Claude Code 上游 TypeScript 实现）。`claw-code`（Rust 重写版）目前尚未实现此功能。本报告引用的 `packages/ccb/src/...` 和 `src/coordinator/...` 路径在上游实现中存在或已归档，但在当前仓库中**不存在对应源码文件**。阅读时请注意区分上游与 Rust 实现的覆盖范围。
 
 ---
 
@@ -40,10 +42,10 @@ Coordinator Mode 的设计 rationale 是通过**角色分离**解决这两个问
 
 #### 2.2.1 Agent 派发入口 `execute_agent` / `spawn_agent_job`
 
-- `#L3286-L3291`：`execute_agent` 对公开口，委托 `execute_agent_with_spawn(input, spawn_agent_job)`
-- `#L3290-L3365`：`execute_agent_with_spawn` 准备 agent manifest、输出文件，生成 `agent_id`，写入 `.md` 报告文件和 `.json` manifest
-- `#L3370-L3395`：`spawn_agent_job` 在独立线程 `clawd-agent-{agent_id}` 中运行 `run_agent_job`
-- `#L3406-L3420`：`build_agent_runtime` 构造 `ConversationRuntime<ProviderRuntimeClient, SubagentToolExecutor>`
+- [`lib.rs#L3286-L3291`](rust/crates/tools/src/lib.rs#L3286-L3291)：`execute_agent` 对公开口，委托 `execute_agent_with_spawn(input, spawn_agent_job)`
+- [`lib.rs#L3290-L3365`](rust/crates/tools/src/lib.rs#L3290-L3365)：`execute_agent_with_spawn` 准备 agent manifest、输出文件，生成 `agent_id`，写入 `.md` 报告文件和 `.json` manifest
+- [`lib.rs#L3370-L3395`](rust/crates/tools/src/lib.rs#L3370-L3395)：`spawn_agent_job` 在独立线程 `clawd-agent-{agent_id}` 中运行 `run_agent_job`
+- [`lib.rs#L3406-L3420`](rust/crates/tools/src/lib.rs#L3406-L3420)：`build_agent_runtime` 构造 `ConversationRuntime<ProviderRuntimeClient, SubagentToolExecutor>`
 
 ```rust
 fn build_agent_runtime(
@@ -61,7 +63,7 @@ fn build_agent_runtime(
 
 #### 2.2.2 工具白名单 `allowed_tools_for_subagent`
 
-- `#L3451-L3520`：按 `subagent_type` 返回不同的允许工具集合
+- [`lib.rs#L3451-L3520`](rust/crates/tools/src/lib.rs#L3451-L3520)：按 `subagent_type` 返回不同的允许工具集合
 
 | subagent_type | 关键允许工具 |
 |---------------|--------------|
@@ -75,7 +77,7 @@ fn build_agent_runtime(
 
 #### 2.2.3 子代理类型规范化 `normalize_subagent_type`
 
-- `#L4276-L4305`
+- [`lib.rs#L4276-L4305`](rust/crates/tools/src/lib.rs#L4276-L4305)
 
 ```rust
 fn normalize_subagent_type(subagent_type: Option<&str>) -> String {
@@ -94,7 +96,7 @@ fn normalize_subagent_type(subagent_type: Option<&str>) -> String {
 
 #### 2.2.4 Subagent 系统提示 `build_agent_system_prompt`
 
-- `#L3428-L3447`
+- [`lib.rs#L3428-L3447`](rust/crates/tools/src/lib.rs#L3428-L3447)
 
 加载默认系统提示后追加：
 
@@ -106,7 +108,7 @@ prompt.push(format!(
 
 ### 2.3 工具执行拦截 — `SubagentToolExecutor`
 
-- `#L3951-L3980`
+- [`lib.rs#L3951-L3980`](rust/crates/tools/src/lib.rs#L3951-L3980)
 
 ```rust
 struct SubagentToolExecutor {
@@ -136,15 +138,15 @@ impl ToolExecutor for SubagentToolExecutor {
 
 #### `TaskStop`
 
-- `#L816-L825`：工具定义
-- `#L1232`：路由入口
-- `#L1406-L1417`：实现调用 `global_task_registry().stop(&input.task_id)`
+- [`lib.rs#L816-L825`](rust/crates/tools/src/lib.rs#L816-L825)：工具定义
+- [`lib.rs#L1232`](rust/crates/tools/src/lib.rs#L1232)：路由入口
+- [`lib.rs#L1406-L1417`](rust/crates/tools/src/lib.rs#L1406-L1417)：实现调用 `global_task_registry().stop(&input.task_id)`
 
 #### `TaskUpdate`
 
-- `#L829-L838`：工具定义（向运行中的 task 发送消息）
-- `#L1233`：路由入口
-- `#L1419-L1433`：实现调用 `global_task_registry().update(&task_id, &message)`
+- [`lib.rs#L829-L838`](rust/crates/tools/src/lib.rs#L829-L838)：工具定义（向运行中的 task 发送消息）
+- [`lib.rs#L1233`](rust/crates/tools/src/lib.rs#L1233)：路由入口
+- [`lib.rs#L1419-L1433`](rust/crates/tools/src/lib.rs#L1419-L1433)：实现调用 `global_task_registry().update(&task_id, &message)`
 
 这两个工具对应原始文档中的 `SendMessage`/`TaskStop`，用于编排者对 worker 进行消息投递和强制终止。
 
@@ -152,7 +154,7 @@ impl ToolExecutor for SubagentToolExecutor {
 
 **文件**：`rust/crates/runtime/src/worker_boot.rs`
 
-- `#L268-L276`：记录 worker prompt 投递失败或 shell 误投的日志
+- [`worker_boot.rs#L268-L276`](rust/crates/runtime/src/worker_boot.rs#L268-L276)：记录 worker prompt 投递失败或 shell 误投的日志
 - 该文件主要用于外部 terminal/worker 的启动握手（`clawhip`、`orchestrator` 外部观察）
 
 文件中的注释提到：
@@ -184,11 +186,11 @@ def get_tools(
 
 **文件**：`rust/crates/tools/src/lib.rs`
 
-- `#L7286-L7303`：`agent_tool_subset_mapping_is_expected()` 测试
+- [`lib.rs#L7286-L7303`](rust/crates/tools/src/lib.rs#L7286-L7303)：`agent_tool_subset_mapping_is_expected()` 测试
   - 验证 `general-purpose`、`Explore`、`Plan`、`Verification` 各 subagent type 的工具映射是否符合预期
   - 关键断言：`Explore` 无 `bash`；`Plan` 无 `Agent`；`Verification` 有 `bash` 和 `PowerShell`
 
-- `#L6075-L6088`：`subagent_tool_executor_denies_blocked_tool_before_dispatch()` 测试
+- [`lib.rs#L6075-L6088`](rust/crates/tools/src/lib.rs#L6075-L6088)：`subagent_tool_executor_denies_blocked_tool_before_dispatch()` 测试
   - 验证 `SubagentToolExecutor` 会拒绝不在白名单中的工具调用
 
 ---
@@ -236,18 +238,18 @@ def get_tools(
 
 | 文件 | 行号范围 | 职责 |
 |------|---------|------|
-| `rust/crates/tools/src/lib.rs` | `#L3286-L3360` | Agent manifest 生成与任务派发 |
-| `rust/crates/tools/src/lib.rs` | `#L3370-L3420` | `spawn_agent_job` / `run_agent_job` 子线程模型 |
-| `rust/crates/tools/src/lib.rs` | `#L3408-L3420` | `build_agent_runtime` + `SubagentToolExecutor` 构造 |
-| `rust/crates/tools/src/lib.rs` | `#L3428-L3447` | `build_agent_system_prompt` 子代理系统提示 |
-| `rust/crates/tools/src/lib.rs` | `#L3451-L3520` | `allowed_tools_for_subagent` 工具白名单 |
-| `rust/crates/tools/src/lib.rs` | `#L3951-L3982` | `SubagentToolExecutor` 工具执行拦截器 |
-| `rust/crates/tools/src/lib.rs` | `#L4276-L4305` | `normalize_subagent_type` 子代理类型规范化 |
-| `rust/crates/tools/src/lib.rs` | `#L816-L838` | `TaskStop`、`TaskUpdate` 工具定义 |
-| `rust/crates/tools/src/lib.rs` | `#L1406-L1433` | `run_task_stop`、`run_task_update` 实现 |
-| `rust/crates/runtime/src/worker_boot.rs` | `#L268-L576` | Worker 启动监督与可观测性表面 |
-| `src/tools.py` | `#L63-L70` | Simple mode 工具过滤 |
-| `src/reference_data/subsystems/coordinator.json` | 全部 | Coordinator 子系统归档元数据（指向已归档的 `coordinatorMode.ts`） |
+| [`rust/crates/tools/src/lib.rs`](rust/crates/tools/src/lib.rs) | [L3286-L3360](rust/crates/tools/src/lib.rs#L3286-L3360) | Agent manifest 生成与任务派发 |
+| [`rust/crates/tools/src/lib.rs`](rust/crates/tools/src/lib.rs) | [L3370-L3420](rust/crates/tools/src/lib.rs#L3370-L3420) | `spawn_agent_job` / `run_agent_job` 子线程模型 |
+| [`rust/crates/tools/src/lib.rs`](rust/crates/tools/src/lib.rs) | [L3408-L3420](rust/crates/tools/src/lib.rs#L3408-L3420) | `build_agent_runtime` + `SubagentToolExecutor` 构造 |
+| [`rust/crates/tools/src/lib.rs`](rust/crates/tools/src/lib.rs) | [L3428-L3447](rust/crates/tools/src/lib.rs#L3428-L3447) | `build_agent_system_prompt` 子代理系统提示 |
+| [`rust/crates/tools/src/lib.rs`](rust/crates/tools/src/lib.rs) | [L3451-L3520](rust/crates/tools/src/lib.rs#L3451-L3520) | `allowed_tools_for_subagent` 工具白名单 |
+| [`rust/crates/tools/src/lib.rs`](rust/crates/tools/src/lib.rs) | [L3951-L3982](rust/crates/tools/src/lib.rs#L3951-L3982) | `SubagentToolExecutor` 工具执行拦截器 |
+| [`rust/crates/tools/src/lib.rs`](rust/crates/tools/src/lib.rs) | [L4276-L4305](rust/crates/tools/src/lib.rs#L4276-L4305) | `normalize_subagent_type` 子代理类型规范化 |
+| [`rust/crates/tools/src/lib.rs`](rust/crates/tools/src/lib.rs) | [L816-L838](rust/crates/tools/src/lib.rs#L816-L838) | `TaskStop`、`TaskUpdate` 工具定义 |
+| [`rust/crates/tools/src/lib.rs`](rust/crates/tools/src/lib.rs) | [L1406-L1433](rust/crates/tools/src/lib.rs#L1406-L1433) | `run_task_stop`、`run_task_update` 实现 |
+| [`rust/crates/runtime/src/worker_boot.rs`](rust/crates/runtime/src/worker_boot.rs) | [L268-L576](rust/crates/runtime/src/worker_boot.rs#L268-L576) | Worker 启动监督与可观测性表面 |
+| [`src/tools.py`](src/tools.py) | [L63-L70](src/tools.py#L63-L70) | Simple mode 工具过滤 |
+| [`src/reference_data/subsystems/coordinator.json`](src/reference_data/subsystems/coordinator.json) | 全部 | Coordinator 子系统归档元数据（指向已归档的 `coordinatorMode.ts`） |
 
 ---
 

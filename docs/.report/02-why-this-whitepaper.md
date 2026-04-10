@@ -21,7 +21,7 @@
 
 ### Rust 重写的工程定位
 
-`claw-code` 将上游的终端原生架构迁移到了 Rust 生态中，核心workspace 位于 [`/rust/`](/rust/)。截至 `PARITY.md` 的记录，主分支已包含 **9 个 crate**、约 **48,599 行 Rust 源码** 和 **2,568 行测试代码**。这不是一个玩具项目，而是一个通过了 mock parity harness 验证的严肃实现——支持流式响应、多工具调用、权限提示、Bash 沙箱、会话压缩等完整链路。
+`claw-code` 将上游的终端原生架构迁移到了 Rust 生态中，核心workspace 位于 [`/rust/`](/rust/)。截至 2026-04-10，主分支已包含 **9 个 crate**、约 **84,000 行 Rust 源码**（非空行）和 **4,200+ 行测试代码**。这不是一个玩具项目，而是一个通过了 mock parity harness 验证的严肃实现——支持流式响应、多工具调用、权限提示、Bash 沙箱、会话压缩等完整链路。
 
 白皮书的价值在于：它不仅解释 Claude Code "做了什么"，更解释 "为什么这样设计"。而 `claw-code` 的 Rust 源码为这些设计决策提供了**可编译、可调试、可修改**的实体证据。
 
@@ -201,7 +201,7 @@ const AUTO_COMPACTION_THRESHOLD_ENV_VAR: &str = "CLAUDE_CODE_AUTO_COMPACT_INPUT_
 
 #### `compact_session` 的语义保留机制
 
-[`compact.rs#L96-L155`](/rust/crates/runtime/src/compact.rs#L96-L155)：
+[`compact.rs#L96-L139`](/rust/crates/runtime/src/compact.rs#L96-L139)：
 
 ```rust
 pub fn compact_session(session: &Session, config: CompactionConfig) -> CompactionResult {

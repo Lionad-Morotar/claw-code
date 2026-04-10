@@ -2,6 +2,8 @@
 
 > 本报告基于 [Claude Code 中文文档](https://ccb.agent-aura.top/docs/internals/feature-flags) 的原始内容，并映射到 `claw-code` 反编译源码的精确行号锚点。文末附 [完整 Flag 清单](#flags-完整清单) 与 [源码索引](#源码索引)。
 
+> **源码映射说明**：Feature Flags 全部基于 `packages/ccb`（Claude Code 上游 TypeScript 实现）的 `bun:bundle` 构建时门控系统。`claw-code`（Rust 重写版）不使用 `feature()` 函数或构建时 feature flags，而是通过 Cargo feature gates 和运行时配置控制功能。本报告引用的 `packages/ccb/src/...` 路径在上游实现中存在，但在当前仓库中**不存在对应源码文件**。阅读时请注意区分上游与 Rust 实现的覆盖范围。
+
 ---
 
 ## feature() 是什么
@@ -24,7 +26,7 @@ const SleepTool = feature('PROACTIVE') || feature('KAIROS')
 2. **产物体积**：被 DCE 移除的模块不会增加最终二进制大小，也减少了 Bun 运行时的解析开销。
 3. **断点防御**：逆向工程虽然能阅读 `false` 分支的源代码，但这些代码在正式构建产物中已不存在，无法通过补丁简单启用。
 
-在反编译版本中，这个函数没有实际实现，而是通过运行时兜底返回 `false`。类型声明位于 [`src/types/internal-modules.d.ts#L10-L12`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/types/internal-modules.d.ts#L10-L12)：
+在反编译版本中，这个函数没有实际实现，而是通过运行时兜底返回 `false`。类型声明位于 [`src/types/internal-modules.d.ts#L10-L12`](packages/ccb/src/types/internal-modules.d.ts#L10-L12)：
 
 ```typescript
 declare module "bun:bundle" {
@@ -32,7 +34,7 @@ declare module "bun:bundle" {
 }
 ```
 
-在 [`src/entrypoints/cli.tsx`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/entrypoints/cli.tsx) 中，`feature()` 保持为原始导入形式，依赖 Bun 运行时的 `--feature` 标志来启用特定功能。
+在 [`src/entrypoints/cli.tsx`](packages/ccb/src/entrypoints/cli.tsx) 中，`feature()` 保持为原始导入形式，依赖 Bun 运行时的 `--feature` 标志来启用特定功能。
 
 这意味着所有 feature flag 后的代码**在默认运行时不会执行**，但代码本身完整保留，可以阅读和分析。
 
@@ -48,21 +50,21 @@ declare module "bun:bundle" {
 
 | Flag | 用途 | 典型使用位置 |
 |------|------|--------------|
-| `KAIROS` | 核心自动化框架 | [`tools.ts#L26`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools.ts#L26) |
-| `KAIROS_BRIEF` | Brief 工具增强 | [`commands.ts#L67`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/commands.ts#L67) |
+| `KAIROS` | 核心自动化框架 | [`tools.ts#L26`](packages/ccb/src/tools.ts#L26) |
+| `KAIROS_BRIEF` | Brief 工具增强 | [`commands.ts#L67`](packages/ccb/src/commands.ts#L67) |
 | `KAIROS_CHANNELS` | 多渠道支持 | - |
 | `KAIROS_DREAM` | 实验性功能 | - |
-| `KAIROS_GITHUB_WEBHOOKS` | GitHub webhook 集成 | [`tools.ts#L48`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools.ts#L48) |
-| `KAIROS_PUSH_NOTIFICATION` | 推送通知 | [`tools.ts#L44`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools.ts#L44) |
-| `PROACTIVE` | 主动建议模式 | [`tools.ts#L26`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools.ts#L26) |
-| `COORDINATOR_MODE` | 协调者模式 | [`tools.ts#L118`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools.ts#L118) |
-| `FORK_SUBAGENT` | 子 Agent 分叉 | [`commands.ts#L113`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/commands.ts#L113) |
+| `KAIROS_GITHUB_WEBHOOKS` | GitHub webhook 集成 | [`tools.ts#L48`](packages/ccb/src/tools.ts#L48) |
+| `KAIROS_PUSH_NOTIFICATION` | 推送通知 | [`tools.ts#L44`](packages/ccb/src/tools.ts#L44) |
+| `PROACTIVE` | 主动建议模式 | [`tools.ts#L26`](packages/ccb/src/tools.ts#L26) |
+| `COORDINATOR_MODE` | 协调者模式 | [`tools.ts#L118`](packages/ccb/src/tools.ts#L118) |
+| `FORK_SUBAGENT` | 子 Agent 分叉 | [`commands.ts#L113`](packages/ccb/src/commands.ts#L113) |
 | `AGENT_MEMORY_SNAPSHOT` | Agent 内存快照 | - |
-| `AGENT_TRIGGERS` | Agent 触发器 | [`build.ts#L17`](/Users/lionad/Github/Run/claw-code/packages/ccb/build.ts#L17) |
-| `AGENT_TRIGGERS_REMOTE` | 远程触发器 | [`tools.ts#L34`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools.ts#L34) |
-| `VERIFICATION_AGENT` | 验证 Agent | [`build.ts#L24`](/Users/lionad/Github/Run/claw-code/packages/ccb/build.ts#L24) |
-| `BUILTIN_EXPLORE_PLAN_AGENTS` | 内置探索/计划 Agent | [`build.ts#L18`](/Users/lionad/Github/Run/claw-code/packages/ccb/build.ts#L18) |
-| `MONITOR_TOOL` | 监控工具 | [`tools.ts#L37`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools.ts#L37) |
+| `AGENT_TRIGGERS` | Agent 触发器 | [`build.ts#L17`](packages/ccb/build.ts#L17) |
+| `AGENT_TRIGGERS_REMOTE` | 远程触发器 | [`tools.ts#L34`](packages/ccb/src/tools.ts#L34) |
+| `VERIFICATION_AGENT` | 验证 Agent | [`build.ts#L24`](packages/ccb/build.ts#L24) |
+| `BUILTIN_EXPLORE_PLAN_AGENTS` | 内置探索/计划 Agent | [`build.ts#L18`](packages/ccb/build.ts#L18) |
+| `MONITOR_TOOL` | 监控工具 | [`tools.ts#L37`](packages/ccb/src/tools.ts#L37) |
 
 ### 基础设施（10 个 flags）
 
@@ -70,16 +72,16 @@ declare module "bun:bundle" {
 
 | Flag | 用途 | 典型使用位置 |
 |------|------|--------------|
-| `DAEMON` | 守护进程模式 | [`cli.tsx#L124`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/entrypoints/cli.tsx#L124) |
-| `BG_SESSIONS` | 后台会话 | [`cli.tsx#L201`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/entrypoints/cli.tsx#L201) |
-| `BRIDGE_MODE` | 桥接/远程控制模式 | [`commands.ts#L73`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/commands.ts#L73) |
+| `DAEMON` | 守护进程模式 | [`cli.tsx#L124`](packages/ccb/src/entrypoints/cli.tsx#L124) |
+| `BG_SESSIONS` | 后台会话 | [`cli.tsx#L201`](packages/ccb/src/entrypoints/cli.tsx#L201) |
+| `BRIDGE_MODE` | 桥接/远程控制模式 | [`commands.ts#L73`](packages/ccb/src/commands.ts#L73) |
 | `CCR_AUTO_CONNECT` | CCR 自动连接 | - |
 | `CCR_MIRROR` | CCR 镜像 | - |
-| `CCR_REMOTE_SETUP` | CCR 远程设置 | [`commands.ts#L91`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/commands.ts#L91) |
+| `CCR_REMOTE_SETUP` | CCR 远程设置 | [`commands.ts#L91`](packages/ccb/src/commands.ts#L91) |
 | `DIRECT_CONNECT` | 直连模式 | - |
 | `SSH_REMOTE` | SSH 远程连接 | - |
-| `SELF_HOSTED_RUNNER` | 自托管 Runner | [`cli.tsx#L260`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/entrypoints/cli.tsx#L260) |
-| `BYOC_ENVIRONMENT_RUNNER` | BYOC 环境 Runner | [`cli.tsx#L248`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/entrypoints/cli.tsx#L248) |
+| `SELF_HOSTED_RUNNER` | 自托管 Runner | [`cli.tsx#L260`](packages/ccb/src/entrypoints/cli.tsx#L260) |
+| `BYOC_ENVIRONMENT_RUNNER` | BYOC 环境 Runner | [`cli.tsx#L248`](packages/ccb/src/entrypoints/cli.tsx#L248) |
 
 ### 安全 / 分类（6 个 flags）
 
@@ -87,12 +89,12 @@ declare module "bun:bundle" {
 
 | Flag | 用途 | 典型使用位置 |
 |------|------|--------------|
-| `TRANSCRIPT_CLASSIFIER` | 转录分类器 | [`betas.ts#L24`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/constants/betas.ts#L24) |
+| `TRANSCRIPT_CLASSIFIER` | 转录分类器 | [`betas.ts#L24`](packages/ccb/src/constants/betas.ts#L24) |
 | `BASH_CLASSIFIER` | Bash 命令分类器 | - |
 | `TREE_SITTER_BASH` | Tree-sitter Bash 解析 | - |
 | `TREE_SITTER_BASH_SHADOW` | Tree-sitter 影子模式 | - |
 | `NATIVE_CLIENT_ATTESTATION` | 本地客户端认证 | - |
-| `ABLATION_BASELINE` | 消融实验基线 | [`cli.tsx#L38`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/entrypoints/cli.tsx#L38) |
+| `ABLATION_BASELINE` | 消融实验基线 | [`cli.tsx#L38`](packages/ccb/src/entrypoints/cli.tsx#L38) |
 
 ### 工具 / 能力（10 个 flags）
 
@@ -100,16 +102,16 @@ declare module "bun:bundle" {
 
 | Flag | 用途 | 典型使用位置 |
 |------|------|--------------|
-| `WEB_BROWSER_TOOL` | 浏览器工具 | [`tools.ts#L115`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools.ts#L115) |
-| `TERMINAL_PANEL` | 终端面板捕获 | [`tools.ts#L111`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools.ts#L111) |
-| `CONTEXT_COLLAPSE` | 上下文折叠 | [`tools.ts#L108`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools.ts#L108) |
-| `HISTORY_SNIP` | 历史片段 | [`tools.ts#L121`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools.ts#L121) |
-| `OVERFLOW_TEST_TOOL` | 溢出测试工具 | [`tools.ts#L105`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools.ts#L105) |
-| `WORKFLOW_SCRIPTS` | 工作流脚本 | [`tools.ts#L127`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools.ts#L127) |
-| `VOICE_MODE` | 语音模式 | [`commands.ts#L80`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/commands.ts#L80) |
+| `WEB_BROWSER_TOOL` | 浏览器工具 | [`tools.ts#L115`](packages/ccb/src/tools.ts#L115) |
+| `TERMINAL_PANEL` | 终端面板捕获 | [`tools.ts#L111`](packages/ccb/src/tools.ts#L111) |
+| `CONTEXT_COLLAPSE` | 上下文折叠 | [`tools.ts#L108`](packages/ccb/src/tools.ts#L108) |
+| `HISTORY_SNIP` | 历史片段 | [`tools.ts#L121`](packages/ccb/src/tools.ts#L121) |
+| `OVERFLOW_TEST_TOOL` | 溢出测试工具 | [`tools.ts#L105`](packages/ccb/src/tools.ts#L105) |
+| `WORKFLOW_SCRIPTS` | 工作流脚本 | [`tools.ts#L127`](packages/ccb/src/tools.ts#L127) |
+| `VOICE_MODE` | 语音模式 | [`commands.ts#L80`](packages/ccb/src/commands.ts#L80) |
 | `MCP_RICH_OUTPUT` | MCP 丰富输出 | - |
 | `MCP_SKILLS` | MCP 技能 | - |
-| `UDS_INBOX` | UDS 收件箱 | [`tools.ts#L124`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools.ts#L124) |
+| `UDS_INBOX` | UDS 收件箱 | [`tools.ts#L124`](packages/ccb/src/tools.ts#L124) |
 
 ### UI / 体验（8 个 flags）
 
@@ -123,8 +125,8 @@ declare module "bun:bundle" {
 | `AUTO_THEME` | 自动主题 | - |
 | `STREAMLINED_OUTPUT` | 精简输出 | - |
 | `COMPACTION_REMINDERS` | 压缩提醒 | - |
-| `TEMPLATES` | 模板系统 | [`cli.tsx#L234`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/entrypoints/cli.tsx#L234) |
-| `BUDDY` | AI 吉祥物系统 | [`commands.ts#L118`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/commands.ts#L118) |
+| `TEMPLATES` | 模板系统 | [`cli.tsx#L234`](packages/ccb/src/entrypoints/cli.tsx#L234) |
+| `BUDDY` | AI 吉祥物系统 | [`commands.ts#L118`](packages/ccb/src/commands.ts#L118) |
 
 ### 平台 / 实验（12+ 个 flags）
 
@@ -132,14 +134,14 @@ declare module "bun:bundle" {
 
 | Flag | 用途 | 典型使用位置 |
 |------|------|--------------|
-| `DUMP_SYSTEM_PROMPT` | 导出系统 prompt | [`cli.tsx#L79`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/entrypoints/cli.tsx#L79) |
+| `DUMP_SYSTEM_PROMPT` | 导出系统 prompt | [`cli.tsx#L79`](packages/ccb/src/entrypoints/cli.tsx#L79) |
 | `UPLOAD_USER_SETTINGS` | 上传用户设置 | - |
 | `DOWNLOAD_USER_SETTINGS` | 下载用户设置 | - |
-| `EXPERIMENTAL_SKILL_SEARCH` | 实验性技能搜索 | [`commands.ts#L96`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/commands.ts#L96) |
-| `ULTRAPLAN` | 超级计划模式 | [`commands.ts#L104`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/commands.ts#L104) |
-| `ULTRATHINK` | 超级思考模式 | [`build.ts#L17`](/Users/lionad/Github/Run/claw-code/packages/ccb/build.ts#L17) |
-| `TORCH` | Torch 功能 | [`commands.ts#L107`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/commands.ts#L107) |
-| `LODESTONE` | Limestone 功能 | [`build.ts#L19`](/Users/lionad/Github/Run/claw-code/packages/ccb/build.ts#L19) |
+| `EXPERIMENTAL_SKILL_SEARCH` | 实验性技能搜索 | [`commands.ts#L96`](packages/ccb/src/commands.ts#L96) |
+| `ULTRAPLAN` | 超级计划模式 | [`commands.ts#L104`](packages/ccb/src/commands.ts#L104) |
+| `ULTRATHINK` | 超级思考模式 | [`build.ts#L17`](packages/ccb/build.ts#L17) |
+| `TORCH` | Torch 功能 | [`commands.ts#L107`](packages/ccb/src/commands.ts#L107) |
+| `LODESTONE` | Limestone 功能 | [`build.ts#L19`](packages/ccb/build.ts#L19) |
 | `PERFETTO_TRACING` | Perfetto 性能追踪 | - |
 | `SLOW_OPERATION_LOGGING` | 慢操作日志 | - |
 | `HARD_FAIL` | 硬失败模式 | - |
@@ -151,19 +153,19 @@ declare module "bun:bundle" {
 
 | Flag | 用途 | 典型使用位置 |
 |------|------|--------------|
-| `CHICAGO_MCP` | Computer Use MCP | [`build.ts#L14`](/Users/lionad/Github/Run/claw-code/packages/ccb/build.ts#L14) |
+| `CHICAGO_MCP` | Computer Use MCP | [`build.ts#L14`](packages/ccb/build.ts#L14) |
 | `TEAMMEM` | Team Memory | - |
 | `COMMIT_ATTRIBUTION` | 提交归属 | - |
 | `CACHED_MICROCOMPACT` | 缓存微压缩 | - |
-| `SHOT_STATS` | 命中率统计 | [`build.ts#L15`](/Users/lionad/Github/Run/claw-code/packages/ccb/build.ts#L15) |
-| `TOKEN_BUDGET` | Token 预算 | [`build.ts#L16`](/Users/lionad/Github/Run/claw-code/packages/ccb/build.ts#L16) |
-| `PROMPT_CACHE_BREAK_DETECTION` | Prompt 缓存破坏检测 | [`build.ts#L15`](/Users/lionad/Github/Run/claw-code/packages/ccb/build.ts#L15) |
-| `EXTRACT_MEMORIES` | 记忆提取 | [`build.ts#L23`](/Users/lionad/Github/Run/claw-code/packages/ccb/build.ts#L23) |
+| `SHOT_STATS` | 命中率统计 | [`build.ts#L15`](packages/ccb/build.ts#L15) |
+| `TOKEN_BUDGET` | Token 预算 | [`build.ts#L16`](packages/ccb/build.ts#L16) |
+| `PROMPT_CACHE_BREAK_DETECTION` | Prompt 缓存破坏检测 | [`build.ts#L15`](packages/ccb/build.ts#L15) |
+| `EXTRACT_MEMORIES` | 记忆提取 | [`build.ts#L23`](packages/ccb/build.ts#L23) |
 | `CONNECTOR_TEXT` | 连接器文本 | - |
 | `REACTIVE_COMPACT` | 响应式压缩 | - |
 | `MEMORY_SHAPE_TELEMETRY` | 记忆形状遥测 | - |
 | `FILE_PERSISTENCE` | 文件持久化 | - |
-| `AWAY_SUMMARY` | 离开摘要 | [`build.ts#L26`](/Users/lionad/Github/Run/claw-code/packages/ccb/build.ts#L26) |
+| `AWAY_SUMMARY` | 离开摘要 | [`build.ts#L26`](packages/ccb/build.ts#L26) |
 | `POWERSHELL_AUTO_MODE` | PowerShell 自动模式 | - |
 | `NEW_INIT` | 新初始化流程 | - |
 | `NATIVE_CLIPBOARD_IMAGE` | 原生剪贴板图片 | - |
@@ -187,7 +189,7 @@ Feature flags 在代码中主要有五种使用模式：
 
 ### 模式一：条件加载工具
 
-这是最常见的模式，用于工具注册表 [`src/tools.ts`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools.ts)：
+这是最常见的模式，用于工具注册表 [`src/tools.ts`](packages/ccb/src/tools.ts)：
 
 ```typescript
 // src/tools.ts — 第 25-28 行
@@ -211,7 +213,7 @@ const OverflowTestTool = feature('OVERFLOW_TEST_TOOL')
 
 ### 模式二：条件注册命令
 
-在 [`src/commands.ts`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/commands.ts) 中，斜杠命令的注册同样由 feature flags 控制：
+在 [`src/commands.ts`](packages/ccb/src/commands.ts) 中，斜杠命令的注册同样由 feature flags 控制：
 
 ```typescript
 // src/commands.ts — 第 62-69 行
@@ -254,7 +256,7 @@ const COMMANDS = memoize((): Command[] => [
 
 ### 模式三：条件启用 API 特性
 
-在 [`src/constants/betas.ts`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/constants/betas.ts) 中，feature flags 控制发送给 API 的 beta header：
+在 [`src/constants/betas.ts`](packages/ccb/src/constants/betas.ts) 中，feature flags 控制发送给 API 的 beta header：
 
 ```typescript
 // src/constants/betas.ts — 第 23-25 行
@@ -263,7 +265,7 @@ export const AFK_MODE_BETA_HEADER = feature('TRANSCRIPT_CLASSIFIER')
   : ''
 ```
 
-在 [`src/utils/betas.ts`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/utils/betas.ts#L159) 中，feature flag 控制 auto mode 的可用性判断：
+在 [`src/utils/betas.ts`](packages/ccb/src/utils/betas.ts#L159) 中，feature flag 控制 auto mode 的可用性判断：
 
 ```typescript
 // src/utils/betas.ts — 第 159-170 行
@@ -278,7 +280,7 @@ export function modelSupportsAutoMode(model: string): boolean {
 
 ### 模式四：CLI 快速路径门控
 
-在 [`src/entrypoints/cli.tsx`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/entrypoints/cli.tsx) 中，feature flags 控制 CLI 启动时的快速路径：
+在 [`src/entrypoints/cli.tsx`](packages/ccb/src/entrypoints/cli.tsx) 中，feature flags 控制 CLI 启动时的快速路径：
 
 ```typescript
 // src/entrypoints/cli.tsx — 第 38-50 行
@@ -328,7 +330,7 @@ if (
 
 ### Dev 模式默认 Features
 
-在 [`scripts/dev.ts#L26-L43`](/Users/lionad/Github/Run/claw-code/packages/ccb/scripts/dev.ts#L26-L43) 中定义了开发模式下默认启用的 features：
+在 [`scripts/dev.ts#L26-L43`](packages/ccb/scripts/dev.ts#L26-L43) 中定义了开发模式下默认启用的 features：
 
 ```typescript
 const DEFAULT_FEATURES = [
@@ -350,7 +352,7 @@ const DEFAULT_FEATURES = [
 
 ### Build 模式默认 Features
 
-在 [`build.ts#L13-L37`](/Users/lionad/Github/Run/claw-code/packages/ccb/build.ts#L13-L37) 中定义了构建模式下默认启用的 features：
+在 [`build.ts#L13-L37`](packages/ccb/build.ts#L13-L37) 中定义了构建模式下默认启用的 features：
 
 ```typescript
 const DEFAULT_BUILD_FEATURES = [
@@ -394,7 +396,7 @@ FEATURE_MONITOR_TOOL=1 bun run build
 
 1. **KAIROS 家族最庞大** — 6 个相关 flag（`KAIROS`、`KAIROS_BRIEF`、`KAIROS_CHANNELS`、`KAIROS_DREAM`、`KAIROS_GITHUB_WEBHOOKS`、`KAIROS_PUSH_NOTIFICATION`）控制从核心功能到推送通知的方方面面
 
-2. **ABLATION_BASELINE 用于科学对照实验** — 它会关闭 thinking、compaction、auto-memory 等高级功能，测量裸 API 调用的基线性能。见 [`cli.tsx#L38-L50`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/entrypoints/cli.tsx#L38-L50)
+2. **ABLATION_BASELINE 用于科学对照实验** — 它会关闭 thinking、compaction、auto-memory 等高级功能，测量裸 API 调用的基线性能。见 [`cli.tsx#L38-L50`](packages/ccb/src/entrypoints/cli.tsx#L38-L50)
 
 3. **BUDDY 是 AI 吉祥物/精灵系统** — 在 `src/buddy/` 目录下有完整实现，包括 `CompanionSprite.tsx`、`prompt.ts`、`useBuddyNotification.tsx` 等
 
@@ -402,7 +404,7 @@ FEATURE_MONITOR_TOOL=1 bun run build
 
 5. **TRANSCRIPT_CLASSIFIER 控制最多的 beta header** — 包括 `AFK_MODE_BETA_HEADER` 和 auto mode 的模型支持判断
 
-6. **BRIDGE_MODE 和 DAEMON 联动** — 远程控制服务器需要同时启用这两个 flags 才能工作（[`commands.ts#L77`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/commands.ts#L77)）
+6. **BRIDGE_MODE 和 DAEMON 联动** — 远程控制服务器需要同时启用这两个 flags 才能工作（[`commands.ts#L77`](packages/ccb/src/commands.ts#L77)）
 
 7. **构建体积分层设计** — 由于 `feature()` 在构建时求值，被 DCE 移除的代码不会增加最终打包体积。但在反编译版本中，这些代码全部保留——这正是我们能够进行完整分析的原因
 
@@ -509,14 +511,14 @@ WORKFLOW_SCRIPTS
 
 | 文件 | 核心内容 |
 |------|----------|
-| [`src/types/internal-modules.d.ts#L10-L12`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/types/internal-modules.d.ts#L10-L12) | `bun:bundle` 模块的 `feature` 函数类型声明 |
-| [`src/entrypoints/cli.tsx`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/entrypoints/cli.tsx) | CLI 入口，feature-gated 快速路径，`ABLATION_BASELINE` 门控 |
-| [`src/tools.ts`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/tools.ts) | 工具注册表，条件加载工具的主战场 |
-| [`src/commands.ts`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/commands.ts) | 命令注册表，条件注册斜杠命令 |
-| [`src/constants/betas.ts`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/constants/betas.ts) | API beta headers，`AFK_MODE_BETA_HEADER` 条件定义 |
-| [`src/utils/betas.ts#L159`](/Users/lionad/Github/Run/claw-code/packages/ccb/src/utils/betas.ts#L159) | `modelSupportsAutoMode` 函数，`TRANSCRIPT_CLASSIFIER` 门控 |
-| [`build.ts#L13-L37`](/Users/lionad/Github/Run/claw-code/packages/ccb/build.ts#L13-L37) | Build 默认 features 列表 |
-| [`scripts/dev.ts#L26-L43`](/Users/lionad/Github/Run/claw-code/packages/ccb/scripts/dev.ts#L26-L43) | Dev 默认 features 列表 |
+| [`src/types/internal-modules.d.ts#L10-L12`](packages/ccb/src/types/internal-modules.d.ts#L10-L12) | `bun:bundle` 模块的 `feature` 函数类型声明 |
+| [`src/entrypoints/cli.tsx`](packages/ccb/src/entrypoints/cli.tsx) | CLI 入口，feature-gated 快速路径，`ABLATION_BASELINE` 门控 |
+| [`src/tools.ts`](packages/ccb/src/tools.ts) | 工具注册表，条件加载工具的主战场 |
+| [`src/commands.ts`](packages/ccb/src/commands.ts) | 命令注册表，条件注册斜杠命令 |
+| [`src/constants/betas.ts`](packages/ccb/src/constants/betas.ts) | API beta headers，`AFK_MODE_BETA_HEADER` 条件定义 |
+| [`src/utils/betas.ts#L159`](packages/ccb/src/utils/betas.ts#L159) | `modelSupportsAutoMode` 函数，`TRANSCRIPT_CLASSIFIER` 门控 |
+| [`build.ts#L13-L37`](packages/ccb/build.ts#L13-L37) | Build 默认 features 列表 |
+| [`scripts/dev.ts#L26-L43`](packages/ccb/scripts/dev.ts#L26-L43) | Dev 默认 features 列表 |
 
 ---
 

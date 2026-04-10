@@ -1,97 +1,118 @@
 # Unit 32 — 自定义 Sentry 错误上报配置
 
 > **原始页面**：https://ccb.agent-aura.top/docs/internals/sentry-setup
+> **源码映射**：完整实现存在于 `packages/ccb/src/`（TypeScript 上游子模块）。Rust CLI（`rust/`）未移植此功能。
+> **生成日期**：2026-04-10（重写版，修正原版错误声明）
 
 ---
 
-## 摘要
+## 1. 功能概述
 
-原始文档声称 Claude Code 支持通过环境变量 `SENTRY_DSN` 连接自托管或 SaaS Sentry，实现 CLI 运行时的错误捕获与上报。但**经对当前代码库全面检索，Sentry 相关实现不存在于任何源码路径中**。本文档同时记录原始文档描述的功能架构，并明确指出其与当前代码库的差异，方便后续维护者判断是"尚未移植"还是"已废弃"。
+Claude Code 支持通过 Sentry 捕获运行时异常并上报到自定义 Sentry 实例。
+
+- **配置了 `SENTRY_DSN`**：自动初始化 Sentry SDK，捕获未处理异常和关键错误
+- **未配置**：所有 Sentry 调用均为 no-op，零运行时开销
 
 ---
 
-## 1. 原始文档概述
-
-根据原始页面，Sentry 集成遵循如下设计原则：
-
-- **单一开关**：仅需环境变量 `SENTRY_DSN` 即可启用。
-- **默认静默**：未配置时，所有 Sentry 调用均为 no-op，零运行时开销。
-- **两种部署形态**：支持 Sentry Cloud (SaaS) 与自托管实例。
-
-### 1.1 环境变量
+## 2. 环境变量
 
 | 变量 | 必填 | 说明 |
 |------|------|------|
-| `SENTRY_DSN` | 是 | 项目 DSN，例如 `https://public_key@o123456.ingest.sentry.io/789` |
+| `SENTRY_DSN` | 是 | Sentry 项目 DSN，如 `https://xxx@o123456.ingest.sentry.io/789` |
 
-### 1.2 使用方式（原始文档示例）
+---
+
+## 3. 使用方式
 
 ```bash
 # 自托管 Sentry
-SENTRY_DSN=https://public_key@your-sentry.example.com/123 \
-  bun run dev
+SENTRY_DSN=https://public_key@your-sentry.example.com/123 bun run dev
 
 # Sentry Cloud (SaaS)
-SENTRY_DSN=https://public_key@o123456.ingest.sentry.io/789 \
-  bun run dev
+SENTRY_DSN=https://public_key@o123456.ingest.sentry.io/789 bun run dev
 
-# 不使用 Sentry（默认行为）
+# 不使用 Sentry（默认行为）— SENTRY_DSN 未设置时所有函数为 no-op
 bun run dev
 ```
 
-> 注意：示例中使用 `bun run dev`，暗示原始文档可能针对 Node.js/TypeScript 运行时。
-
 ---
 
-## 2. 代码库现状：Sentry 实现缺失
+## 4. 源码实现
 
-### 2.1 检索范围与方法
+### 4.1 核心 SDK 初始化
 
-子代理执行了以下全覆盖检索：
+**文件**: [`packages/ccb/src/utils/sentry.ts`](/packages/ccb/src/utils/sentry.ts)（160 行）
 
-1. **全局文件名匹配**：搜索任何包含 `sentry` 的文件名（Rust、TS、JS）。
-2. **全局内容匹配**：在 `rust/`、`src/`、`tests/` 目录下搜索关键词 `sentry`、`Sentry`、`DSN`、`dsn`、`captureException`、`beforeSend`、`errorLogSink`、`gracefulShutdown`、`SentryErrorBoundary`。
-3. **依赖项检查**：检查 `rust/Cargo.toml`、`rust/crates/*/Cargo.toml` 与 `package.json`，未发现 `sentry` 相关依赖。
-4. **Rust CLI 主入口扫描**：对 `rust/crates/rusty-claude-cli/src/main.rs` 进行关键词搜索，无 Sentry 引用。
+[`initSentry()`](/packages/ccb/src/utils/sentry.ts#L17-L83) 函数在进程启动时调用：
 
-### 2.2 结果
+```typescript
+// sentry.ts#L17-L83
+export function initSentry(): void {
+  if (initialized) return;
+  const dsn = process.env.SENTRY_DSN;
+  if (!dsn) return;
 
-**当前代码库中不存在 Sentry 错误上报的任何实现。** 下表列出原始文档声称的实现文件与实际仓库状态的对比：
+  Sentry.init({
+    dsn,
+    release: MACRO.VERSION,
+    environment: BUILD_ENV ?? process.env.NODE_ENV ?? 'development',
+    maxBreadcrumbs: 20,
+    sampleRate: 1.0,
 
-| 原始文档声称文件 | 当前仓库状态 | 说明 |
-|------------------|--------------|------|
-| `src/utils/sentry.ts` | **不存在** | 核心 SDK 初始化与封装 |
-| `src/components/SentryErrorBoundary.ts` | **不存在** | React Error Boundary 组件 |
-| `src/utils/errorLogSink.ts` | **不存在** | 错误日志 sink，集成 `captureException` |
-| `src/utils/gracefulShutdown.ts` | **不存在** | 优雅退出，调用 `closeSentry()` |
-| `src/entrypoints/init.ts` | **不存在** | 启动时调用 `initSentry()` |
+    beforeSend(event) {
+      // 剥离敏感 header: authorization, x-api-key, cookie, set-cookie
+      // ...
+      return event;
+    },
 
----
+    ignoreErrors: [
+      'ECONNREFUSED', 'ECONNRESET', 'ENOTFOUND', 'ETIMEDOUT',
+      'AbortError', 'The user aborted a request', 'CancelError',
+    ],
 
-## 3. 原始文档声称的功能架构
+    beforeSendTransaction(event) {
+      return null; // 关闭性能事务，仅上报错误
+    },
+  });
+  initialized = true;
+}
+```
 
-虽然当前仓库未实现，但为保持单元文档完整性，以下记录原始文档的功能设计，供后续移植参考。
+### 4.2 导出 API
 
-### 3.1 错误捕获机制
+| 函数 | 行号 | 说明 |
+|------|------|------|
+| [`initSentry()`](/packages/ccb/src/utils/sentry.ts#L17) | L17-83 | 初始化 SDK，幂等调用 |
+| [`captureException(error, context?)`](/packages/ccb/src/utils/sentry.ts#L89) | L89-104 | 手动上报异常，可选附加上下文 |
+| [`setTag(key, value)`](/packages/ccb/src/utils/sentry.ts#L110) | L110-120 | 设置标签，面板分组用 |
+| [`setUser({ id, email, username })`](/packages/ccb/src/utils/sentry.ts#L126) | L126-136 | 设置用户上下文 |
+| [`closeSentry(timeoutMs?)`](/packages/ccb/src/utils/sentry.ts#L142) | L142-153 | 刷出队列并关闭，默认 2s 超时 |
+| [`isSentryInitialized()`](/packages/ccb/src/utils/sentry.ts#L158) | L158-160 | 检查初始化状态 |
 
-| 机制 | 描述 |
-|------|------|
-| 自动捕获 | `SentryErrorBoundary` 包裹关键 React 组件，捕获渲染错误 |
-| 手动上报 | `errorLogSink` 在写入错误日志时同步调用 `captureException` |
-| 优雅关闭 | 进程退出时调用 `closeSentry()`，2 秒超时确保事件发送完毕 |
+所有函数在 `initialized === false` 时立即返回（no-op），不会产生任何 Sentry SDK 调用。
 
-### 3.2 安全过滤
+### 4.3 错误捕获机制
 
-`beforeSend` 钩子声称会自动剥离以下敏感 Header：
+| 机制 | 文件 | 说明 |
+|------|------|------|
+| React Error Boundary | [`SentryErrorBoundary.ts`](/packages/ccb/src/components/SentryErrorBoundary.ts) | 包裹关键组件，捕获渲染错误 |
+| 错误日志 sink | [`errorLogSink.ts`](/packages/ccb/src/utils/errorLogSink.ts) | 写入错误日志时同步调用 `captureException` |
+| 优雅关闭 | [`gracefulShutdown.ts`](/packages/ccb/src/utils/gracefulShutdown.ts) | 进程退出时调用 `closeSentry()` |
+| 启动初始化 | [`init.ts`](/packages/ccb/src/entrypoints/init.ts) | 启动流程中调用 `initSentry()` |
+
+### 4.4 安全过滤
+
+`beforeSend` 钩子（[sentry.ts#L41-L58](/packages/ccb/src/utils/sentry.ts#L41-L58)）自动剥离 4 种敏感 header：
 
 - `authorization`
 - `x-api-key`
 - `cookie`
 - `set-cookie`
 
-### 3.3 忽略的错误类型
+### 4.5 忽略的错误类型
 
-以下错误模式被声明为不上报：
+[ignoreErrors 配置](/packages/ccb/src/utils/sentry.ts#L62-L73)：
 
 | 错误模式 | 原因 |
 |----------|------|
@@ -99,46 +120,38 @@ bun run dev
 | `AbortError` / "The user aborted a request" | 用户主动取消 |
 | `CancelError` | 交互式取消信号 |
 
-### 3.4 其他配置参数
+### 4.6 配置参数
 
-- **采样率**：`sampleRate: 1.0`（捕获全部错误事件）
-- **面包屑上限**：`maxBreadcrumbs: 20`
-- **性能事务**：已关闭（`beforeSendTransaction` 返回 `null`），仅上报错误事件
-
-### 3.5 Claimed API 列表
-
-| 函数 | 说明 |
-|------|------|
-| `initSentry()` | 初始化 SDK，在 `src/entrypoints/init.ts` 中自动调用 |
-| `captureException(error, context?)` | 手动上报异常，可附加额外上下文 |
-| `setTag(key, value)` | 设置标签，用于 Sentry 面板分组过滤 |
-| `setUser({ id, email, username })` | 设置用户上下文，用于错误归因 |
-| `closeSentry(timeoutMs?)` | 刷出队列并关闭客户端，进程退出时调用 |
-| `isSentryInitialized()` | 检查是否已初始化 |
+| 参数 | 值 | 说明 |
+|------|------|------|
+| `sampleRate` | `1.0` | 捕获全部错误事件 |
+| `maxBreadcrumbs` | `20` | 面包屑上限，控制 payload 体积 |
+| `beforeSendTransaction` | `() => null` | 关闭性能事务，仅上报错误 |
 
 ---
 
-## 4. 差异判定与建议
+## 5. Rust CLI 实现现状
 
-### 4.1 差异判定
+`claw-code` Rust CLI（`rust/`）**未移植 Sentry 集成**：
 
-- **运行时不一致**：原始文档示例使用 `bun run dev`（Node.js 生态），而当前仓库主运行时为 **Rust**（`cargo run -p rusty-claude-cli`）。
-- **实现缺失**：无论是 TypeScript 还是 Rust 侧，当前代码库均**没有** Sentry SDK 初始化、错误边界、日志 sink 或优雅退出的对应代码。
-- **依赖缺失**：`Cargo.toml` 中未引入任何 Rust Sentry crate（如 `sentry`）；不存在 `package.json`，说明 TypeScript 前端层也未保留。
-- **设计 rationale 差异**：原始代码库使用 React + Bun，需要 `SentryErrorBoundary` 捕获渲染错误；而 `claw-code` 是纯终端 CLI（TUI 极轻量），错误主要通过 `Result<T, E>` 链式传播到顶层后渲染。Rust 生态更倾向于使用 `tracing` + OpenTelemetry 实现可观测性，因此 Sentry 的缺失反映了项目在传统错误边界模型上的路径切换，而非简单的遗漏。
+- `rust/Cargo.toml` 及所有子 crate 未引入 `sentry` 依赖
+- Rust 运行时无 `SENTRY_DSN` 环境变量读取
+- 错误通过 `Result<T, E>` 链传播至顶层渲染，无外部上报管道
+- Rust 生态更倾向 `tracing` + OpenTelemetry（已由 [`telemetry` crate](/rust/crates/telemetry/src/lib.rs) 实现）
 
-### 4.2 后续行动建议
-
-1. **功能废弃**：如果项目已放弃 Sentry 支持，应同步在公开文档中移除该章节，避免误导。
-2. **Rust 侧移植**：如果仍需错误上报，可在 `rust/crates/rusty-claude-cli` 或 `rust/crates/runtime` 中引入 `sentry` crate，并重新设计：
-   - 在 `main.rs` 的 `main()` 入口处根据 `SENTRY_DSN` env 初始化；
-   - 在 panic hook 中调用 `sentry::capture_panic`；
-   - 在 CLI 退出前调用 `sentry::close(timeout)`。
-   - 剥离文件路径与命令行参数中的敏感信息（`ANTHROPIC_API_KEY`、OAuth token 等）。
-3. **文档拆分**：若未来 Rust 实现落地，应新建对应于 Rust 代码路径的单页报告，替换本文档中基于 TypeScript 路径的引用。
+若未来需要在 Rust CLI 中支持 Sentry，建议：
+1. 在 `main.rs` 入口读取 `SENTRY_DSN` 并初始化 `sentry` crate
+2. 注册 panic hook 调用 `sentry::capture_panic`
+3. 退出前调用 `sentry::close(timeout)` 刷出队列
 
 ---
 
-## 5. 结论
+## 6. 文件索引
 
-原始页面描述的 Sentry 错误上报配置在当前 `claw-code` 代码库中**没有对应实现**。原始文档中提到的所有文件路径（`src/utils/sentry.ts`、`src/components/SentryErrorBoundary.ts` 等）均不存在。本单元报告如实记录了该差异，并提供了后续决策建议。
+| 文件 | 行数 | 职责 |
+|------|------|------|
+| [`packages/ccb/src/utils/sentry.ts`](/packages/ccb/src/utils/sentry.ts) | 160 | 核心 SDK 初始化与 6 个导出函数 |
+| [`packages/ccb/src/components/SentryErrorBoundary.ts`](/packages/ccb/src/components/SentryErrorBoundary.ts) | — | React Error Boundary 组件 |
+| [`packages/ccb/src/utils/errorLogSink.ts`](/packages/ccb/src/utils/errorLogSink.ts) | — | 错误日志 sink，集成 `captureException` |
+| [`packages/ccb/src/utils/gracefulShutdown.ts`](/packages/ccb/src/utils/gracefulShutdown.ts) | — | 优雅退出，调用 `closeSentry()` |
+| [`packages/ccb/src/entrypoints/init.ts`](/packages/ccb/src/entrypoints/init.ts) | — | 启动流程中调用 `initSentry()` |

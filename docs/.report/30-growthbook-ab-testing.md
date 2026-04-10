@@ -1,6 +1,8 @@
 # GrowthBook A/B 测试体系 - 运行时功能发布
 
 > 本报告基于 [Claude Code Architecture 中文文档](https://ccb.agent-aura.top/docs/internals/growthbook-ab-testing) 的目录结构进一步深化，并映射到 `packages/ccb`（Claude Code 的 TypeScript 实现）的源码实现。
+>
+> **源码映射说明**：GrowthBook A/B 测试体系全部基于 `packages/ccb`（Claude Code 上游 TypeScript 实现）。`claw-code`（Rust 重写版）目前尚未实现此功能。本报告引用的 `packages/ccb/src/...` 路径在上游实现中存在，但在当前仓库中**不存在对应源码文件**。
 > 文末附 [源码索引](#源码索引)。
 
 ---

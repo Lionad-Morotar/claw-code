@@ -1,8 +1,10 @@
 # BASH_CLASSIFIER — Bash 命令分类器
 
-**Feature Flag**: `FEATURE_BASH_CLASSIFIER=1`  
-**实现状态**: `bashClassifier.ts` 全部 Stub，`yoloClassifier.ts` 完整实现可参考  
+**Feature Flag**: `FEATURE_BASH_CLASSIFIER=1`
+**实现状态**: `bashClassifier.ts` 全部 Stub，`yoloClassifier.ts` 完整实现可参考
 **引用数**: 45
+
+> **源码映射说明**：本报告同时覆盖上游 TypeScript 实现（`packages/ccb/src/utils/permissions/bashClassifier.ts` 为 stub，`yoloClassifier.ts` 为完整参考实现）和 `claw-code` Rust 实现（[`bash_validation.rs`](/rust/crates/runtime/src/bash_validation.rs) 规则驱动分类器）。报告第七节专门描述 Rust 端实现。上游 `packages/ccb/src/...` 路径在上游实现中存在，但在当前仓库中**不存在对应源码文件**。
 
 ---
 
@@ -31,6 +33,7 @@ BASH_CLASSIFIER 使用 LLM 对 bash 命令进行意图分类（允许/拒绝/询
 | 权限 UI | `packages/ccb/src/components/permissions/BashPermissionRequest/BashPermissionRequest.tsx` | 布线 | 分类器状态显示、审核选项 |
 | 权限管道 | `src/hooks/toolPermission/handlers/*.ts` | 布线 | 分类器结果路由到决策 |
 | API beta 标头 | `src/services/api/withRetry.ts` | 布线 | 启用时发送 bash_classifier beta |
+| 规则驱动分类器（Rust） | [`bash_validation.rs`](/rust/crates/runtime/src/bash_validation.rs) | 完整 | `CommandIntent` 语义分类 + 四阶段验证管道 |
 
 ### 2.2 参考实现：yoloClassifier.ts
 
@@ -134,14 +137,14 @@ FEATURE_BASH_CLASSIFIER=1 FEATURE_TREE_SITTER_BASH=1 bun run dev
 
 | 函数 | 行号 | 功能 |
 |------|------|------|
-| `validate_read_only()` | L103 | 只读模式下的命令验证 |
-| `check_destructive()` | L241 | 破坏性命令检查 |
-| `validate_mode()` | L284 | 权限模式验证 |
-| `validate_sed()` | L336 | sed 命令特殊验证 |
-| `validate_paths()` | L360 | 路径安全检查 |
-| `classify_command()` | L533 | 命令意图分类 |
-| `validate_command()` | L594 | 完整验证流水线 |
-| `extract_first_command()` | L622 | 提取命令首个词 |
+| `validate_read_only()` | [`#L103`](rust/crates/runtime/src/bash_validation.rs#L103) | 只读模式下的命令验证 |
+| `check_destructive()` | [`#L241`](rust/crates/runtime/src/bash_validation.rs#L241) | 破坏性命令检查 |
+| `validate_mode()` | [`#L284`](rust/crates/runtime/src/bash_validation.rs#L284) | 权限模式验证 |
+| `validate_sed()` | [`#L336`](rust/crates/runtime/src/bash_validation.rs#L336) | sed 命令特殊验证 |
+| `validate_paths()` | [`#L360`](rust/crates/runtime/src/bash_validation.rs#L360) | 路径安全检查 |
+| `classify_command()` | [`#L533`](rust/crates/runtime/src/bash_validation.rs#L533) | 命令意图分类 |
+| `validate_command()` | [`#L594`](rust/crates/runtime/src/bash_validation.rs#L594) | 完整验证流水线 |
+| `extract_first_command()` | [`#L622`](rust/crates/runtime/src/bash_validation.rs#L622) | 提取命令首个词 |
 
 #### [`permissions.rs`](/rust/crates/runtime/src/permissions.rs)
 
@@ -154,7 +157,7 @@ FEATURE_BASH_CLASSIFIER=1 FEATURE_TREE_SITTER_BASH=1 bun run dev
 | `PermissionMode` | L9 | 权限模式枚举（ReadOnly, WorkspaceWrite, DangerFullAccess, Prompt, Allow） |
 | `PermissionPolicy` | L99 | 权限策略评估器 |
 | `PermissionOutcome` | L92 | 授权结果（Allow/Deny） |
-| `authorize_with_context()` | L175 | 带上下文的授权决策 |
+| `authorize_with_context()` | [`#L175`](rust/crates/runtime/src/bash_validation.rs#L175) | 带上下文的授权决策 |
 
 #### [`bash.rs`](/rust/crates/runtime/src/bash.rs)
 
@@ -214,11 +217,14 @@ bash 命令
 | 分类 | 命令示例 | 实现位置 |
 |------|----------|----------|
 | **只读命令** | `ls`, `cat`, `head`, `tail`, `grep`, `find`, `jq` | [`bash_validation.rs:389-457`](/rust/crates/runtime/src/bash_validation.rs#L389-L457) |
-| **网络命令** | `curl`, `wget`, `ssh`, `scp`, `ping`, `nmap` | [`bash_validation.rs:460-482`](/rust/crates/runtime/src/bash_validation.rs#L460-L482) |
-| **进程命令** | `kill`, `pkill`, `ps`, `top`, `htop` | [`bash_validation.rs:485-488`](/rust/crates/runtime/src/bash_validation.rs#L485-L488) |
-| **包管理** | `apt`, `brew`, `pip`, `npm`, `cargo`, `yarn` | [`bash_validation.rs:491-494`](/rust/crates/runtime/src/bash_validation.rs#L491-L494) |
-| **系统管理** | `sudo`, `mount`, `systemctl`, `crontab` | [`bash_validation.rs:497-527`](/rust/crates/runtime/src/bash_validation.rs#L497-L527) |
-| **破坏性命令** | `shred`, `wipefs` | [`bash_validation.rs:235`](/rust/crates/runtime/src/bash_validation.rs#L235) |
+| **写入命令** | `cp`, `mv`, `rm`, `mkdir`, `touch`, `chmod`, `tee`, `dd` 等 17 个 | [`bash_validation.rs:52-55`](/rust/crates/runtime/src/bash_validation.rs#L52-L55) |
+| **状态修改命令** | `apt`, `brew`, `docker`, `systemctl`, `reboot`, `shutdown` 等 34 个 | [`bash_validation.rs:58-94`](/rust/crates/runtime/src/bash_validation.rs#L58-L94) |
+| **破坏性模式** | `rm -rf /`, `rm -rf ~`, `mkfs`, `dd if=`, `fork bomb` 等 10 个模式 | [`bash_validation.rs:206-232`](/rust/crates/runtime/src/bash_validation.rs#L206-L232) |
+| **始终破坏性** | `shred`, `wipefs` | [`bash_validation.rs:235`](/rust/crates/runtime/src/bash_validation.rs#L235) |
+| **网络命令** | `curl`, `wget`, `ssh`, `scp`, `ping`, `nmap` 等 22 个 | [`bash_validation.rs:460-482`](/rust/crates/runtime/src/bash_validation.rs#L460-L482) |
+| **进程命令** | `kill`, `pkill`, `ps`, `top`, `htop` 等 14 个 | [`bash_validation.rs:485-488`](/rust/crates/runtime/src/bash_validation.rs#L485-L488) |
+| **包管理** | `apt`, `brew`, `pip`, `npm`, `cargo`, `yarn` 等 19 个 | [`bash_validation.rs:491-494`](/rust/crates/runtime/src/bash_validation.rs#L491-L494) |
+| **系统管理** | `sudo`, `mount`, `systemctl`, `crontab` 等 30 个 | [`bash_validation.rs:497-527`](/rust/crates/runtime/src/bash_validation.rs#L497-L527) |
 
 ### 7.5 工具集成
 

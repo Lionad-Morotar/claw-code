@@ -4,7 +4,8 @@
 > 文档来源: `packages/ccb/docs/features/workflow-scripts.md`  
 > 主项目: `packages/ccb`（claw-code / ccb 子项目）  
 
----
+
+> **源码映射说明**：Workflow Scripts 全部基于 `packages/ccb`（Claude Code 上游 TypeScript 实现）。`claw-code`（Rust 重写版）目前尚未实现此功能。本报告引用的 `packages/ccb/src/...` 路径在上游实现中存在，但在当前仓库中**不存在对应源码文件**。阅读时请注意区分上游与 Rust 实现的覆盖范围。---
 
 ## 一、功能概述
 

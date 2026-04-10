@@ -85,7 +85,7 @@ struct AgentOutput {
 
 ### 3.1 工具分发入口
 
-`execute_tool` 函数在 L1212 处分发 `Agent` 工具调用：
+`execute_tool` 函数在 [`lib.rs#L1212`](rust/crates/tools/src/lib.rs#L1212) 处分发 `Agent` 工具调用：
 
 ```rust
 // L1212: Agent 工具分发
@@ -664,26 +664,26 @@ fn agent_store_dir() -> Result<std::path::PathBuf, String> {
 
 | 组件 | 文件 | 行号范围 | 说明 |
 |------|------|----------|------|
-| Agent ToolSpec | `rust/crates/tools/src/lib.rs` | L572-587 | 工具定义与输入 Schema |
-| AgentInput | `rust/crates/tools/src/lib.rs` | L2117-2123 | 输入结构 |
-| AgentOutput | `rust/crates/tools/src/lib.rs` | L2392-2415 | 输出结构 |
-| AgentJob | `rust/crates/tools/src/lib.rs` | L2422 | 内部任务结构 |
-| run_agent | `rust/crates/tools/src/lib.rs` | L1996-1998 | 工具执行入口 |
-| execute_agent | `rust/crates/tools/src/lib.rs` | L3286-3367 | 核心执行逻辑 |
-| spawn_agent_job | `rust/crates/tools/src/lib.rs` | L3370-3397 | 线程创建 |
-| run_agent_job | `rust/crates/tools/src/lib.rs` | L3399-3404 | 子 Agent 运行 |
-| SubagentToolExecutor | `rust/crates/tools/src/lib.rs` | L3951-3980 | 工具执行器 |
-| allowed_tools_for_subagent | `rust/crates/tools/src/lib.rs` | L3458-3530 | 工具子集映射 |
-| build_agent_runtime | `rust/crates/tools/src/lib.rs` | L3403-3428 | 运行时构建 |
-| build_agent_system_prompt | `rust/crates/tools/src/lib.rs` | L3436-3447 | 系统提示构建 |
-| Session.workspace_root | `rust/crates/runtime/src/session.rs` | L90 | Worktree 绑定字段 |
-| Session::with_workspace_root | `rust/crates/runtime/src/session.rs` | L176-183 | Worktree 绑定方法 |
-| Session::fork | `rust/crates/runtime/src/session.rs` | L251-268 | 会话 Fork 继承 Worktree |
-| SessionStore | `rust/crates/runtime/src/session_control.rs` | L20-27 | 会话存储结构 |
-| SessionStore::from_data_dir | `rust/crates/runtime/src/session_control.rs` | L49-64 | 按 Worktree 隔离 |
-| ProviderClient::from_model | `rust/crates/api/src/client.rs` | L17-49 | 模型路由 |
-| persist_agent_terminal_state | `rust/crates/tools/src/lib.rs` | L3555-3604 | 状态持久化 |
-| agent_store_dir | `rust/crates/tools/src/lib.rs` | L4240-4249 | 存储目录解析 |
+| Agent ToolSpec | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L572-L587](rust/crates/tools/src/lib.rs#L572-L587) | 工具定义与输入 Schema |
+| AgentInput | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L2117-L2123](rust/crates/tools/src/lib.rs#L2117-L2123) | 输入结构 |
+| AgentOutput | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L2392-L2415](rust/crates/tools/src/lib.rs#L2392-L2415) | 输出结构 |
+| AgentJob | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L2422](rust/crates/tools/src/lib.rs#L2422) | 内部任务结构 |
+| run_agent | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L1996-L1998](rust/crates/tools/src/lib.rs#L1996-L1998) | 工具执行入口 |
+| execute_agent | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L3286-L3367](rust/crates/tools/src/lib.rs#L3286-L3367) | 核心执行逻辑 |
+| spawn_agent_job | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L3370-L3397](rust/crates/tools/src/lib.rs#L3370-L3397) | 线程创建 |
+| run_agent_job | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L3399-L3404](rust/crates/tools/src/lib.rs#L3399-L3404) | 子 Agent 运行 |
+| SubagentToolExecutor | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L3951-L3980](rust/crates/tools/src/lib.rs#L3951-L3980) | 工具执行器 |
+| allowed_tools_for_subagent | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L3458-L3530](rust/crates/tools/src/lib.rs#L3458-L3530) | 工具子集映射 |
+| build_agent_runtime | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L3403-L3428](rust/crates/tools/src/lib.rs#L3403-L3428) | 运行时构建 |
+| build_agent_system_prompt | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L3436-L3447](rust/crates/tools/src/lib.rs#L3436-L3447) | 系统提示构建 |
+| Session.workspace_root | [`session.rs`](rust/crates/runtime/src/session.rs) | [L90](rust/crates/runtime/src/session.rs#L90) | Worktree 绑定字段 |
+| Session::with_workspace_root | [`session.rs`](rust/crates/runtime/src/session.rs) | [L176-L183](rust/crates/runtime/src/session.rs#L176-L183) | Worktree 绑定方法 |
+| Session::fork | [`session.rs`](rust/crates/runtime/src/session.rs) | [L251-L268](rust/crates/runtime/src/session.rs#L251-L268) | 会话 Fork 继承 Worktree |
+| SessionStore | [`session_control.rs`](rust/crates/runtime/src/session_control.rs) | [L20-L27](rust/crates/runtime/src/session_control.rs#L20-L27) | 会话存储结构 |
+| SessionStore::from_data_dir | [`session_control.rs`](rust/crates/runtime/src/session_control.rs) | [L49-L64](rust/crates/runtime/src/session_control.rs#L49-L64) | 按 Worktree 隔离 |
+| ProviderClient::from_model | [`client.rs`](rust/crates/api/src/client.rs) | [L17-L49](rust/crates/api/src/client.rs#L17-L49) | 模型路由 |
+| persist_agent_terminal_state | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L3555-L3604](rust/crates/tools/src/lib.rs#L3555-L3604) | 状态持久化 |
+| agent_store_dir | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L4240-L4249](rust/crates/tools/src/lib.rs#L4240-L4249) | 存储目录解析 |
 
 ---
 

@@ -1,8 +1,10 @@
 # Unit 59 — Telemetry Remote Config Audit
 
-> Source page: https://ccb.agent-aura.top/docs/telemetry-remote-config-audit  
-> Audit scope: `packages/ccb/src/` (TypeScript 宿主层) + `rust/crates/` (Rust CLI 运行时)  
+> Source page: https://ccb.agent-aura.top/docs/telemetry-remote-config-audit
+> Audit scope: `packages/ccb/src/` (TypeScript 宿主层) + `rust/crates/` (Rust CLI 运行时)
 > Generated: 2026-04-09
+
+> **源码映射说明**：本报告采用双视角覆盖——每个遥测子系统均同时描述上游 TypeScript 实现（`packages/ccb/src/...`）和 `claw-code` Rust 实现（`rust/crates/telemetry/` 等）。上游 `packages/ccb/src/...` 路径在上游实现中存在，但在当前仓库中**不存在对应源码文件**。第 14 节专门总结 Rust CLI 遥测实现现状。
 
 ---
 

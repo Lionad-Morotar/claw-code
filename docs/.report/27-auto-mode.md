@@ -1,7 +1,7 @@
-# Auto Mode — AI 分类器驱动的自主执行模式
+# Auto Mode — 规则驱动的自主执行模式
 
-> 本报告基于 [Claude Code 中文文档](https://ccb.agent-aura.top/docs/safety/auto-mode) 对 Auto Mode 的介绍，结合 `claw-code`（Claude Code Rust 重写版）的源码实现，深入解析权限分类器、自动判定逻辑与执行边界。
-> 文末附 [源码索引](#源码索引)。
+> 本报告基于 [Claude Code 中文文档](https://ccb.agent-aura.top/docs/safety/auto-mode) 对 Auto Mode 的介绍，结合 `claw-code`（Claude Code Rust 重写版）的源码实现，深入解析规则驱动的命令分类器、自动判定逻辑与执行边界。
+> 注：上游 TypeScript 实现包含 LLM 驱动的 `bashClassifier`（见报告 48），但 Rust CLI 仅采用规则驱动分类（`bash_validation.rs`）。
 
 ---
 
@@ -144,12 +144,11 @@ assert_eq!(policy.authorize("bash", r#"{"command":"git status"}"#, None), Permis
 
 ## Bash 命令的二次分类与验证
 
-Auto Mode 下 Bash 不是无条件放行。`bash_validation.rs` 实现了一套与上游 `BashTool` 对齐的验证管道，包含五个阶段：
+Auto Mode 下 Bash 不是无条件放行。`bash_validation.rs` 实现了一套与上游 `BashTool` 对齐的验证管道，包含四个阶段（`validate_read_only` 是 `validate_mode` 的内部子调用，非独立管道阶段）：
 
 | 阶段 | 函数 | 说明 |
 | --- | --- | --- |
-| `readOnlyValidation` | `validate_read_only` | ReadOnly 模式下阻止写入命令 |
-| `modeValidation` | `validate_mode` | WorkspaceWrite 下警告系统路径目标 |
+| `modeValidation` | `validate_mode` | ReadOnly 下调用 `validate_read_only`；WorkspaceWrite 下警告系统路径目标 |
 | `sedValidation` | `validate_sed` | 阻止 `sed -i` 在 ReadOnly 模式下运行 |
 | `destructiveCommandWarning` | `check_destructive` | 对 `rm -rf /`、`mkfs` 等发出警告 |
 | `pathValidation` | `validate_paths` | 检测 `../`、`~/` 等可疑路径 |
@@ -281,6 +280,6 @@ let context = PermissionContext::new(
 |------|----------|
 | [`/rust/crates/runtime/src/permissions.rs`](/rust/crates/runtime/src/permissions.rs) | `PermissionMode` 五级模型、`PermissionPolicy`、`authorize_with_context`、规则引擎 |
 | [`/rust/crates/runtime/src/permission_enforcer.rs`](/rust/crates/runtime/src/permission_enforcer.rs) | `PermissionEnforcer`、`check_bash`、`check_file_write`、运行态门控 |
-| [`/rust/crates/runtime/src/bash_validation.rs`](/rust/crates/runtime/src/bash_validation.rs) | Bash 命令五阶段验证管道、`CommandIntent` 语义分类器 |
+| [`/rust/crates/runtime/src/bash_validation.rs`](/rust/crates/runtime/src/bash_validation.rs) | Bash 命令四阶段验证管道、`CommandIntent` 语义分类器 |
 | [`/rust/crates/runtime/src/conversation.rs`](/rust/crates/runtime/src/conversation.rs) | `run_turn` 中的权限判定与工具执行编排 |
 | [`/rust/crates/runtime/src/config.rs`](/rust/crates/runtime/src/config.rs) | 配置解析，`"auto"` → `ResolvedPermissionMode::WorkspaceWrite` 的映射 |

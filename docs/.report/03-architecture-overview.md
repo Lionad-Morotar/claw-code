@@ -150,7 +150,7 @@ fn build_assistant_message(events: Vec<AssistantEvent>) -> Result<(ConversationM
 
 #### 自动压缩（Auto-compaction）
 
-在每轮 turn 结束时，[`maybe_auto_compact`](/rust/crates/runtime/src/conversation.rs#L525-L548) 会检查 `usage_tracker.cumulative_usage().input_tokens` 是否超过阈值（默认 100,000）。若超过，则调用 [`compact_session`](/rust/crates/runtime/src/compact.rs#L96-L155) 将历史消息压缩为一条系统摘要消息，控制上下文长度和 API 成本。
+在每轮 turn 结束时，[`maybe_auto_compact`](/rust/crates/runtime/src/conversation.rs#L525-L548) 会检查 `usage_tracker.cumulative_usage().input_tokens` 是否超过阈值（默认 100,000）。若超过，则调用 [`compact_session`](/rust/crates/runtime/src/compact.rs#L96-L139) 将历史消息压缩为一条系统摘要消息，控制上下文长度和 API 成本。
 
 ---
 

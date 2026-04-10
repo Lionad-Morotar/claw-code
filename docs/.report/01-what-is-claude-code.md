@@ -11,7 +11,7 @@ Claude Code 是一个**运行在本地终端中的 agentic coding system**。它
 
 ### 从 TypeScript 到 Rust
 
-`claw-code` 仓库是 Claude Code 的 Rust 重写实现。它将上游的 Terminal-native 架构以 Rust 的内存安全和零成本抽象重新落地，核心代码位于仓库的 [`/rust/`](/rust/) 目录下，采用 Cargo Workspace 组织，包含 `api`、`runtime`、`rusty-claude-cli`、`tools`、`commands`、`telemetry`、`plugins`、`compat-harness`、`mock-anthropic-service` 等 11 个 crate。
+`claw-code` 仓库是 Claude Code 的 Rust 重写实现。它将上游的 Terminal-native 架构以 Rust 的内存安全和零成本抽象重新落地，核心代码位于仓库的 [`/rust/`](/rust/) 目录下，采用 Cargo Workspace 组织，包含 `api`、`runtime`、`rusty-claude-cli`、`tools`、`commands`、`telemetry`、`plugins`、`compat-harness`、`mock-anthropic-service` 共 9 个 crate。
 
 这种架构取舍的直接代价是：与 IDE 生态（VS Code 扩展、JetBrains 插件）完全绝缘。`claw-code` 无法复用任何 IDE 的 LSP 客户端、调试器 UI 或版本控制面板，一切都必须在终端内重新实现。这是 Terminal-native 的边界，也是其保持简洁的前提。
 

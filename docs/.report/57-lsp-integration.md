@@ -66,7 +66,7 @@ claw-code 对 LSP 的支持目前停留在**骨架层**：`rust/crates/runtime/s
 
 #### 核心数据结构
 
-**LspAction** (#L12-L20)
+**LspAction** ([`lsp_client.rs#L12-L20`](rust/crates/runtime/src/lsp_client.rs#L12-L20))
 ```rust
 pub enum LspAction {
     Diagnostics, Hover, Definition, References,
@@ -74,14 +74,14 @@ pub enum LspAction {
 }
 ```
 
-字符串解析与别名 (#L23-L35)：
+字符串解析与别名 ([`#L23-L35`](rust/crates/runtime/src/lsp_client.rs#L23-L35))：
 - `definition` / `goto_definition` → `LspAction::Definition`
 - `references` / `find_references` → `LspAction::References`
 - `completion` / `completions` → `LspAction::Completion`
 - `symbols` / `document_symbols` → `LspAction::Symbols`
 - `format` / `formatting` → `LspAction::Format`
 
-**LspServerState** (#L101-L107)
+**LspServerState** ([`lsp_client.rs#L101-L107`](rust/crates/runtime/src/lsp_client.rs#L101-L107))
 ```rust
 pub struct LspServerState {
     pub language: String,
@@ -92,16 +92,16 @@ pub struct LspServerState {
 }
 ```
 
-**LspRegistry** (#L110-L112)
+**LspRegistry** ([`lsp_client.rs#L110-L112`](rust/crates/runtime/src/lsp_client.rs#L110-L112))
 - 使用 `Arc<Mutex<RegistryInner>>` 的线程安全注册表
 - 未实现多语言 server 的并发生命周期管理
 
 #### 关键方法
 
-**register()** (#L125-L143)
+**register()** ([`#L125-L143`](rust/crates/runtime/src/lsp_client.rs#L125-L143))
 注册语言 server 的能力声明。
 
-**find_server_for_path()** (#L151-L172)
+**find_server_for_path()** ([`#L151-L172`](rust/crates/runtime/src/lsp_client.rs#L151-L172))
 按扩展名映射语言 server：
 | 扩展名 | 语言 |
 |--------|------|
@@ -116,11 +116,11 @@ pub struct LspServerState {
 | `.rb` | ruby |
 | `.lua` | lua |
 
-**dispatch()** (#L236-L296)
+**dispatch()** ([`#L236-L296`](rust/crates/runtime/src/lsp_client.rs#L236-L296))
 核心分发逻辑，当前仅返回占位数据：
 
-1. **Diagnostics 路径** (#L248-L270): 直接返回缓存的 diagnostics，不要求 live server
-2. **Action 路径** (#L272-L295): 仅检查 server 存在且处于 `Connected` 状态，随后返回结构化占位
+1. **Diagnostics 路径** ([`#L248-L270`](rust/crates/runtime/src/lsp_client.rs#L248-L270)): 直接返回缓存的 diagnostics，不要求 live server
+2. **Action 路径** ([`#L272-L295`](rust/crates/runtime/src/lsp_client.rs#L272-L295)): 仅检查 server 存在且处于 `Connected` 状态，随后返回结构化占位
 
 ```rust
 // Lines 285-295 - 结构化占位响应
@@ -135,15 +135,15 @@ Ok(serde_json::json!({
 }))
 ```
 
-**测试覆盖** (#L299-L747)
+**测试覆盖** ([`#L299-L747`](rust/crates/runtime/src/lsp_client.rs#L299-L747))
 - 20+ 单元测试覆盖注册、分发、diagnostics 聚合与错误路径
-- `dispatch_diagnostics_without_path_aggregates()` (#L486-L527) 验证多 server 聚合
+- `dispatch_diagnostics_without_path_aggregates()` ([`#L486-L527`](rust/crates/runtime/src/lsp_client.rs#L486-L527)) 验证多 server 聚合
 
 ---
 
 ### 2. LSP Tool 接口 (`rust/crates/tools/src/lib.rs`)
 
-#### Tool 定义 (#L1052-L1071)
+#### Tool 定义 ([`lib.rs#L1052-L1071`](rust/crates/tools/src/lib.rs#L1052-L1071))
 
 ```rust
 ToolSpec {
@@ -165,7 +165,7 @@ ToolSpec {
 }
 ```
 
-#### 输入结构 (#L2303-L2312)
+#### 输入结构 ([`lib.rs#L2303-L2312`](rust/crates/tools/src/lib.rs#L2303-L2312))
 
 ```rust
 #[derive(Debug, Deserialize)]
@@ -182,11 +182,11 @@ struct LspInput {
 }
 ```
 
-#### 执行处理函数 (#L1606-L1620)
+#### 执行处理函数 ([`lib.rs#L1606-L1620`](rust/crates/tools/src/lib.rs#L1606-L1620))
 
 ```rust
 fn run_lsp(input: LspInput) -> Result<String, String> {
-    let registry = global_lsp_registry();  // #L35-L42
+    let registry = global_lsp_registry();  // [`lib.rs#L35-L42`](rust/crates/tools/src/lib.rs#L35-L42)
     let action = &input.action;
     let path = input.path.as_deref();
     let line = input.line;
@@ -204,7 +204,7 @@ fn run_lsp(input: LspInput) -> Result<String, String> {
 }
 ```
 
-#### Tool 调度集成 (#L1254)
+#### Tool 调度集成 ([`lib.rs#L1254`](rust/crates/tools/src/lib.rs#L1254))
 
 ```rust
 "LSP" => from_value::<LspInput>(input).and_then(run_lsp),
@@ -216,14 +216,14 @@ fn run_lsp(input: LspInput) -> Result<String, String> {
 
 MCP stdio 实现复用了 LSP 的 `Content-Length` 帧格式，说明底层传输层已具备与 LSP server 对话的能力，但上层 LSP 生命周期管理尚未接入。
 
-**帧结构** (#L1209-L1247)
+**帧结构** ([`mcp_stdio.rs#L1209-L1247`](rust/crates/runtime/src/mcp_stdio.rs#L1209-L1247))
 ```
 Content-Length: <byte-count>\r\n
 \r\n
 <JSON-RPC payload>
 ```
 
-**McpStdioProcess** (#L1143-L1148)
+**McpStdioProcess** ([`mcp_stdio.rs#L1143-L1148`](rust/crates/runtime/src/mcp_stdio.rs#L1143-L1148))
 ```rust
 pub struct McpStdioProcess {
     child: Child,
@@ -232,7 +232,7 @@ pub struct McpStdioProcess {
 }
 ```
 
-**write_frame()** (#L1209-L1213)
+**write_frame()** ([`mcp_stdio.rs#L1209-L1213`](rust/crates/runtime/src/mcp_stdio.rs#L1209-L1213))
 ```rust
 pub async fn write_frame(&mut self, payload: &[u8]) -> io::Result<()> {
     let encoded = encode_frame(payload);
@@ -241,7 +241,7 @@ pub async fn write_frame(&mut self, payload: &[u8]) -> io::Result<()> {
 }
 ```
 
-**read_frame()** (#L1215-L1247)
+**read_frame()** ([`mcp_stdio.rs#L1215-L1247`](rust/crates/runtime/src/mcp_stdio.rs#L1215-L1247))
 ```rust
 pub async fn read_frame(&mut self) -> io::Result<Vec<u8>> {
     let mut content_length = None;
@@ -272,7 +272,7 @@ pub async fn read_frame(&mut self) -> io::Result<Vec<u8>> {
 }
 ```
 
-**JSON-RPC Message 处理** (#L1249-L1267)
+**JSON-RPC Message 处理** ([`mcp_stdio.rs#L1249-L1267`](rust/crates/runtime/src/mcp_stdio.rs#L1249-L1267))
 ```rust
 pub async fn write_jsonrpc_message<T: Serialize>(&mut self, message: &T) -> io::Result<()> {
     let body = serde_json::to_vec(message)?;
@@ -285,7 +285,7 @@ pub async fn read_jsonrpc_message<T: DeserializeOwned>(&mut self) -> io::Result<
 }
 ```
 
-**spawn_mcp_stdio_process()** (#L1371-L1385)
+**spawn_mcp_stdio_process()** ([`mcp_stdio.rs#L1371-L1385`](rust/crates/runtime/src/mcp_stdio.rs#L1371-L1385))
 ```rust
 pub fn spawn_mcp_stdio_process(bootstrap: &McpClientBootstrap) -> io::Result<McpStdioProcess> {
     match &bootstrap.transport {
@@ -304,7 +304,7 @@ pub fn spawn_mcp_stdio_process(bootstrap: &McpClientBootstrap) -> io::Result<Mcp
 
 ### Global Registry Pattern
 
-**tools/src/lib.rs** (#L35-L42):
+**tools/src/lib.rs** ([`lib.rs#L35-L42`](rust/crates/tools/src/lib.rs#L35-L42)):
 ```rust
 fn global_lsp_registry() -> &'static LspRegistry {
     use std::sync::OnceLock;
@@ -315,20 +315,20 @@ fn global_lsp_registry() -> &'static LspRegistry {
 
 ### 权限模型
 
-`LSP` 工具要求 `PermissionMode::ReadOnly` (#L1071)。
+`LSP` 工具要求 `PermissionMode::ReadOnly` ([`lib.rs#L1071`](rust/crates/tools/src/lib.rs#L1071))。
 
 ---
 
 ## 当前限制
 
-1. **占位分发** (#L285-L295)：
+1. **占位分发** ([`lsp_client.rs#L285-L295`](rust/crates/runtime/src/lsp_client.rs#L285-L295))：
    `dispatch()` 目前返回固定格式的 JSON 占位，未触发任何真实 LSP JSON-RPC 调用。
 
 2. **无 live server 生命周期管理**：
    `lsp_client.rs` 尚未实现启动 `rust-analyzer`、`typescript-language-server` 等进程、维护连接、发送 `textDocument/didOpen` / `didChange`。
 
 3. **Diagnostics 为手动缓存**：
-   diagnostics 通过 `add_diagnostics()` (#L181-L193) 写入，而非从 live server 拉取。
+   diagnostics 通过 `add_diagnostics()` ([`#L181-L193`](rust/crates/runtime/src/lsp_client.rs#L181-L193)) 写入，而非从 live server 拉取。
 
 ---
 
@@ -353,27 +353,27 @@ fn global_lsp_registry() -> &'static LspRegistry {
 
 | 组件 | 文件 | 行号 |
 |------|------|------|
-| LspAction enum | `rust/crates/runtime/src/lsp_client.rs` | #L12-L20 |
-| LspAction::from_str | `rust/crates/runtime/src/lsp_client.rs` | #L23-L35 |
-| LspServerState | `rust/crates/runtime/src/lsp_client.rs` | #L101-L107 |
-| LspRegistry | `rust/crates/runtime/src/lsp_client.rs` | #L110-L112 |
-| LspRegistry::dispatch | `rust/crates/runtime/src/lsp_client.rs` | #L236-L296 |
-| LspRegistry tests | `rust/crates/runtime/src/lsp_client.rs` | #L299-L747 |
-| global_lsp_registry | `rust/crates/tools/src/lib.rs` | #L35-L42 |
-| LSP ToolSpec | `rust/crates/tools/src/lib.rs` | #L1052-L1071 |
-| LspInput struct | `rust/crates/tools/src/lib.rs` | #L2303-L2312 |
-| run_lsp handler | `rust/crates/tools/src/lib.rs` | #L1606-L1620 |
-| Tool dispatch | `rust/crates/tools/src/lib.rs` | #L1254 |
-| McpStdioProcess | `rust/crates/runtime/src/mcp_stdio.rs` | #L1143-L1148 |
-| read_frame | `rust/crates/runtime/src/mcp_stdio.rs` | #L1215-L1247 |
-| write_frame | `rust/crates/runtime/src/mcp_stdio.rs` | #L1209-L1213 |
-| spawn_mcp_stdio_process | `rust/crates/runtime/src/mcp_stdio.rs` | #L1371-L1385 |
+| LspAction enum | [`lsp_client.rs`](rust/crates/runtime/src/lsp_client.rs) | [L12-L20](rust/crates/runtime/src/lsp_client.rs#L12-L20) |
+| LspAction::from_str | [`lsp_client.rs`](rust/crates/runtime/src/lsp_client.rs) | [L23-L35](rust/crates/runtime/src/lsp_client.rs#L23-L35) |
+| LspServerState | [`lsp_client.rs`](rust/crates/runtime/src/lsp_client.rs) | [L101-L107](rust/crates/runtime/src/lsp_client.rs#L101-L107) |
+| LspRegistry | [`lsp_client.rs`](rust/crates/runtime/src/lsp_client.rs) | [L110-L112](rust/crates/runtime/src/lsp_client.rs#L110-L112) |
+| LspRegistry::dispatch | [`lsp_client.rs`](rust/crates/runtime/src/lsp_client.rs) | [L236-L296](rust/crates/runtime/src/lsp_client.rs#L236-L296) |
+| LspRegistry tests | [`lsp_client.rs`](rust/crates/runtime/src/lsp_client.rs) | [L299-L747](rust/crates/runtime/src/lsp_client.rs#L299-L747) |
+| global_lsp_registry | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L35-L42](rust/crates/tools/src/lib.rs#L35-L42) |
+| LSP ToolSpec | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L1052-L1071](rust/crates/tools/src/lib.rs#L1052-L1071) |
+| LspInput struct | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L2303-L2312](rust/crates/tools/src/lib.rs#L2303-L2312) |
+| run_lsp handler | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L1606-L1620](rust/crates/tools/src/lib.rs#L1606-L1620) |
+| Tool dispatch | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L1254](rust/crates/tools/src/lib.rs#L1254) |
+| McpStdioProcess | [`mcp_stdio.rs`](rust/crates/runtime/src/mcp_stdio.rs) | [L1143-L1148](rust/crates/runtime/src/mcp_stdio.rs#L1143-L1148) |
+| read_frame | [`mcp_stdio.rs`](rust/crates/runtime/src/mcp_stdio.rs) | [L1215-L1247](rust/crates/runtime/src/mcp_stdio.rs#L1215-L1247) |
+| write_frame | [`mcp_stdio.rs`](rust/crates/runtime/src/mcp_stdio.rs) | [L1209-L1213](rust/crates/runtime/src/mcp_stdio.rs#L1209-L1213) |
+| spawn_mcp_stdio_process | [`mcp_stdio.rs`](rust/crates/runtime/src/mcp_stdio.rs) | [L1371-L1385](rust/crates/runtime/src/mcp_stdio.rs#L1371-L1385) |
 
 ---
 
 ## Parity 文档参考
 
-`rust/PARITY.md` (#L73):
+`rust/PARITY.md` ([`PARITY.md#L73`](rust/PARITY.md#L73)):
 
 > | **LSP** | `runtime::lsp_client` + `tools` | registry + dispatch for diagnostics, hover, definition, references, completion, symbols, formatting — **good parity** |
 

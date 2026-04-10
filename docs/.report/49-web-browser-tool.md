@@ -22,7 +22,7 @@
 
 **源码位置**: `rust/crates/tools/src/lib.rs`
 
-#### 2.1.1 工具定义 (L493-L507)
+#### 2.1.1 工具定义 ([L493-L507](rust/crates/tools/src/lib.rs#L493-L507))
 
 ```rust
 ToolSpec {
@@ -41,7 +41,7 @@ ToolSpec {
 }
 ```
 
-#### 2.1.2 输入结构 (L2077-L2080)
+#### 2.1.2 输入结构 ([L2077-L2080](rust/crates/tools/src/lib.rs#L2077-L2080))
 
 ```rust
 #[derive(Debug, Deserialize)]
@@ -51,7 +51,7 @@ struct WebFetchInput {
 }
 ```
 
-#### 2.1.3 执行入口 (L1979-L1981)
+#### 2.1.3 执行入口 ([L1979-L1981](rust/crates/tools/src/lib.rs#L1979-L1981))
 
 ```rust
 fn run_web_fetch(input: WebFetchInput) -> Result<String, String> {
@@ -59,7 +59,7 @@ fn run_web_fetch(input: WebFetchInput) -> Result<String, String> {
 }
 ```
 
-#### 2.1.4 核心执行逻辑 (L2556-L2590)
+#### 2.1.4 核心执行逻辑 ([L2556-L2590](rust/crates/tools/src/lib.rs#L2556-L2590))
 
 ```rust
 fn execute_web_fetch(input: &WebFetchInput) -> Result<WebFetchOutput, String> {
@@ -97,7 +97,7 @@ fn execute_web_fetch(input: &WebFetchInput) -> Result<WebFetchOutput, String> {
 }
 ```
 
-#### 2.1.5 URL 规范化 (L2653-L2666)
+#### 2.1.5 URL 规范化 ([L2653-L2666](rust/crates/tools/src/lib.rs#L2653-L2666))
 
 ```rust
 fn normalize_fetch_url(url: &str) -> Result<String, String> {
@@ -121,7 +121,7 @@ fn normalize_fetch_url(url: &str) -> Result<String, String> {
 - 支持重定向跟踪
 - 20 秒超时
 
-#### 2.1.6 内容处理 (L2681-L2754)
+#### 2.1.6 内容处理 ([L2681-L2754](rust/crates/tools/src/lib.rs#L2681-L2754))
 
 ```rust
 fn normalize_fetched_content(body: &str, content_type: &str) -> String {
@@ -168,7 +168,7 @@ fn html_to_text(html: &str) -> String {
 - HTML 实体解码
 - 空白字符折叠
 
-#### 2.1.7 智能摘要 (L2689-L2716)
+#### 2.1.7 智能摘要 ([L2689-L2716](rust/crates/tools/src/lib.rs#L2689-L2716))
 
 ```rust
 fn summarize_web_fetch(
@@ -210,7 +210,7 @@ fn summarize_web_fetch(
 
 **源码位置**: `rust/crates/tools/src/lib.rs`
 
-#### 2.2.1 工具定义 (L508-L528)
+#### 2.2.1 工具定义 ([L508-L528](rust/crates/tools/src/lib.rs#L508-L528))
 
 ```rust
 ToolSpec {
@@ -236,7 +236,7 @@ ToolSpec {
 }
 ```
 
-#### 2.2.2 输入结构 (L2082-L2087)
+#### 2.2.2 输入结构 ([L2082-L2087](rust/crates/tools/src/lib.rs#L2082-L2087))
 
 ```rust
 #[derive(Debug, Deserialize)]
@@ -247,7 +247,7 @@ struct WebSearchInput {
 }
 ```
 
-#### 2.2.3 执行入口 (L1984-L1986)
+#### 2.2.3 执行入口 ([L1984-L1986](rust/crates/tools/src/lib.rs#L1984-L1986))
 
 ```rust
 fn run_web_search(input: WebSearchInput) -> Result<String, String> {
@@ -255,7 +255,7 @@ fn run_web_search(input: WebSearchInput) -> Result<String, String> {
 }
 ```
 
-#### 2.2.4 核心执行逻辑 (L2590-L2642)
+#### 2.2.4 核心执行逻辑 ([L2590-L2642](rust/crates/tools/src/lib.rs#L2590-L2642))
 
 ```rust
 fn execute_web_search(input: &WebSearchInput) -> Result<WebSearchOutput, String> {
@@ -320,7 +320,7 @@ fn execute_web_search(input: &WebSearchInput) -> Result<WebSearchOutput, String>
 - 自动去重
 - 最多返回 8 条结果
 
-#### 2.2.5 搜索 URL 构建 (L2668-L2681)
+#### 2.2.5 搜索 URL 构建 ([L2668-L2681](rust/crates/tools/src/lib.rs#L2668-L2681))
 
 ```rust
 fn build_search_url(query: &str) -> Result<reqwest::Url, String> {
@@ -337,7 +337,7 @@ fn build_search_url(query: &str) -> Result<reqwest::Url, String> {
 }
 ```
 
-#### 2.2.6 DuckDuckGo 结果解析 (L2790-L2827)
+#### 2.2.6 DuckDuckGo 结果解析 ([L2790-L2827](rust/crates/tools/src/lib.rs#L2790-L2827))
 
 ```rust
 fn extract_search_hits(html: &str) -> Vec<SearchHit> {
@@ -369,7 +369,7 @@ fn extract_search_hits(html: &str) -> Vec<SearchHit> {
 }
 ```
 
-#### 2.2.7 重定向 URL 解码 (L2879-L2905)
+#### 2.2.7 重定向 URL 解码 ([L2879-L2905](rust/crates/tools/src/lib.rs#L2879-L2905))
 
 ```rust
 fn decode_duckduckgo_redirect(url: &str) -> Option<String> {
@@ -401,7 +401,7 @@ fn decode_duckduckgo_redirect(url: &str) -> Option<String> {
 
 ## 3. HTTP 客户端配置
 
-**源码位置**: `rust/crates/tools/src/lib.rs` (L2644-L2651)
+**源码位置**: `rust/crates/tools/src/lib.rs` ([L2644-L2651](rust/crates/tools/src/lib.rs#L2644-L2651))
 
 ```rust
 fn build_http_client() -> Result<Client, String> {
@@ -425,14 +425,14 @@ fn build_http_client() -> Result<Client, String> {
 
 ## 4. 工具调度集成
 
-**源码位置**: `rust/crates/tools/src/lib.rs` (L1208-L1209)
+**源码位置**: `rust/crates/tools/src/lib.rs` ([L1208-L1209](rust/crates/tools/src/lib.rs#L1208-L1209))
 
 ```rust
 "WebFetch" => from_value::<WebFetchInput>(input).and_then(run_web_fetch),
 "WebSearch" => from_value::<WebSearchInput>(input).and_then(run_web_search),
 ```
 
-**工具注册**: 参见 `mvp_tool_specs()` 函数 (L385+) 中的完整工具列表。
+**工具注册**: 参见 `mvp_tool_specs()` 函数 ([L385+](rust/crates/tools/src/lib.rs#L385)) 中的完整工具列表。
 
 ---
 
@@ -471,7 +471,7 @@ fn build_http_client() -> Result<Client, String> {
 
 ## 6. 输出结构
 
-### 6.1 WebFetchOutput (L2353-L2364)
+### 6.1 WebFetchOutput ([L2353-L2364](rust/crates/tools/src/lib.rs#L2353-L2364))
 
 ```rust
 #[derive(Debug, Serialize)]
@@ -485,7 +485,7 @@ struct WebFetchOutput {
 }
 ```
 
-### 6.2 WebSearchOutput (L2365-L2374)
+### 6.2 WebSearchOutput ([L2365-L2374](rust/crates/tools/src/lib.rs#L2365-L2374))
 
 ```rust
 #[derive(Debug, Serialize)]
@@ -500,7 +500,7 @@ struct WebSearchOutput {
 
 ## 7. 测试验证
 
-**源码位置**: `rust/crates/tools/src/lib.rs` (L6177-L6352)
+**源码位置**: `rust/crates/tools/src/lib.rs` ([L6177-L6352](rust/crates/tools/src/lib.rs#L6177-L6352))
 
 项目包含完整的 WebFetch 和 WebSearch 工具集成测试：
 
@@ -525,8 +525,8 @@ let result = execute_tool("WebSearch", &json!({
 
 | 工具 | 状态 | 源码位置 |
 |------|------|----------|
-| WebFetch | ✅ 完整实现 | `rust/crates/tools/src/lib.rs:L493-L507`, `L2556-L2580` |
-| WebSearch | ✅ 完整实现 | `rust/crates/tools/src/lib.rs:L508-L528`, `L2590-L2631` |
+| WebFetch | ✅ 完整实现 | [`lib.rs#L493-L507`](rust/crates/tools/src/lib.rs#L493-L507), [`#L2556-L2580`](rust/crates/tools/src/lib.rs#L2556-L2580) |
+| WebSearch | ✅ 完整实现 | [`lib.rs#L508-L528`](rust/crates/tools/src/lib.rs#L508-L528), [`#L2590-L2631`](rust/crates/tools/src/lib.rs#L2590-L2631) |
 
 ### 未实现功能
 

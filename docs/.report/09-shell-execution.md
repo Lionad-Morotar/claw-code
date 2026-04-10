@@ -461,19 +461,35 @@ pub fn check(&self, tool_name: &str, input: &str) -> EnforcementResult {
 }
 ```
 
-而 `check_bash()` 在 [`permission_enforcer.rs#L111-L131`](/rust/crates/runtime/src/permission_enforcer.rs#L111-L131) 中显式拒绝 Prompt 模式：
+而 `check_bash()` 在 [`permission_enforcer.rs#L111-L139`](/rust/crates/runtime/src/permission_enforcer.rs#L111-L139) 中显式拒绝 Prompt 模式：
 
 ```rust
 pub fn check_bash(&self, command: &str) -> EnforcementResult {
+    let mode = self.policy.active_mode();
+
     match mode {
         PermissionMode::ReadOnly => {
             if is_read_only_command(command) {
                 EnforcementResult::Allowed
-            } else { ... }
+            } else {
+                EnforcementResult::Denied {
+                    tool: "bash".to_owned(),
+                    active_mode: mode.as_str().to_owned(),
+                    required_mode: PermissionMode::WorkspaceWrite.as_str().to_owned(),
+                    reason: format!(
+                        "command may modify state; not allowed in '{}' mode",
+                        mode.as_str()
+                    ),
+                }
+            }
         }
         PermissionMode::Prompt => EnforcementResult::Denied {
+            tool: "bash".to_owned(),
+            active_mode: mode.as_str().to_owned(),
+            required_mode: PermissionMode::DangerFullAccess.as_str().to_owned(),
             reason: "bash requires confirmation in prompt mode".to_owned(),
         },
+        // WorkspaceWrite, Allow, DangerFullAccess: permit bash
         _ => EnforcementResult::Allowed,
     }
 }
