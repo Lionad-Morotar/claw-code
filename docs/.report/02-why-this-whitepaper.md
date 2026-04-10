@@ -174,7 +174,7 @@ pub struct RuntimeFeatureConfig {
 
 这不是运行时字符串匹配，而是编译期强类型的功能配置。`ConfigLoader::load()` 会按 `User → Project → Local` 的优先级合并多个 `.claw.json` / `.claw/settings.json` 文件，最终生成统一的 `RuntimeFeatureConfig`（[`config.rs#L310-L335`](/rust/crates/runtime/src/config.rs#L310-L335)）。
 
-在 CLI 层面，[`main.rs#L4265-L4276`](/rust/crates/rusty-claude-cli/src/main.rs#L4265-L4276) 的 `reload_runtime_features()` 支持在运行时会话中热重载配置，无需重启进程即可切换权限模式、模型别名、hook 列表等。
+在 CLI 层面，[`main.rs#L4647`](/rust/crates/rusty-claude-cli/src/main.rs#L4647) 的 `reload_runtime_features()` 支持在运行时会话中热重载配置，无需重启进程即可切换权限模式、模型别名、hook 列表等。
 
 ### 5. Compaction 的分档策略
 
@@ -216,7 +216,7 @@ pub fn compact_session(session: &Session, config: CompactionConfig) -> Compactio
 }
 ```
 
-压缩后，会话的消息列表会以一条 `MessageRole::System` 的 "continuation message" 开头，其中包含 `Summary`、`Key timeline`、`Tools mentioned`、`Pending work` 等结构化字段（[`compact.rs#L150-L290`](/rust/crates/runtime/src/compact.rs#L150-L288)）。这确保了模型在压缩后仍能理解对话的语义脉络——不是砍掉旧消息，而是用 AI 可读的格式重新编码它们。
+压缩后，会话的消息列表会以一条 `MessageRole::System` 的 "continuation message" 开头，其内容是一段由 `format_compact_summary()` 生成的自由文本摘要，内部包含 `Summary`、`Key timeline`、`Tools mentioned`、`Pending work` 等结构化项目符号（[`compact.rs#L150-L290`](/rust/crates/runtime/src/compact.rs#L150-L288)）。这确保了模型在压缩后仍能理解对话的语义脉络——不是砍掉旧消息，而是用 AI 可读的格式重新编码它们。
 
 ---
 
