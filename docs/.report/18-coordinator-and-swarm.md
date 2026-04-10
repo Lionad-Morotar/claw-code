@@ -194,7 +194,7 @@ pub struct TaskPacket {
 
 ## Worker Boot：子 Agent 的终端生命周期管理
 
-`WorkerRegistry`（[`runtime/src/worker_boot.rs#L144-L531`](/rust/crates/runtime/src/worker_boot.rs#L144-L531)）为子 Agent 提供了更细粒度的终端控制状态机。它解决的核心问题是：**如何可靠地把 prompt 投递到一个外部终端进程，并观测它的执行状态。**
+`WorkerRegistry`（[`runtime/src/worker_boot.rs#L144-L530`](/rust/crates/runtime/src/worker_boot.rs#L144-L530)）为子 Agent 提供了更细粒度的终端控制状态机。它解决的核心问题是：**如何可靠地把 prompt 投递到一个外部终端进程，并观测它的执行状态。**
 
 ### Worker 状态机
 
