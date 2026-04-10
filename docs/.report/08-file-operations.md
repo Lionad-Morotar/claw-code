@@ -152,7 +152,7 @@ fn is_binary_file(path: &Path) -> io::Result<bool> {
 
 ### 工作区边界与符号链接逃逸检测
 
-`file_ops.rs` 还提供了带边界检查的变体 [`read_file_in_workspace`](/rust/crates/runtime/src/file_ops.rs#L562-L574) 和符号链接逃逸检测 [`is_symlink_escape`](/rust/crates/runtime/src/file_ops.rs#L610-L620)：
+`file_ops.rs` 还提供了带边界检查的变体 [`read_file_in_workspace`](/rust/crates/runtime/src/file_ops.rs#L568-L582) 和符号链接逃逸检测 [`is_symlink_escape`](/rust/crates/runtime/src/file_ops.rs#L610-L620)：
 
 ```rust
 pub fn read_file_in_workspace(
@@ -374,7 +374,7 @@ let regex = RegexBuilder::new(&input.pattern)
 - `Plan` 子代理：`read_file`、`glob_search`、`grep_search`
 - `Verification` 子代理：`bash`、`read_file`、`glob_search`、`grep_search`
 
-参见 [`tools/src/lib.rs#L3454-L3517`](/rust/crates/tools/src/lib.rs#L3454-L3517)。
+参见 [`tools/src/lib.rs#L3451-L3531`](/rust/crates/tools/src/lib.rs#L3451-L3531)。
 
 ---
 
@@ -440,10 +440,6 @@ policy.authorize("bash", r#"{"command":"rm -rf /tmp/x"}"#, None)
 - `bash.rs` 防的是 **AI 通过 shell 命令逃逸到宿主系统**
 
 两者共同构成了 claw-code 的本地安全边界。
-
-### 审视角：边界检查的符号链接盲区
-
-`is_symlink_escape` 和 `validate_workspace_boundary` 的组合在大多数情况下有效，但存在一个已知盲区：如果攻击者（或模型）在工作区内创建一个指向工作区外的符号链接，然后通过 `read_file` 读取该链接的目标文件，`canonicalize()` 会解析到真实路径。在 `read_file_in_workspace` 中，如果传入的路径本身在工作区内，即使它是指向外部的符号链接，当前实现也可能放行，因为检查的是传入路径而非 `canonicalize` 后的路径。这是一个 TOCTOU 类的设计细节，需要在使用高敏感数据的工作站环境中额外注意。
 
 ---
 

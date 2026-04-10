@@ -388,7 +388,7 @@ pub enum PermissionMode {
 
 ### 源码映射：显式终止条件
 
-在 [`conversation.rs#L335-L338`](/rust/crates/runtime/src/conversation.rs#L335-L338)：
+在 [`conversation.rs#L366-L368`](/rust/crates/runtime/src/conversation.rs#L366-L368)：
 
 ```rust
 if pending_tool_uses.is_empty() {
@@ -518,7 +518,7 @@ pub struct TokenUsage {
 }
 ```
 
-每次 `build_assistant_message` 解析出 `Usage` 事件时，`run_turn` 会调用 `self.usage_tracker.record(usage)`（[`conversation.rs#L335-L338`](/rust/crates/runtime/src/conversation.rs#L335-L338)）。`maybe_auto_compact` 以 `cumulative_usage().input_tokens` 作为触发条件，这本质上就是一种基于累计 token 的预算管理。但它与上游 TypeScript 的 `TOKEN_BUDGET` feature（带有收益递减检测和 continuation nudge 注入）仍有差距，当前仅实现了压缩阈值触发。
+每次 `build_assistant_message` 解析出 `Usage` 事件时，`run_turn` 会调用 `self.usage_tracker.record(usage)`（[`conversation.rs#L341-L343`](/rust/crates/runtime/src/conversation.rs#L341-L343)）。`maybe_auto_compact` 以 `cumulative_usage().input_tokens` 作为触发条件，这本质上就是一种基于累计 token 的预算管理。但它与上游 TypeScript 的 `TOKEN_BUDGET` feature（带有收益递减检测和 continuation nudge 注入）仍有差距，当前仅实现了压缩阈值触发。
 
 但与 TypeScript 上游的 `TOKEN_BUDGET` feature（带有 `continuation` / `diminishing_returns` nudge 消息）相比，`claw-code` 目前仅实现了**压缩阈值触发**，尚未实现循环中注入 nudge 消息或收益递减检测。
 

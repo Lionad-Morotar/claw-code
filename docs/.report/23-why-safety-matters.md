@@ -93,7 +93,7 @@ let rules = RuntimePermissionRuleConfig::new(
 );
 ```
 
-参见测试用例 [`permissions.rs#L569-L586`](/rust/crates/runtime/src/permissions.rs#L569-L586)。
+参见测试用例 [`permissions.rs#L568-L587`](/rust/crates/runtime/src/permissions.rs#L568-L587)。
 
 ---
 
@@ -166,17 +166,38 @@ const GIT_READ_ONLY_SUBCOMMANDS: &[&str] = &[
 
 ```rust
 const DESTRUCTIVE_PATTERNS: &[(&str, &str)] = &[
-    ("rm -rf /", "Recursive forced deletion at root — this will destroy the system"),
+    (
+        "rm -rf /",
+        "Recursive forced deletion at root — this will destroy the system",
+    ),
     ("rm -rf ~", "Recursive forced deletion of home directory"),
-    ("mkfs", "Filesystem creation will destroy existing data on the device"),
-    ("dd if=", "Direct disk write — can overwrite partitions or devices"),
+    (
+        "rm -rf *",
+        "Recursive forced deletion of all files in current directory",
+    ),
+    ("rm -rf .", "Recursive forced deletion of current directory"),
+    (
+        "mkfs",
+        "Filesystem creation will destroy existing data on the device",
+    ),
+    (
+        "dd if=",
+        "Direct disk write — can overwrite partitions or devices",
+    ),
     ("> /dev/sd", "Writing to raw disk device"),
-    ("chmod -R 777", "Recursively setting world-writable permissions"),
+    (
+        "chmod -R 777",
+        "Recursively setting world-writable permissions",
+    ),
+    ("chmod -R 000", "Recursively removing all permissions"),
     (":(){ :|:& };:", "Fork bomb — will crash the system"),
 ];
+
+/// Commands that are always destructive regardless of arguments.
+const ALWAYS_DESTRUCTIVE_COMMANDS: &[&str] = &["shred", "wipefs"];
 ```
 
-参见 [`bash_validation.rs#L206-L235`](/rust/crates/runtime/src/bash_validation.rs#L206-L235)。
+参见 [`bash_validation.rs#L206-L248`](/rust/crates/runtime/src/bash_validation.rs#L206-L248)。
 
 ### 3.3 路径验证（Path Validation）
 
@@ -358,12 +379,83 @@ pub fn check_file_write(&self, path: &str, workspace_root: &str) -> EnforcementR
 
 ```rust
 fn is_read_only_command(command: &str) -> bool {
-    let first_token = command.split_whitespace().next().unwrap_or("").rsplit('/').next().unwrap_or("");
-    matches!(first_token, "cat" | "head" | "tail" | "grep" | "find" | "ls" | "git" | "jq" | "awk" | "sed" | "wc" | "sort" | "uniq" | "pwd" | "echo" | "which" | "ps" | "date" | "dirname" | "basename" | "cut" | "tr" | "xargs" | "tar" | "zip" | "unzip" | "gzip" | "gunzip" | "diff" | "comm" | "zcat" | "bzcat" | "xzcat" | "strings" | "hexdump" | "file" | "less" | "more" | "pgrep" | "readlink" | "realpath" | "id" | "whoami" | "uname" | "arch" | "printenv" | "env" | "df" | "du" | "stat" | "lsblk" | "lscpu" | "lsmem" | "lsusb" | "lspci" | "lsof" | "free" | "top" | "htop" | "vmstat" | "iostat" | "mpstat" | "sar" | "pidstat" | "ss" | "netstat" | "ip" | "ifconfig" | "route" | "ping" | "curl" | "wget" | "dig" | "nslookup" | "host" | "nmap" | "telnet" | "ssh" | "scp" | "rsync" | "git" | "svn" | "hg" | "cvs" | "bzr" | "fossil" | "p4" | "tf" | "gh" | "glab" | "hub")
-        && !command.contains("-i ")       // 排除 sed -i
-        && !command.contains("--in-place") // 排除原地编辑
-        && !command.contains(" > ")        // 排除重定向写
-        && !command.contains(" >> ")
+    let first_token = command
+        .split_whitespace()
+        .next()
+        .unwrap_or("")
+        .rsplit('/')
+        .next()
+        .unwrap_or("");
+
+    matches!(
+        first_token,
+        "cat"
+            | "head"
+            | "tail"
+            | "less"
+            | "more"
+            | "wc"
+            | "ls"
+            | "find"
+            | "grep"
+            | "rg"
+            | "awk"
+            | "sed"
+            | "echo"
+            | "printf"
+            | "which"
+            | "where"
+            | "whoami"
+            | "pwd"
+            | "env"
+            | "printenv"
+            | "date"
+            | "cal"
+            | "df"
+            | "du"
+            | "free"
+            | "uptime"
+            | "uname"
+            | "file"
+            | "stat"
+            | "diff"
+            | "sort"
+            | "uniq"
+            | "tr"
+            | "cut"
+            | "paste"
+            | "tee"
+            | "xargs"
+            | "test"
+            | "true"
+            | "false"
+            | "type"
+            | "readlink"
+            | "realpath"
+            | "basename"
+            | "dirname"
+            | "sha256sum"
+            | "md5sum"
+            | "b3sum"
+            | "xxd"
+            | "hexdump"
+            | "od"
+            | "strings"
+            | "tree"
+            | "jq"
+            | "yq"
+            | "python3"
+            | "python"
+            | "node"
+            | "ruby"
+            | "cargo"
+            | "rustc"
+            | "git"
+            | "gh"
+    ) && !command.contains("-i ")
+        && !command.contains("--in-place")
+        && !command.contains(" > ")
+        && !command.contains(" >>")
 }
 ```
 
