@@ -68,7 +68,7 @@ pub fn model_token_limit(model: &str) -> Option<ModelTokenLimit> {
 
 ### 近似估算（毫秒级，热路径使用）
 
-在 [`providers/mod.rs`](rust/crates/api/src/providers/mod.rs#L287-L292) 中实现的 `estimate_serialized_tokens` 函数：
+在 [`providers/mod.rs`](rust/crates/api/src/providers/mod.rs#L302-L306) 中实现的 `estimate_serialized_tokens` 函数：
 
 ```rust
 fn estimate_serialized_tokens<T: Serialize>(value: &T) -> u32 {
@@ -437,7 +437,7 @@ ContextWindowExceeded {
 | [`rust/crates/api/src/types.rs`](rust/crates/api/src/types.rs) | `Usage`、`MessageRequest::max_tokens` | L8, L167-L206 |
 | [`rust/crates/api/src/error.rs`](rust/crates/api/src/error.rs) | `ApiError::ContextWindowExceeded` | L34-L40 |
 | [`rust/crates/runtime/src/usage.rs`](rust/crates/runtime/src/usage.rs) | `TokenUsage`、`UsageTracker`、成本估算 | L29-L36, L167-L215 |
-| [`rust/crates/runtime/src/conversation.rs`](rust/crates/runtime/src/conversation.rs) | `run_turn`、`maybe_auto_compact`、阈值解析 | L16-L18, L505-L548, L558-L564 |
+| [`rust/crates/runtime/src/conversation.rs`](rust/crates/runtime/src/conversation.rs) | `run_turn`、`maybe_auto_compact`、阈值解析 | L16-L18, L505-L548, L669-L674 |
 | [`rust/crates/runtime/src/compact.rs`](rust/crates/runtime/src/compact.rs) | `compact_session`、`estimate_session_tokens`、`should_compact` | L15-L21, L93-L132 |
 | [`rust/crates/runtime/src/session.rs`](rust/crates/runtime/src/session.rs) | `ConversationMessage::usage`、`record_compaction` | L47-L51, L240-L248 |
 

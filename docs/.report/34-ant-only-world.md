@@ -115,7 +115,7 @@ pub struct AnthropicRequestProfile {
 }
 ```
 
-源码位置：[`rust/crates/telemetry/src/lib.rs#L54-L63`](/rust/crates/telemetry/src/lib.rs#L54-L61)
+源码位置：[`rust/crates/telemetry/src/lib.rs#L54-L61`](/rust/crates/telemetry/src/lib.rs#L54-L61)
 
 默认构造时注入了两个 public beta：
 
@@ -279,7 +279,7 @@ Rust 代码中对环境变量的读取更加收敛。`AnthropicClient` 通过 `r
 
 **准确性核对**
 - [x] 源码锚点已逐一手动核对，行号与当前 `main` 分支一致
-- [x] `telemetry/src/lib.rs#L52-L59`、`L69-L72` 行号确认无误
+- [x] `telemetry/src/lib.rs#L54-L61`、`L69-L72` 行号确认无误
 - [x] `api/src/providers/anthropic.rs#L227-L230`、`L483-L485`、`L1011-L1024` 行号确认无误
 - [x] `api/tests/client_integration.rs#L101-L102` 行号确认无误
 - [x] PARITY.md 引用内容与仓库 snapshot 一致

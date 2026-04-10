@@ -357,7 +357,19 @@ function getOutputTokenUsageAttachment(): Attachment[] {
 
 ---
 
-## 十、文件索引
+## 十、Rust 实现覆盖状态
+
+`claw-code`（Rust 重写版）当前**尚未实现** Token Budget 的自动续接（auto-continue / nudge）机制。Rust 代码库中与 token 相关的现有能力集中在**计数、预检与压缩**层面，与上游 TypeScript 的 budget-continuation 属于不同层次的功能：
+
+- **Token 计数**：`api/src/providers/mod.rs` 中的 `estimate_serialized_tokens`、`preflight_message_request` 等函数在请求发送前估算输入 token，防止超出模型上下文窗口。
+- **Usage 跟踪**：`runtime/src/usage.rs` 的 `UsageTracker` 维护单轮和累计 token 消耗，并提供费用估算（输入/输出/Cached）。
+- **自动压缩**：`runtime/src/compact.rs` 的 `compact_session` 在对话 token 数量超过阈值时自动压缩历史消息，以释放上下文空间。
+
+上述功能由 [`15-token-budget.md`](15-token-budget.md) 详细覆盖。本报告所述的 `TOKEN_BUDGET` 用户语法解析、`+500k` 高亮、nudge 续接循环、`task_budget` API 参数等机制，在 `claw-code` 中暂无对应实现。
+
+---
+
+## 十一、文件索引
 
 | 路径 | 职责 |
 |------|------|

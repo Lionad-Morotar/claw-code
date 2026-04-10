@@ -107,14 +107,14 @@ struct ManagedMcpServer {
 4. 收到正确响应后设置 `initialized = true`
 5. 若首次初始化失败且错误可重试（Transport / Timeout），会重试一次
 
-初始化超时默认为 **10 秒**（`MCP_INITIALIZE_TIMEOUT_MS`，[`mcp_stdio.rs#L19-L22`](/rust/crates/runtime/src/mcp_stdio.rs#L19-L22)），测试环境下缩短为 200ms。
+初始化超时默认为 **10 秒**（`MCP_INITIALIZE_TIMEOUT_MS`，[`mcp_stdio.rs#L20-L24`](/rust/crates/runtime/src/mcp_stdio.rs#L20-L24)），测试环境下缩短为 200ms。
 
 ### 工具发现：discover_tools 与 discover_tools_best_effort
 
 - `discover_tools`：严格模式，任一服务器失败即返回 `Err`
 - `discover_tools_best_effort`：尽力模式，失败的服务器被记录到 `McpDiscoveryFailure`，成功的服务器继续可用
 
-工具发现逻辑位于 [`mcp_stdio.rs#L990-L1049`](/rust/crates/runtime/src/mcp_stdio.rs#L990-L1049)。它处理 `tools/list` 请求，支持分页（`cursor`/`next_cursor`），并将每个原始工具名通过 `mcp_tool_name(server_name, tool.name)` 映射为**完全限定名**（qualified name）。
+工具发现逻辑位于 [`mcp_stdio.rs#L806-L875`](/rust/crates/runtime/src/mcp_stdio.rs#L806-L875)。它处理 `tools/list` 请求，支持分页（`cursor`/`next_cursor`），并将每个原始工具名通过 `mcp_tool_name(server_name, tool.name)` 映射为**完全限定名**（qualified name）。
 
 ### 工具执行：call_tool
 
@@ -130,7 +130,7 @@ struct ManagedMcpServer {
 
 ### 关闭：shutdown
 
-`McpServerManager::shutdown`（[`mcp_stdio.rs#L852-L863`](/rust/crates/runtime/src/mcp_stdio.rs#L852-L863)）遍历所有服务器，对存活子进程调用 `process.shutdown()`。`shutdown` 的实现是：`try_wait` 检查进程是否仍在运行，若存活则 `child.kill().await`，随后 `child.wait().await` 回收僵尸进程（[`mcp_stdio.rs#L1231-L1241`](/rust/crates/runtime/src/mcp_stdio.rs#L1231-L1241)）。
+`McpServerManager::shutdown`（[`mcp_stdio.rs#L723-L734`](/rust/crates/runtime/src/mcp_stdio.rs#L723-L734)）遍历所有服务器，对存活子进程调用 `process.shutdown()`。`shutdown` 的实现是：`try_wait` 检查进程是否仍在运行，若存活则 `child.kill().await`，随后 `child.wait().await` 回收僵尸进程（[`mcp_stdio.rs#L1231-L1241`](/rust/crates/runtime/src/mcp_stdio.rs#L1231-L1241)）。
 
 ---
 
@@ -165,7 +165,7 @@ pub enum McpLifecyclePhase {
 }
 ```
 
-当 `discover_tools_best_effort` 遇到部分成功、部分失败时，`McpServerManager` 会生成 `McpDegradedReport`（[`mcp_stdio.rs#L652-L686`](/rust/crates/runtime/src/mcp_stdio.rs#L652-L686)），记录哪些服务器可用、哪些失败、哪些工具因此缺失。这为 CLI 启动时的用户提示提供了结构化数据。
+当 `discover_tools_best_effort` 遇到部分成功、部分失败时，`McpServerManager` 会生成 `McpDegradedReport`（[`mcp_stdio.rs#L585-L620`](/rust/crates/runtime/src/mcp_stdio.rs#L585-L620)），记录哪些服务器可用、哪些失败、哪些工具因此缺失。这为 CLI 启动时的用户提示提供了结构化数据。
 
 ### 重试策略
 
@@ -236,7 +236,7 @@ let discovery = runtime.block_on(manager.discover_tools_best_effort());
 
 ### MCP 权限映射
 
-MCP 工具的权限级别由 `tool.annotations` 决定（[`main.rs#L3270-L3282`](/rust/crates/rusty-claude-cli/src/main.rs#L3270-L3282)）：
+MCP 工具的权限级别由 `tool.annotations` 决定（[`main.rs#L3647-L3665`](/rust/crates/rusty-claude-cli/src/main.rs#L3647-L3665)）：
 
 ```rust
 fn permission_mode_for_mcp_tool(tool: &McpTool) -> PermissionMode {
