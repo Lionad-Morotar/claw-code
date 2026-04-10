@@ -11,14 +11,14 @@ claw-code 实现了 **8 个隐藏功能**（Hidden Features），这些功能不
 
 | 功能 | Slash Command | 实际执行位置 | 权限要求 |
 |------|---------------|--------------|----------|
-| **Bughunter** | `/bughunter [scope]` | `main.rs#L4336` | 无额外限制 |
-| **Ultraplan** | `/ultraplan [task]` | `main.rs#L4341` | 无额外限制 |
-| **Teleport** | `/teleport <path>` | `main.rs#L4346` | 无额外限制 |
-| **DebugToolCall** | `/debug-tool-call` | `main.rs#L4356` | 无额外限制 |
+| **Bughunter** | `/bughunter [scope]` | `main.rs#L4718` | 无额外限制 |
+| **Ultraplan** | `/ultraplan [task]` | `main.rs#L4723` | 无额外限制 |
+| **Teleport** | `/teleport <path>` | `main.rs#L4728` | 无额外限制 |
+| **DebugToolCall** | `/debug-tool-call` | `main.rs#L4738` | 无额外限制 |
 | **Team** | `/team [action]` | `tools.rs#L1521` | `DangerFullAccess` |
 | **Cron** | `/cron [list\|add\|remove]` | `tools.rs#L1556` | `DangerFullAccess` |
-| **Sandbox** | `/sandbox` | `main.rs#L3827` | 无额外限制 |
-| **Doctor** | `/doctor` | `main.rs#L1351` | 无额外限制 |
+| **Sandbox** | `/sandbox` | `main.rs#L4201` | 无额外限制 |
+| **Doctor** | `/doctor` | `main.rs#L1443` | 无额外限制 |
 
 ---
 
@@ -36,19 +36,19 @@ Bughunter 是一个内部代码审查工具，可扫描指定作用域内的代�
 SlashCommandSpec {
     name: "bughunter",
     aliases: &[],
-    summary: "Inspect code for likely bugs and correctness issues",
+    summary: "Inspect the codebase for likely bugs",
     argument_hint: Some("[scope]"),
     resume_supported: false,
 }
 ```
 
-**命令解析** [`commands/src/lib.rs#L1263`](/rust/crates/commands/src/lib.rs#L1263)：
+**命令解析** [`commands/src/lib.rs#L1341`](/rust/crates/commands/src/lib.rs#L1341)：
 
 ```rust
 "bughunter" => SlashCommand::Bughunter { scope: remainder },
 ```
 
-**执行入口** [`rusty-claude-cli/src/main.rs#L4336-L4340`](/rust/crates/rusty-claude-cli/src/main.rs#L4336-L4339)：
+**执行入口** [`rusty-claude-cli/src/main.rs#L4718-L4721`](/rust/crates/rusty-claude-cli/src/main.rs#L4718-L4721)：
 
 ```rust
 fn run_bughunter(&self, scope: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
@@ -57,7 +57,7 @@ fn run_bughunter(&self, scope: Option<&str>) -> Result<(), Box<dyn std::error::E
 }
 ```
 
-**报告格式化** [`rusty-claude-cli/src/main.rs#L5321-L5331`](/rust/crates/rusty-claude-cli/src/main.rs#L5321-L5329)：
+**报告格式化** [`rusty-claude-cli/src/main.rs#L5812-L5821`](/rust/crates/rusty-claude-cli/src/main.rs#L5812-L5821)：
 
 ```rust
 fn format_bughunter_report(scope: Option<&str>) -> String {
@@ -103,13 +103,13 @@ SlashCommandSpec {
 }
 ```
 
-**命令解析** [`commands/src/lib.rs#L1270`](/rust/crates/commands/src/lib.rs#L1270)：
+**命令解析** [`commands/src/lib.rs#L1348`](/rust/crates/commands/src/lib.rs#L1348)：
 
 ```rust
 "ultraplan" => SlashCommand::Ultraplan { task: remainder },
 ```
 
-**执行入口** [`rusty-claude-cli/src/main.rs#L4341-L4344`](/rust/crates/rusty-claude-cli/src/main.rs#L4341-L4344)：
+**执行入口** [`rusty-claude-cli/src/main.rs#L4723-L4726`](/rust/crates/rusty-claude-cli/src/main.rs#L4723-L4726）：
 
 ```rust
 fn run_ultraplan(&self, task: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
@@ -118,7 +118,7 @@ fn run_ultraplan(&self, task: Option<&str>) -> Result<(), Box<dyn std::error::Er
 }
 ```
 
-**进度追踪器** [`rusty-claude-cli/src/main.rs#L5944-L5980`](/rust/crates/rusty-claude-cli/src/main.rs#L5944-L5980)：
+**进度追踪器** [`rusty-claude-cli/src/main.rs#L6435-L6453`](/rust/crates/rusty-claude-cli/src/main.rs#L6435-L6453)：
 
 ```rust
 impl InternalPromptProgressReporter {
@@ -141,7 +141,7 @@ impl InternalPromptProgressReporter {
 }
 ```
 
-**运行周期** [`rusty-claude-cli/src/main.rs#L6088-L6110`](/rust/crates/rusty-claude-cli/src/main.rs#L6088-L6110)：
+**运行周期** [`rusty-claude-cli/src/main.rs#L6567-L6589`](/rust/crates/rusty-claude-cli/src/main.rs#L6567-L6589)：
 
 ```rust
 impl InternalPromptProgressRun {
@@ -199,7 +199,7 @@ SlashCommandSpec {
 }
 ```
 
-**命令解析** [`commands/src/lib.rs#L1271-L1274`](/rust/crates/commands/src/lib.rs#L1271-L1274)：
+**命令解析** [`commands/src/lib.rs#L1349-L1352`](/rust/crates/commands/src/lib.rs#L1349-L1352)：
 
 ```rust
 "teleport" => SlashCommand::Teleport {
@@ -207,7 +207,7 @@ SlashCommandSpec {
 },
 ```
 
-**执行入口** [`rusty-claude-cli/src/main.rs#L4346-L4354`](/rust/crates/rusty-claude-cli/src/main.rs#L4346-L4354)：
+**执行入口** [`rusty-claude-cli/src/main.rs#L4728-L4737`](/rust/crates/rusty-claude-cli/src/main.rs#L4728-L4737)：
 
 ```rust
 fn run_teleport(target: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
@@ -253,7 +253,7 @@ SlashCommandSpec {
 }
 ```
 
-**命令解析** [`commands/src/lib.rs#L1274-L1277`](/rust/crates/commands/src/lib.rs#L1274-L1277)：
+**命令解析** [`commands/src/lib.rs#L1352-L1355`](/rust/crates/commands/src/lib.rs#L1352-L1355)：
 
 ```rust
 "debug-tool-call" => {
@@ -262,7 +262,7 @@ SlashCommandSpec {
 }
 ```
 
-**执行入口** [`rusty-claude-cli/src/main.rs#L4356-L4360`](/rust/crates/rusty-claude-cli/src/main.rs#L4356-L4360)：
+**执行入口** [`rusty-claude-cli/src/main.rs#L4738-L4742`](/rust/crates/rusty-claude-cli/src/main.rs#L4738-L4742）：
 
 ```rust
 fn run_debug_tool_call(&self, args: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
@@ -517,15 +517,13 @@ SlashCommandSpec {
 }
 ```
 
-**CLI Action 定义** [`rusty-claude-cli/src/main.rs#L229-L232`](/rust/crates/rusty-claude-cli/src/main.rs#L229-L232)：
+**CLI Action 定义** [`rusty-claude-cli/src/main.rs#L218`](/rust/crates/rusty-claude-cli/src/main.rs#L218)：
 
 ```rust
-Sandbox {
-    output_format: CliOutputFormat,
-},
+CliAction::Sandbox { output_format } => print_sandbox_status_snapshot(output_format)?,
 ```
 
-**Resume 分发** [`rusty-claude-cli/src/main.rs#L2606-L2614`](/rust/crates/rusty-claude-cli/src/main.rs#L2606-L2614) 与 **Slash 分发** [`rusty-claude-cli/src/main.rs#L3621-L3625`](/rust/crates/rusty-claude-cli/src/main.rs#L3621-L3625)：
+**Resume 分发** [`rusty-claude-cli/src/main.rs#L2817-L2824`](/rust/crates/rusty-claude-cli/src/main.rs#L2817-L2824) 与 **Slash 分发** [`rusty-claude-cli/src/main.rs#L3990-L3998`](/rust/crates/rusty-claude-cli/src/main.rs#L3990-L3998)：
 
 ```rust
 SlashCommand::Sandbox => {
@@ -538,7 +536,7 @@ SlashCommand::Sandbox => {
 }
 ```
 
-**独立状态打印** [`rusty-claude-cli/src/main.rs#L3819-L3829`](/rust/crates/rusty-claude-cli/src/main.rs#L3819-L3829)：
+**独立状态打印** [`rusty-claude-cli/src/main.rs#L4201-L4210`](/rust/crates/rusty-claude-cli/src/main.rs#L4201-L4210)：
 
 ```rust
 fn print_sandbox_status() {
@@ -630,7 +628,7 @@ SlashCommandSpec {
 CliAction::Doctor { output_format } => run_doctor(output_format)?,
 ```
 
-**执行入口** [`rusty-claude-cli/src/main.rs#L1351-L1365`](/rust/crates/rusty-claude-cli/src/main.rs#L1351-L1364)：
+**执行入口** [`rusty-claude-cli/src/main.rs#L1443-L1452`](/rust/crates/rusty-claude-cli/src/main.rs#L1443-L1452）：
 
 ```rust
 fn run_doctor(output_format: CliOutputFormat) -> Result<(), Box<dyn std::error::Error>> {
@@ -649,7 +647,7 @@ fn run_doctor(output_format: CliOutputFormat) -> Result<(), Box<dyn std::error::
 }
 ```
 
-**诊断报告渲染** [`rusty-claude-cli/src/main.rs#L1315-L1363`](/rust/crates/rusty-claude-cli/src/main.rs#L1315-L1363)：
+**诊断报告渲染** [`rusty-claude-cli/src/main.rs#L1407-L1441`](/rust/crates/rusty-claude-cli/src/main.rs#L1407-L1441)：
 
 ```rust
 fn render_doctor_report() -> Result<DoctorReport, Box<dyn std::error::Error>> {
@@ -772,7 +770,7 @@ if source.contains("args[0] === 'daemon'") {
 
 关键测试用例：
 
-**Ultraplan 进度测试** [`rusty-claude-cli/src/main.rs#L10533-L10572`](/rust/crates/rusty-claude-cli/src/main.rs#L10533-L10572)：
+**Ultraplan 进度测试** [`rusty-claude-cli/src/main.rs#L11162-L11195`](/rust/crates/rusty-claude-cli/src/main.rs#L11162-L11195)：
 
 ```rust
 #[test]
@@ -789,7 +787,7 @@ fn ultraplan_progress_lines_include_phase_step_and_elapsed_status() {
 }
 ```
 
-**命令解析测试** [`commands/src/lib.rs#L4089-L4128`](/rust/crates/commands/src/lib.rs#L4089-L4128)：
+**命令解析测试** [`commands/src/lib.rs#L4207-L4280`](/rust/crates/commands/src/lib.rs#L4207-L4280）：
 
 ```rust
 #[test]

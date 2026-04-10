@@ -47,7 +47,7 @@ fn maybe_auto_compact(&mut self) -> Option<AutoCompactionEvent> {
 #### 源码映射
 
 - 自动压缩触发逻辑：[conversation.rs](/rust/crates/runtime/src/conversation.rs#L525-L548)
-- 默认阈值常量：[conversation.rs](/rust/crates/runtime/src/conversation.rs#L121-L123)
+- 默认阈值常量：[conversation.rs](/rust/crates/runtime/src/conversation.rs#L18)
 - 阈值解析（支持环境变量覆盖）：[conversation.rs](/rust/crates/runtime/src/conversation.rs#L669-L674)
 
 ---
@@ -80,7 +80,7 @@ pub fn should_compact(session: &Session, config: CompactionConfig) -> bool {
 #### 源码映射
 
 - 紧凑条件判断：[compact.rs](/rust/crates/runtime/src/compact.rs#L41-L51)
-- 已有摘要前缀长度计算：[compact.rs](/rust/crates/runtime/src/compact.rs#L141-L149)
+- 已有摘要前缀长度计算：[compact.rs](/rust/crates/runtime/src/compact.rs#L186-L193)
 - 默认配置：`preserve_recent_messages = 4`，`max_estimated_tokens = 10,000`：[compact.rs](/rust/crates/runtime/src/compact.rs#L15-L22)
 
 ---
@@ -125,8 +125,9 @@ pub fn compact_session(session: &Session, config: CompactionConfig) -> Compactio
 #### 源码映射
 
 - 核心压缩函数：[compact.rs](/rust/crates/runtime/src/compact.rs#L96-L139)
-- 摘要合并：[compact.rs](/rust/crates/runtime/src/compact.rs#L238-L271)
+- 摘要合并：[compact.rs](/rust/crates/runtime/src/compact.rs#L283-L311)
 - continuation message 生成：[compact.rs](/rust/crates/runtime/src/compact.rs#L71-L92)
+- 工具对边界保护：[compact.rs](/rust/crates/runtime/src/compact.rs#L96-L139)
 - 会话元数据记录：[session.rs](/rust/crates/runtime/src/session.rs#L240-L248)
 
 ---
@@ -150,14 +151,14 @@ fn summarize_messages(messages: &[ConversationMessage]) -> String {
 
 ### 工具对完整性保护
 
-目前 claw-code 的实现中，工具结果完整性通过**保留尾部消息窗口**来保证：最近 `preserve_recent_messages` 条消息完整保留，因此只要工具调用-结果对落在保留区内就不会被截断。中间段消息则整体摘要化，不保留原始 block，彻底避免了 "tool_result 缺少对应 tool_use" 的 API 错误。
+目前 claw-code 的实现中，工具结果完整性通过**保留尾部消息窗口**与显式的**工具对边界保护**共同保证。`compact_session` 在计算 `keep_from` 后会额外检查：如果第一个被保留的消息以 `ToolResult` 开头，则向前回溯，确保配对的 `ToolUse` 消息也一同保留，避免在 compaction 边界处产生孤立的 tool 角色消息。这彻底避免了 "tool_result 缺少对应 tool_use" 的 API 错误。中间段消息整体摘要化，不保留原始 block。
 
 #### 源码映射
 
 - 消息摘要生成器：[compact.rs](/rust/crates/runtime/src/compact.rs#L151-L236)
-- block 摘要与截断：[compact.rs](/rust/crates/runtime/src/compact.rs#L273-L288)
-- 关键文件提取（扩展名白名单：rs, ts, tsx, js, json, md）：[compact.rs](/rust/crates/runtime/src/compact.rs#L363-L388)
-- pending work 推断（关键词匹配）：[compact.rs](/rust/crates/runtime/src/compact.rs#L308-L327)
+- block 摘要与截断：[compact.rs](/rust/crates/runtime/src/compact.rs#L318-L333)
+- 关键文件提取（扩展名白名单：rs, ts, tsx, js, json, md）：[compact.rs](/rust/crates/runtime/src/compact.rs#L376-L400)
+- pending work 推断（关键词匹配）：[compact.rs](/rust/crates/runtime/src/compact.rs#L353-L375)
 
 ---
 
@@ -242,9 +243,9 @@ pub struct SessionCompaction {
 
 - 压缩元数据定义：[session.rs](/rust/crates/runtime/src/session.rs#L53-L58)
 - 记录压缩行为：[session.rs](/rust/crates/runtime/src/session.rs#L240-L248)
-- JSON 序列化中的 `compaction` 字段：[session.rs](/rust/crates/runtime/src/session.rs#L297-L298)
+- JSON 序列化中的 `compaction` 字段：[session.rs](/rust/crates/runtime/src/session.rs#L302-L303)
 - JSON 反序列化恢复：[session.rs](/rust/crates/runtime/src/session.rs#L355-L380)
-- JSONL 导出支持：[session.rs](/rust/crates/runtime/src/session.rs#L499-L500)
+- JSONL 导出支持：[session.rs](/rust/crates/runtime/src/session.rs#L515-L516)
 
 ---
 
@@ -272,5 +273,5 @@ pub struct SessionCompaction {
 #### 源码映射
 
 - 压缩模块测试：[compact.rs](/rust/crates/runtime/src/compact.rs#L519-L695)
-- 会话持久化元数据测试：[session.rs](/rust/crates/runtime/src/session.rs#L1208-L1224)
+- 会话持久化元数据测试：[session.rs](/rust/crates/runtime/src/session.rs#L1230-L1244)
 - 自动压缩阈值解析测试：[conversation.rs](/rust/crates/runtime/src/conversation.rs#L1568-L1582)
