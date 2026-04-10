@@ -3,7 +3,7 @@
 > **源码映射说明**：Proactive Mode 全部基于 `packages/ccb`（Claude Code 上游 TypeScript 实现）。`claw-code`（Rust 重写版）目前尚未实现此功能。本报告引用的 `packages/ccb/src/...` 路径在上游实现中存在，但在当前仓库中**不存在对应源码文件**。阅读时请注意区分上游与 Rust 实现的覆盖范围。
 ## 一、功能概述
 
-**Proactive Mode（主动模式）** 是 Claw-Code 中的 Tick 驱动自主代理功能。启用后，CLI 可在用户无输入时持续工作：定时唤醒执行任务，配合 `SleepTool` 控制节奏。适用于长时间运行的后台任务（等待 CI、监控文件变化、定时检查等）。
+**Proactive Mode（主动模式）** 是上游 Claude Code 的 Tick 驱动自主代理功能。启用后，CLI 可在用户无输入时持续工作：定时唤醒执行任务，配合 `SleepTool` 控制节奏。适用于长时间运行的后台任务（等待 CI、监控文件变化、定时检查等）。
 
 ### 1.1 Feature Flag
 
