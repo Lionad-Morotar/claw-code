@@ -5,7 +5,7 @@
 **原文**: https://ccb.agent-aura.top/docs/internals/growthbook-adapter  
 **生成日期**: 2026-04-09
 
-> **源码映射说明**：GrowthBook 适配器全部基于 `packages/ccb`（Claude Code 上游 TypeScript 实现）。`claw-code`（Rust 重写版）目前尚未实现此功能。本报告引用的 `packages/ccb/src/...` 路径在上游实现中存在，但在当前仓库中**不存在对应源码文件**。阅读时请注意区分上游与 Rust 实现的覆盖范围。
+> **源码映射说明**：GrowthBook 适配器全部基于 `packages/ccb`（Claude Code 上游 TypeScript 实现）。`claw-code`（Rust 重写版）目前尚未实现此功能。本报告引用的 `packages/ccb/src/...` 路径在当前仓库的 `packages/ccb/` 目录下存在且可验证，阅读时可直接对照源码。
 ---
 
 ## 1. 概述
@@ -221,9 +221,9 @@ const GROWTHBOOK_REFRESH_INTERVAL_MS =
 
 | Feature Key | 类型 | 代码默认值 | 用途 |
 |-------------|------|-----------|------|
-| `tengu_hive_evidence` | boolean | false | 任务证据系统 |
+| `tengu_hive_evidence` | boolean | true | 任务证据系统 |
 | `tengu_quartz_lantern` | boolean | false | 文件写入/编辑保护 |
-| `tengu_auto_background_agents` | boolean | false | 自动后台 Agent |
+| `tengu_auto_background_agents` | boolean | true | 自动后台 Agent |
 | `tengu_agent_list_attach` | boolean | false | Agent 列表附件 |
 | `tengu_amber_stoat` | boolean | true | 内置 Agents |
 | `tengu_slim_subagent_claudemd` | boolean | true | 子 Agent CLAUDE.md |
@@ -268,7 +268,7 @@ const GROWTHBOOK_REFRESH_INTERVAL_MS =
 
 | Gate Key | 代码默认值 | 用途 |
 |----------|-----------|------|
-| `tengu_chair_sermon` | false | 功能门控 |
+| `tengu_chair_sermon` | true | 功能门控 |
 | `tengu_scratch` | false | Scratch 功能 |
 | `tengu_thinkback` | false | Thinkback 功能 |
 | `tengu_tool_pear` | false | Tool Pear 功能 |

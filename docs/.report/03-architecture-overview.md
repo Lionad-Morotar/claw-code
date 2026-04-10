@@ -201,7 +201,7 @@ pub struct BashCommandInput {
 }
 ```
 
-沙箱状态由 [`sandbox_status_for_input`](/rust/crates/runtime/src/bash.rs#L188-L203) 根据运行时配置和模型请求共同决定。默认情况下命令在受限环境中执行；模型可以显式请求关闭沙箱（需要更高权限）。异步执行使用 `tokio::process::Command` + `tokio::time::timeout`，输出超过阈值时会被截断。
+沙箱状态由 [`sandbox_status_for_input`](/rust/crates/runtime/src/bash.rs#L170-L183) 根据运行时配置和模型请求共同决定。默认情况下命令在受限环境中执行；模型可以显式请求关闭沙箱（需要更高权限）。异步执行使用 `tokio::process::Command` + `tokio::time::timeout`，输出超过阈值时会被截断。
 
 #### 文件操作的工作区边界
 
@@ -219,13 +219,13 @@ fn validate_workspace_boundary(resolved: &Path, workspace_root: &Path) -> io::Re
 }
 ```
 
-同时 [`is_symlink_escape`](/rust/crates/runtime/src/file_ops.rs#L610-L620) 检测符号链接是否解析到工作区之外。读、写、编辑三个操作都有对应的 `*_in_workspace` 变体，在 `PermissionEnforcer` 路径中被调用。
+同时 [`is_symlink_escape`](/rust/crates/runtime/src/file_ops.rs#L618-L628) 检测符号链接是否解析到工作区之外。读、写、编辑三个操作都有对应的 `*_in_workspace` 变体，在 `PermissionEnforcer` 路径中被调用。
 
 ---
 
 ### 5. 通信层（api/src/client.rs）
 
-`api` crate 的职责是与上游模型接口通信。[`ProviderClient`](/rust/crates/api/src/client.rs#L13-L19) 是一个 enum，覆盖三种后端：
+`api` crate 的职责是与上游模型接口通信。[`ProviderClient`](/rust/crates/api/src/client.rs#L10-L16) 是一个 enum，覆盖三种后端：
 
 ```rust
 pub enum ProviderClient {
@@ -248,7 +248,7 @@ pub enum ProviderClient {
 
 #### Provider trait 抽象
 
-所有后端都实现 [`Provider`](/rust/crates/api/src/providers/mod.rs#L14-L29) trait：
+所有后端都实现 [`Provider`](/rust/crates/api/src/providers/mod.rs#L17-L29) trait：
 
 ```rust
 pub trait Provider {
@@ -262,7 +262,7 @@ pub trait Provider {
 
 在 CLI 侧，[`AnthropicRuntimeClient::consume_stream`](/rust/crates/rusty-claude-cli/src/main.rs#L7059-L7223) 把 `stream.next_event()` 的 SSE 事件实时转换为终端输出：
 
-- `ContentBlockDelta::TextDelta` → 通过 [`MarkdownStreamState::push`](/rust/crates/rusty-claude-cli/src/render.rs#L601-L620) 增量渲染为 ANSI Markdown
+- `ContentBlockDelta::TextDelta` → 通过 [`MarkdownStreamState::push`](/rust/crates/rusty-claude-cli/src/render.rs#L607-L613) 增量渲染为 ANSI Markdown
 - `ContentBlockDelta::InputJsonDelta` → 累加到 `pending_tool` 的 input JSON
 - `ContentBlockStop` → 刷新 Markdown 缓冲区，若存在 pending tool 则输出工具调用提示
 - `MessageDelta` → 记录 token usage
