@@ -265,7 +265,7 @@ fn unshare_user_namespace_works() -> bool {
 - 在 `BashCommandInput` 中被序列化为 `dangerouslyDisableSandbox`（[`runtime/src/bash.rs#L25-L26`](/rust/crates/runtime/src/bash.rs#L25-L26)）
 - 在工具 JSON Schema 中同样暴露为 `dangerouslyDisableSandbox: { type: "boolean" }`（[`tools/src/lib.rs#L397`](/rust/crates/tools/src/lib.rs#L397)）
 - 在 `sandbox_status_for_input()` 中被反转后传入 `resolve_request(..., enabled_override, ...)`
-- 输出 schema 会把原值回显在 `dangerously_disable_sandbox` 字段中（[`runtime/src/bash.rs#L53-L54`](/rust/crates/runtime/src/bash.rs#L53-L54)），便于审计
+- 输出 schema 会把原值回显在 `dangerously_disable_sandbox` 字段中（[`runtime/src/bash.rs#L57-L58`](/rust/crates/runtime/src/bash.rs#L57-L58)），便于审计
 
 保留这个入口的原因是：有些真实开发任务确实需要越过默认边界（例如访问未加入白名单的工具链目录、调试系统级环境）。但命名故意很长很重，提醒这是例外路径。
 
@@ -284,7 +284,7 @@ fn unshare_user_namespace_works() -> bool {
 
 ## 用户能看到什么：/sandbox 命令与 CLI 输出
 
-在 REPL 中输入 `/sandbox`，或在 shell 中运行 `claw sandbox`，都会输出当前目录下的沙箱解析状态。参见 [`rusty-claude-cli/src/main.rs#L2606-L2614`](/rust/crates/rusty-claude-cli/src/main.rs#L2606-L2614)：
+在 REPL 中输入 `/sandbox`，或在 shell 中运行 `claw sandbox`，都会输出当前目录下的沙箱解析状态。参见 [`rusty-claude-cli/src/main.rs#L2817-L2829`](/rust/crates/rusty-claude-cli/src/main.rs#L2817-L2829)：
 
 ```rust
 SlashCommand::Sandbox => {

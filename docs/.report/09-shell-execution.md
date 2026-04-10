@@ -120,7 +120,7 @@ assert!(!is_read_only_command("sed -i 's/a/b/' file"));
 
 ### 完整验证管线：bash_validation
 
-[`runtime/src/bash_validation.rs#L99-L131`](/rust/crates/runtime/src/bash_validation.rs#L99-L130) 的 `validate_read_only()` 实现了更严格的策略：
+[`runtime/src/bash_validation.rs#L99-L130`](/rust/crates/runtime/src/bash_validation.rs#L99-L130) 的 `validate_read_only()` 实现了更严格的策略：
 
 - 显式列出 `WRITE_COMMANDS`：`cp`, `mv`, `rm`, `mkdir`, `touch`, `tee`, `dd` ...
 - 显式列出 `STATE_MODIFYING_COMMANDS`：`apt`, `brew`, `npm`, `cargo`, `docker`, `systemctl`, `kill`, `reboot` ...
@@ -343,7 +343,7 @@ fn truncate_output(s: &str) -> String {
 
 截断发生在字节层面（而非字符层面），但会正确回退到上一个 UTF-8 字符边界，避免产生非法 UTF-8。截断标记`[output truncated — exceeded 16384 bytes]` 与上游文案完全一致，便于模型识别并决定下一步行动。
 
-CLI 渲染层在展示时还会做第二次截断（按显示行数），但不会影响实际返回给模型的内容。参见 [`rusty-claude-cli/src/main.rs#L7142-L7157`](/rust/crates/rusty-claude-cli/src/main.rs#L7142-L7157)。
+CLI 渲染层在展示时还会做第二次截断（按显示行数），但不会影响实际返回给模型的内容。参见 [`rusty-claude-cli/src/main.rs#L7758-L7780`](/rust/crates/rusty-claude-cli/src/main.rs#L7758-L7780)。
 
 ---
 
@@ -394,11 +394,18 @@ pub fn resolve_sandbox_status_for_request(request: &SandboxRequest, cwd: &Path) 
 
 ### Linux 沙箱命令构建
 
-[`runtime/src/sandbox.rs#L211-L255`](/rust/crates/runtime/src/sandbox.rs#L211-L255)：
+[`runtime/src/sandbox.rs#L211-L262`](/rust/crates/runtime/src/sandbox.rs#L211-L262)：
 
 ```rust
-pub fn build_linux_sandbox_command(command: &str, cwd: &Path, status: &SandboxStatus) -> Option<LinuxSandboxCommand> {
-    if !cfg!(target_os = "linux") || !status.enabled || (!status.namespace_active && !status.network_active) {
+pub fn build_linux_sandbox_command(
+    command: &str,
+    cwd: &Path,
+    status: &SandboxStatus,
+) -> Option<LinuxSandboxCommand> {
+    if !cfg!(target_os = "linux")
+        || !status.enabled
+        || (!status.namespace_active && !status.network_active)
+    {
         return None;
     }
 
@@ -418,15 +425,28 @@ pub fn build_linux_sandbox_command(command: &str, cwd: &Path, status: &SandboxSt
     args.push("-lc".to_string());
     args.push(command.to_string());
 
+    let sandbox_home = cwd.join(".sandbox-home");
+    let sandbox_tmp = cwd.join(".sandbox-tmp");
+    let mut env = vec![
+        ("HOME".to_string(), sandbox_home.display().to_string()),
+        ("TMPDIR".to_string(), sandbox_tmp.display().to_string()),
+        (
+            "CLAWD_SANDBOX_FILESYSTEM_MODE".to_string(),
+            status.filesystem_mode.as_str().to_string(),
+        ),
+        (
+            "CLAWD_SANDBOX_ALLOWED_MOUNTS".to_string(),
+            status.allowed_mounts.join(":"),
+        ),
+    ];
+    if let Ok(path) = env::var("PATH") {
+        env.push(("PATH".to_string(), path));
+    }
+
     Some(LinuxSandboxCommand {
         program: "unshare".to_string(),
         args,
-        env: vec![
-            ("HOME".to_string(), sandbox_home.display().to_string()),
-            ("TMPDIR".to_string(), sandbox_tmp.display().to_string()),
-            ("CLAWD_SANDBOX_FILESYSTEM_MODE".to_string(), status.filesystem_mode.as_str().to_string()),
-            ("CLAWD_SANDBOX_ALLOWED_MOUNTS".to_string(), status.allowed_mounts.join(":")),
-        ],
+        env,
     })
 }
 ```
@@ -505,7 +525,7 @@ pub fn check_bash(&self, command: &str) -> EnforcementResult {
 
 ### CLI 渲染层的进度适配
 
-[`rusty-claude-cli/src/main.rs#L6169-L6184`](/rust/crates/rusty-claude-cli/src/main.rs#L6169-L6184) 的 `describe_tool_progress`：
+[`rusty-claude-cli/src/main.rs#L6666-L6679`](/rust/crates/rusty-claude-cli/src/main.rs#L6666-L6679) 的 `describe_tool_progress`：
 
 ```rust
 fn describe_tool_progress(name: &str, input: &str) -> String {

@@ -24,7 +24,7 @@
 - `system_prompt: Vec<String>` —— 每次 turn 重新注入的 system prompt
 - `hook_runner: HookRunner` —— 生命周期 hooks
 
-而真正持久化的消息历史存储在 [`runtime/src/session.rs#L88-L99`](/rust/crates/runtime/src/session.rs#L88-L99) 的 `Session` 结构体中：
+而真正持久化的消息历史存储在 [`runtime/src/session.rs#L88-L103`](/rust/crates/runtime/src/session.rs#L88-L103) 的 `Session` 结构体中：
 
 ```rust
 pub struct Session {
@@ -37,6 +37,9 @@ pub struct Session {
     pub fork: Option<SessionFork>,
     pub workspace_root: Option<PathBuf>,
     pub prompt_history: Vec<SessionPromptEntry>,
+    /// The model used in this session, persisted so resumed sessions can
+    /// report which model was originally used.
+    pub model: Option<String>,
     persistence: Option<SessionPersistence>,
 }
 ```
@@ -51,7 +54,7 @@ TypeScript 上游中，每次用户输入都会调用 `QueryEngine.submitMessage
 
 ### 源码映射：`run_turn` 的 turn 初始化链路
 
-`ConversationRuntime::run_turn` 定义于 [`runtime/src/conversation.rs#L296-L490`](/rust/crates/runtime/src/conversation.rs#L296-L490)。简化后的执行链路如下：
+`ConversationRuntime::run_turn` 定义于 [`runtime/src/conversation.rs#L296-L485`](/rust/crates/runtime/src/conversation.rs#L296-L485)。简化后的执行链路如下：
 
 ```rust
 pub fn run_turn(
@@ -131,7 +134,7 @@ impl SessionStore {
 
 ### 源码映射：Transcript 写入器
 
-`Session` 的追加写入逻辑在 [`runtime/src/session.rs#L517-L531`](/rust/crates/runtime/src/session.rs#L517-L531)：`push_message` 成功后会调用 `append_persisted_message()`：
+`Session` 的追加写入逻辑在 [`runtime/src/session.rs#L533-L552`](/rust/crates/runtime/src/session.rs#L533-L552)：`push_message` 成功后会调用 `append_persisted_message()`：
 
 ```rust
 fn append_persisted_message(&self, message: &ConversationMessage) -> Result<(), SessionError> {
@@ -179,7 +182,7 @@ match type_ {
 }
 ```
 
-恢复流程最终由 `LiveCli::resume_session()`（[`rusty-claude-cli/src/main.rs#L3966-L4004`](/rust/crates/rusty-claude-cli/src/main.rs#L3966-L4004)）调用：加载 JSONL 文件 → 重建 `Session` → 通过 `build_runtime()` 创建新的 `ConversationRuntime` → 将 `LiveCli` 的当前 `session` handle 指向恢复的文件。
+恢复流程最终由 `LiveCli::resume_session()`（[`rusty-claude-cli/src/main.rs#L4348-L4388`](/rust/crates/rusty-claude-cli/src/main.rs#L4348-L4388)）调用：加载 JSONL 文件 → 重建 `Session` → 通过 `build_runtime()` 创建新的 `ConversationRuntime` → 将 `LiveCli` 的当前 `session` handle 指向恢复的文件。
 
 ---
 
@@ -237,7 +240,7 @@ pub fn pricing_for_model(model: &str) -> Option<ModelPricing> {
 }
 ```
 
-CLI 在 REPL 中通过 `/cost` 命令调用 `LiveCli::print_cost()`（[`main.rs#L3961-L3965`](/rust/crates/rusty-claude-cli/src/main.rs#L3961-L3964)），或者在每次 JSON 输出中附加 `estimated_cost`（[`main.rs#L3565-L3572`](/rust/crates/rusty-claude-cli/src/main.rs#L3565-L3572)）。
+CLI 在 REPL 中通过 `/cost` 命令调用 `LiveCli::print_cost()`（[`main.rs#L4343-L4346`](/rust/crates/rusty-claude-cli/src/main.rs#L4343-L4346)），或者在每次 JSON 输出中附加 `estimated_cost`（[`main.rs#L3938-L3948`](/rust/crates/rusty-claude-cli/src/main.rs#L3938-L3948)）。
 
 ### 预算熔断
 
@@ -251,7 +254,7 @@ CLI 在 REPL 中通过 `/cost` 命令调用 `LiveCli::print_cost()`（[`main.rs#
 
 ### 源码映射：`/model` 命令的实现
 
-REPL 中的 `/model sonnet` 由 `LiveCli::set_model()` 处理（[`rusty-claude-cli/src/main.rs#L3831-L3878`](/rust/crates/rusty-claude-cli/src/main.rs#L3831-L3878)）：
+REPL 中的 `/model sonnet` 由 `LiveCli::set_model()` 处理（[`rusty-claude-cli/src/main.rs#L4213-L4265`](/rust/crates/rusty-claude-cli/src/main.rs#L4213-L4265)）：
 
 ```rust
 fn set_model(&mut self, model: Option<String>) -> Result<bool, Box<dyn std::error::Error>> {
@@ -411,7 +414,7 @@ pub fn fork(&self, branch_name: Option<String>) -> Self {
 
 Fork 后的会话继承原有消息历史和 prompt 历史，但拥有新的 `session_id` 和 `created_at_ms`，并通过 `SessionFork` 记录亲缘关系。`SessionStore::fork_session()` 会为新 session 分配持久化路径并立即保存（[`session_control.rs#L218-L238`](/rust/crates/runtime/src/session_control.rs#L218-L238)）。
 
-`/clear --confirm` 的逻辑在 `LiveCli::clear_session()`（[`main.rs#L3926-L3960`](/rust/crates/rusty-claude-cli/src/main.rs#L3926-L3959)）：创建全新 `Session` → 新 `session_id` → 新持久化文件 → 保留当前 model / permission mode。旧会话文件仍然保留在 `.claw/sessions/` 中，可通过 `--resume` 重新加载。
+`/clear --confirm` 的逻辑在 `LiveCli::clear_session()`（[`main.rs#L4308-L4346`](/rust/crates/rusty-claude-cli/src/main.rs#L4308-L4346)）：创建全新 `Session` → 新 `session_id` → 新持久化文件 → 保留当前 model / permission mode。旧会话文件仍然保留在 `.claw/sessions/` 中，可通过 `--resume` 重新加载。
 
 ### 审视角：持久化的信任假设
 
