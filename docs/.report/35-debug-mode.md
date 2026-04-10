@@ -30,7 +30,7 @@
 
 ### 源码位置
 
-SlashCommand 定义：[`commands/src/lib.rs#L1276`](/rust/crates/commands/src/lib.rs#L1276)
+SlashCommand 定义：[`commands/src/lib.rs#L1075`](/rust/crates/commands/src/lib.rs#L1075)
 
 ```rust
 pub enum SlashCommand {
@@ -40,7 +40,7 @@ pub enum SlashCommand {
 }
 ```
 
-解析逻辑：[`commands/src/lib.rs#L1274-L1277`](/rust/crates/commands/src/lib.rs#L1274-L1277)
+解析逻辑：[`commands/src/lib.rs#L1352-L1356`](/rust/crates/commands/src/lib.rs#L1352-L1356)
 
 ```rust
 "debug-tool-call" => {
@@ -53,9 +53,9 @@ pub enum SlashCommand {
 
 ### CLI 执行入口
 
-在 `rusty-claude-cli` 的 REPL 循环中，当检测到 `SlashCommand::DebugToolCall` 时，调用 [`main.rs#L3615`](/rust/crates/rusty-claude-cli/src/main.rs#L3615)：`self.run_debug_tool_call(None)?`。
+在 `rusty-claude-cli` 的 REPL 循环中，当检测到 `SlashCommand::DebugToolCall` 时，调用 [`main.rs#L3992`](/rust/crates/rusty-claude-cli/src/main.rs#L3992)：`self.run_debug_tool_call(None)?`。
 
-具体实现位于 [`main.rs#L4356-L4360`](/rust/crates/rusty-claude-cli/src/main.rs#L4356-L4360)：
+具体实现位于 [`main.rs#L4738-L4743`](/rust/crates/rusty-claude-cli/src/main.rs#L4738-L4743)：
 
 ```rust
 fn run_debug_tool_call(&self, args: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
@@ -67,7 +67,7 @@ fn run_debug_tool_call(&self, args: Option<&str>) -> Result<(), Box<dyn std::err
 
 ### 报告渲染逻辑
 
-核心函数 `render_last_tool_debug_report` 位于 [`main.rs#L5245-L5295`](/rust/crates/rusty-claude-cli/src/main.rs#L5245-L5294)：
+核心函数 `render_last_tool_debug_report` 位于 [`main.rs#L5736-L5784`](/rust/crates/rusty-claude-cli/src/main.rs#L5736-L5784)：
 
 ```rust
 fn render_last_tool_debug_report(session: &Session) -> Result<String, Box<dyn std::error::Error>> {
@@ -119,7 +119,7 @@ fn render_last_tool_debug_report(session: &Session) -> Result<String, Box<dyn st
 
 ### 核心类型
 
-`TelemetryEvent` 枚举：[`telemetry/src/lib.rs#L171-L206`](/rust/crates/telemetry/src/lib.rs#L171-L203)
+`TelemetryEvent` 枚举：[`telemetry/src/lib.rs#L171-L204`](/rust/crates/telemetry/src/lib.rs#L171-L204)
 
 ```rust
 pub enum TelemetryEvent {
@@ -154,7 +154,7 @@ pub struct SessionTracer {
 
 | 方法 | 位置 | 记录时机 |
 |------|------|----------|
-| `record_turn_started` | `conversation.rs#L550-L561` | 用户输入被接收 |
+| `record_turn_started` | `conversation.rs#L549-L560` | 用户输入被接收 |
 | `record_assistant_iteration` | `conversation.rs#L563-L584` | 每次 assistant 响应解析完成 |
 | `record_tool_started` | `conversation.rs#L586-L598` | 工具执行前 |
 | `record_tool_finished` | `conversation.rs#L600-L619` | 工具执行后 |
@@ -183,7 +183,7 @@ fn record_tool_started(&self, iteration: usize, tool_name: &str) {
 
 ### 错误渲染中的 Trace 字段
 
-在 [`main.rs#L6765-L6768`](/rust/crates/rusty-claude-cli/src/main.rs#L6765-L6768) 附近：
+在 [`main.rs#L7262`](/rust/crates/rusty-claude-cli/src/main.rs#L7262) 附近：
 
 ```rust
 if let Some(request_id) = error.request_id() {
