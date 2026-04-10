@@ -11,7 +11,7 @@
 
 ### Rust 实现中的核心抽象
 
-在 `claw-code` 中，"AI 的双手"被抽象为一个极简的 `ToolExecutor` trait，定义在 [`runtime/src/conversation.rs#L57-L59`](/rust/crates/runtime/src/conversation.rs#L57-L60)：
+在 `claw-code` 中，"AI 的双手"被抽象为一个极简的 `ToolExecutor` trait，定义在 [`runtime/src/conversation.rs#L57-L60`](/rust/crates/runtime/src/conversation.rs#L57-L60)：
 
 ```rust
 pub trait ToolExecutor {
@@ -36,7 +36,7 @@ pub trait ToolExecutor {
 
 ### 核心四要素（Rust 映射）
 
-`ToolSpec` 定义在 [`tools/src/lib.rs#L100-L107`](/rust/crates/tools/src/lib.rs#L100-L106) 附近：
+`ToolSpec` 定义在 [`tools/src/lib.rs#L100-L106`](/rust/crates/tools/src/lib.rs#L100-L106) 附近：
 
 ```rust
 pub struct ToolSpec {
@@ -54,7 +54,7 @@ pub struct ToolSpec {
 | **input schema** | `input_schema` | JSON Schema（`serde_json::Value`），定义参数类型 |
 | **call / execute** | `execute_tool(name, input)` | 巨大的 match 分发器 |
 
-与 TypeScript 版本不同，Rust 实现没有采用"每个工具一个对象"的 OO 风格，而是把所有内置工具集中在 [`tools/src/lib.rs#L1178-L1267`](/rust/crates/tools/src/lib.rs#L1178-L1267) 的 `execute_tool_with_enforcer` 函数里，通过模式匹配（`match name`）统一分发。这种设计避免了 trait object 的虚函数开销，也更适合 Rust 的所有权模型。
+与 TypeScript 版本不同，Rust 实现没有采用"每个工具一个对象"的 OO 风格，而是把所有内置工具集中在 [`tools/src/lib.rs#L1178-L1270`](/rust/crates/tools/src/lib.rs#L1178-L1270) 的 `execute_tool_with_enforcer` 函数里，通过模式匹配（`match name`）统一分发。这种设计避免了 trait object 的虚函数开销，也更适合 Rust 的所有权模型。
 
 ### 注册与发现
 
@@ -70,7 +70,7 @@ Rust 实现中没有 `aliases`、`searchHint`、`shouldDefer` 等单独的字段
       ("grep", "grep_search"),
   ]
   ```
-- **延迟加载 / ToolSearch**：`deferred_tool_specs()` 提供可搜索但默认不注册的工具规格，通过 `run_tool_search` 动态发现（[`tools/src/lib.rs#L2000-L2002`](/rust/crates/tools/src/lib.rs#L2000-L2002)）。
+- **延迟加载 / ToolSearch**：`deferred_tool_specs()` 提供可搜索但默认不注册的工具规格，通过 `run_tool_search` 动态发现（[`tools/src/lib.rs#L2000-L2001`](/rust/crates/tools/src/lib.rs#L2000-L2001)）。
 - **运行时开关**：某些工具通过在 `execute_tool_with_enforcer` 中直接返回错误来实现平台限制（如 PowerShell 在 Unix 上可用但语义简化）。
 
 ### 安全与权限
@@ -257,7 +257,7 @@ pub struct BashCommandOutput {
 }
 ```
 
-执行入口 `execute_bash`（[`runtime/src/bash.rs#L69-L169`](/rust/crates/runtime/src/bash.rs#L69-L168)）会根据 `run_in_background` 决定是后台 spawn 还是同步等待；同步路径会走到 `execute_bash_async`（L89 起），使用 `tokio::process::Command` 执行，并支持基于毫秒的超时控制。
+执行入口 `execute_bash`（[`runtime/src/bash.rs#L69-L168`](/rust/crates/runtime/src/bash.rs#L69-L168)）会根据 `run_in_background` 决定是后台 spawn 还是同步等待；同步路径会走到 `execute_bash_async`（L89 起），使用 `tokio::process::Command` 执行，并支持基于毫秒的超时控制。
 
 沙箱方面，`prepare_tokio_command`（[`runtime/src/bash.rs#L212-L237`](/rust/crates/runtime/src/bash.rs#L212-L237)）会先检查 Linux 下的沙箱启动器（`build_linux_sandbox_command`），如果没有则降级到普通 `sh -lc`，但会根据 `SandboxStatus` 重定向 `HOME` 和 `TMPDIR` 到工作区下的隔离目录。
 
@@ -300,7 +300,7 @@ pub fn read_file(path: &str, offset: Option<usize>, limit: Option<usize>) -> io:
 
 #### Grep
 
-`grep_search`（[`runtime/src/file_ops.rs#L342-L451`](/rust/crates/runtime/src/file_ops.rs#L342-L450)）使用 `regex::RegexBuilder` 编译模式，配合 `walkdir::WalkDir` 遍历文件。支持：
+`grep_search`（[`runtime/src/file_ops.rs#L342-L450`](/rust/crates/runtime/src/file_ops.rs#L342-L450)）使用 `regex::RegexBuilder` 编译模式，配合 `walkdir::WalkDir` 遍历文件。支持：
 
 - `output_mode`：`files_with_matches`（默认）、`content`、`count`
 - `glob` 过滤器、`file_type` 后缀过滤
@@ -321,7 +321,7 @@ MCP 相关的内置工具有四个：
 - `McpAuth`
 - `MCP`（调用 server 上的具体 tool）
 
-它们在 `tools/src/lib.rs` 的 `execute_tool_with_enforcer` 中分别映射到 `run_list_mcp_resources`、`run_read_mcp_resource`、`run_mcp_auth`、`run_mcp_tool`。
+它们在 `tools/src/lib.rs` 的 `execute_tool_with_enforcer` 中分别映射到 `run_list_mcp_resources`、`run_read_mcp_resource`、`run_mcp_auth`、`run_mcp_tool`（[`tools/src/lib.rs#L1261`](/rust/crates/tools/src/lib.rs#L1261)）。
 
 `run_mcp_tool` 最终调用 `global_mcp_registry().call_tool(&input.server, &input.tool, &args)`，后者在 [`runtime/src/mcp_tool_bridge.rs#L240-L278`](/rust/crates/runtime/src/mcp_tool_bridge.rs#L240-L278) 中会：
 
@@ -418,11 +418,11 @@ Hook 的三种退出码语义（[`runtime/src/hooks.rs#L440-L455`](/rust/crates/
 | [`tools/src/lib.rs#L133-L184`](/rust/crates/tools/src/lib.rs#L133-L184) | `GlobalToolRegistry::with_plugin_tools` / `with_runtime_tools` 注册与去重 |
 | [`tools/src/lib.rs#L192-L244`](/rust/crates/tools/src/lib.rs#L192-L244) | `normalize_allowed_tools`，包含 read/write/edit/glob/grep 别名映射 |
 | [`tools/src/lib.rs#L247-L278`](/rust/crates/tools/src/lib.rs#L247-L278) | `definitions()` 方法：按 allowed_tools 过滤后返回 `ToolDefinition` 列表 |
-| [`tools/src/lib.rs#L385-...`](/rust/crates/tools/src/lib.rs#L385) | `mvp_tool_specs()` 的开头部分：bash / read_file / write_file / edit_file / glob_search / grep_search / WebFetch / WebSearch / TodoWrite 等 |
-| [`tools/src/lib.rs#L1178-L1267`](/rust/crates/tools/src/lib.rs#L1178-L1267) | `execute_tool_with_enforcer`：40+ 工具的统一 match 分发器 |
-| [`tools/src/lib.rs#L2000-L2002`](/rust/crates/tools/src/lib.rs#L2000-L2002) | `run_tool_search` 入口 |
+| [`tools/src/lib.rs#L385-L4120`](/rust/crates/tools/src/lib.rs#L385-L4120) | `mvp_tool_specs()`：40+ 内置工具的 JSON Schema 和权限声明 |
+| [`tools/src/lib.rs#L1178-L1270`](/rust/crates/tools/src/lib.rs#L1178-L1270) | `execute_tool_with_enforcer`：40+ 工具的统一 match 分发器 |
+| [`tools/src/lib.rs#L2000-L2001`](/rust/crates/tools/src/lib.rs#L2000-L2001) | `run_tool_search` 入口 |
 | [`runtime/src/bash.rs#L17-L67`](/rust/crates/runtime/src/bash.rs#L17-L67) | `BashCommandInput` / `BashCommandOutput` |
-| [`runtime/src/bash.rs#L69-L169`](/rust/crates/runtime/src/bash.rs#L69-L168) | `execute_bash` 入口（含同步与异步路径） |
+| [`runtime/src/bash.rs#L69-L168`](/rust/crates/runtime/src/bash.rs#L69-L168) | `execute_bash` 入口（含同步与异步路径） |
 | [`runtime/src/bash.rs#L212-L237`](/rust/crates/runtime/src/bash.rs#L212-L237) | `prepare_tokio_command`：沙箱启动器检查与普通 shell 回退 |
 | [`runtime/src/bash.rs#L289`](/rust/crates/runtime/src/bash.rs#L289) | `MAX_OUTPUT_BYTES = 16_384`（bash 输出截断阈值） |
 | [`runtime/src/file_ops.rs#L12-L16`](/rust/crates/runtime/src/file_ops.rs#L12-L16) | `MAX_READ_SIZE` / `MAX_WRITE_SIZE`（10MB） |
@@ -430,7 +430,7 @@ Hook 的三种退出码语义（[`runtime/src/hooks.rs#L440-L455`](/rust/crates/
 | [`runtime/src/file_ops.rs#L223-L255`](/rust/crates/runtime/src/file_ops.rs#L223-L255) | `write_file` 实现 |
 | [`runtime/src/file_ops.rs#L257-L296`](/rust/crates/runtime/src/file_ops.rs#L257-L296) | `edit_file` 实现 |
 | [`runtime/src/file_ops.rs#L298-L340`](/rust/crates/runtime/src/file_ops.rs#L298-L340) | `glob_search` 实现 |
-| [`runtime/src/file_ops.rs#L342-L451`](/rust/crates/runtime/src/file_ops.rs#L342-L450) | `grep_search` 实现 |
+| [`runtime/src/file_ops.rs#L342-L450`](/rust/crates/runtime/src/file_ops.rs#L342-L450) | `grep_search` 实现 |
 | [`runtime/src/permissions.rs#L7-L15`](/rust/crates/runtime/src/permissions.rs#L7-L15) | `PermissionMode` 五级权限枚举 |
 | [`runtime/src/permissions.rs#L173-L292`](/rust/crates/runtime/src/permissions.rs#L173-L292) | `PermissionPolicy::authorize_with_context` |
 | [`runtime/src/permissions.rs#L349-L402`](/rust/crates/runtime/src/permissions.rs#L349-L402) | 权限规则解析器 `PermissionRule::parse` |
