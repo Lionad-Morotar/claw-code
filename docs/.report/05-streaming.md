@@ -15,7 +15,7 @@
 
 ### Rust 实现中的流式入口
 
-`claw-code` 的流式链路起点在 CLI 的 `AnthropicRuntimeClient::stream` 方法（[`main.rs#L6511-L6563`](/rust/crates/rusty-claude-cli/src/main.rs#L6511-L6563)）。它将 `ApiRequest` 转换为 `MessageRequest`，设置 `stream: true`，然后进入异步消费循环：
+`claw-code` 的流式链路起点在 CLI 的 `AnthropicRuntimeClient::stream` 方法（[`main.rs#L7006-L7012`](/rust/crates/rusty-claude-cli/src/main.rs#L7006-L7012)）。它将 `ApiRequest` 转换为 `MessageRequest`，设置 `stream: true`，然后进入异步消费循环：
 
 ```rust
 let message_request = MessageRequest {
@@ -82,7 +82,7 @@ OpenAI 兼容后端（xAI、DashScope、OpenAI 本身）则有自己专用的 `O
 
 ## 事件处理状态机
 
-CLI 中的 `consume_stream`（定义于 [`main.rs#L6564`](/rust/crates/rusty-claude-cli/src/main.rs#L6564)，实现延续至 `L6730` 附近）实现了一个基于 `match event` 的状态机：
+CLI 中的 `consume_stream`（定义于 [`main.rs#L7059`](/rust/crates/rusty-claude-cli/src/main.rs#L7059)，实现延续至 `L7220` 附近）实现了一个基于 `match event` 的状态机：
 
 ```rust
 loop {
@@ -112,7 +112,7 @@ loop {
 
 `api` crate 产生的 `StreamEvent` 流，在 `rusty-claude-cli` 的 `consume_stream` 中被消费并渲染；而在更高层的 `ConversationRuntime::run_turn`（[`runtime/src/conversation.rs#L296`](/rust/crates/runtime/src/conversation.rs#L296)）中，并不需要感知逐 token 的 delta——它只关心收敛后的 `AssistantEvent` 序列。
 
-这个收敛由 `AnthropicRuntimeClient::stream`（实现 `ApiClient` trait，[`main.rs#L6511-L6563`](/rust/crates/rusty-claude-cli/src/main.rs#L6511-L6563)）完成：先把 `StreamEvent` 消费成 `Vec<AssistantEvent>`，再把整个向量返回给 `ConversationRuntime`。`AssistantEvent` 枚举更精简（[`runtime/src/conversation.rs#L30-L48`](/rust/crates/runtime/src/conversation.rs#L30-L48)）：
+这个收敛由 `AnthropicRuntimeClient::stream`（实现 `ApiClient` trait，[`main.rs#L7006-L7012`](/rust/crates/rusty-claude-cli/src/main.rs#L7006-L7012)）完成：先把 `StreamEvent` 消费成 `Vec<AssistantEvent>`，再把整个向量返回给 `ConversationRuntime`。`AssistantEvent` 枚举更精简（[`runtime/src/conversation.rs#L30-L48`](/rust/crates/runtime/src/conversation.rs#L30-L48)）：
 
 ```rust
 pub enum AssistantEvent {
@@ -186,7 +186,7 @@ pub enum ContentBlockDelta {
 | `ToolUse` | `InputJsonDelta` | `input.push_str(delta.partial_json)`（JSON 字符串增量拼接） |
 | `Thinking` | `ThinkingDelta` + `SignatureDelta` | `thinking += delta.thinking`，`signature = delta.signature` |
 
-关键设计：[`push_output_block`](/rust/crates/rusty-claude-cli/src/main.rs#L7431-L7465) 在流式模式下会忽略 `content_block_start` 中 tool use 的空对象 `{}`，将其视为占位符，真正的输入在后续 `input_json_delta` 中拼接。这对应上游文档中提到的 "content_block_start 时所有文本字段初始化为空字符串，只通过 delta 累加"。
+关键设计：[`push_output_block`](/rust/crates/rusty-claude-cli/src/main.rs#L8047-L8065) 在流式模式下会忽略 `content_block_start` 中 tool use 的空对象 `{}`，将其视为占位符，真正的输入在后续 `input_json_delta` 中拼接。这对应上游文档中提到的 "content_block_start 时所有文本字段初始化为空字符串，只通过 delta 累加"。
 
 ---
 
@@ -210,11 +210,11 @@ MessageStop
 
 ### 源码映射：工具调用的流式组装
 
-在 [`consume_stream`](/rust/crates/rusty-claude-cli/src/main.rs#L6564-L6729) 中：
+在 [`consume_stream`](/rust/crates/rusty-claude-cli/src/main.rs#L7059-L7220) 中：
 
-- `ContentBlockStart(ToolUse)` 触发 `push_output_block`，把 `(id, name, "")` 放入 `pending_tool`（[`main.rs#L7431-L7465`](/rust/crates/rusty-claude-cli/src/main.rs#L7431-L7465)）
-- 后续 `ContentBlockDelta(InputJsonDelta)` 不断 `input.push_str(&partial_json)`（[`main.rs#L6640-L6643`](/rust/crates/rusty-claude-cli/src/main.rs#L6640-L6643)）
-- `ContentBlockStop` 到来时，调用 `markdown_stream.flush()` 清空残留文本，然后输出格式化后的工具调用摘要（[`main.rs#L6658-L6667`](/rust/crates/rusty-claude-cli/src/main.rs#L6658-L6667)）：
+- `ContentBlockStart(ToolUse)` 触发 `push_output_block`，把 `(id, name, "")` 放入 `pending_tool`（[`main.rs#L8047-L8065`](/rust/crates/rusty-claude-cli/src/main.rs#L8047-L8065)）
+- 后续 `ContentBlockDelta(InputJsonDelta)` 不断 `input.push_str(&partial_json)`（[`main.rs#L7146-L7150`](/rust/crates/rusty-claude-cli/src/main.rs#L7146-L7150)）
+- `ContentBlockStop` 到来时，调用 `markdown_stream.flush()` 清空残留文本，然后输出格式化后的工具调用摘要（[`main.rs#L7159-L7167`](/rust/crates/rusty-claude-cli/src/main.rs#L7159-L7167)）：
 
 ```rust
 writeln!(out, "\n{}", format_tool_call_start(&name, &input))
@@ -222,9 +222,9 @@ writeln!(out, "\n{}", format_tool_call_start(&name, &input))
 events.push(AssistantEvent::ToolUse { id, name, input });
 ```
 
-`format_tool_call_start`（[`main.rs#L6981-L7025`](/rust/crates/rusty-claude-cli/src/main.rs#L6981-L7025)）会为不同工具生成人类可读的 ANSI 标签，例如 `📄 Reading src/foo.ts…`、`✏️ Writing src/bar.ts (42 lines)`、`📝 Editing src/baz.ts` 等。
+`format_tool_call_start`（[`main.rs#L7597-L7625`](/rust/crates/rusty-claude-cli/src/main.rs#L7597-L7625)）会为不同工具生成人类可读的 ANSI 标签，例如 `📄 Reading src/foo.ts…`、`✏️ Writing src/bar.ts (42 lines)`、`📝 Editing src/baz.ts` 等。
 
-stop_reason 要到 `MessageDelta` 才最终确定（可能是 `end_turn`、`tool_use`、`max_tokens` 等），因此 `MessageDelta` 阶段会把 usage 追加到事件中（[`main.rs#L6669-L6671`](/rust/crates/rusty-claude-cli/src/main.rs#L6669-L6671)）。
+stop_reason 要到 `MessageDelta` 才最终确定（可能是 `end_turn`、`tool_use`、`max_tokens` 等），因此 `MessageDelta` 阶段会把 usage 追加到事件中（[`main.rs#L7177-L7179`](/rust/crates/rusty-claude-cli/src/main.rs#L7177-L7179)）。
 
 ---
 
@@ -232,7 +232,7 @@ stop_reason 要到 `MessageDelta` 才最终确定（可能是 `end_turn`、`tool
 
 ### 网络断开
 
-流式连接依赖 HTTP chunked transfer + SSE。当连接中断时，`stream.next_event()` 会提前返回 `None` 或抛出 `ApiError`。`consume_stream` 在循环结束后会做一项关键守卫检查（[`main.rs#L6699-L6729`](/rust/crates/rusty-claude-cli/src/main.rs#L6699-L6729)）：
+流式连接依赖 HTTP chunked transfer + SSE。当连接中断时，`stream.next_event()` 会提前返回 `None` 或抛出 `ApiError`。`consume_stream` 在循环结束后会做一项关键守卫检查（[`main.rs#L7194-L7210`](/rust/crates/rusty-claude-cli/src/main.rs#L7194-L7210)）：
 
 ```rust
 if !saw_stop && events.iter().any(|event| has_meaningful_content(event)) {
@@ -272,7 +272,7 @@ loop {
 - 默认最大重试次数：8 次
 - 初始退避：1 秒
 - 最大退避：128 秒
-- 重试状态码：408, 409, 429, 500, 502, 503, 504（[`api/src/providers/anthropic.rs#L489-L495`](/rust/crates/api/src/providers/anthropic.rs#L489-L495)）
+- 重试状态码：408, 409, 429, 500, 502, 503, 504（[`api/src/providers/anthropic.rs#L924-L926`](/rust/crates/api/src/providers/anthropic.rs#L924-L926)）
 
 退避使用了基于系统时间纳秒 + 单调计数器的伪随机抖动（[`api/src/providers/openai_compat.rs#L257-L285`](/rust/crates/api/src/providers/openai_compat.rs#L257-L285)），以避免并发客户端的"惊群"同步重试。
 
@@ -321,7 +321,7 @@ let next = if apply_stall_timeout && !received_any_event {
 };
 ```
 
-而 `AnthropicRuntimeClient::stream`（[`main.rs#L6511-L6563`](/rust/crates/rusty-claude-cli/src/main.rs#L6511-L6563)）在发现 `post-tool stall` 错误时，会**自动重发请求一次**作为 continuation nudge：
+而 `AnthropicRuntimeClient::stream`（[`main.rs#L7006-L7012`](/rust/crates/rusty-claude-cli/src/main.rs#L7006-L7012)）在发现 `post-tool stall` 错误时，会**自动重发请求一次**作为 continuation nudge：
 
 ```rust
 for attempt in 1..=max_attempts {
@@ -344,14 +344,14 @@ for attempt in 1..=max_attempts {
 
 Bash 工具等长时间运行命令也有自己的"进度流"。但与 TypeScript 上游不同，`claw-code` 的 Bash 工具目前并不通过 `AsyncGenerator` 向 UI 推送逐行输出；它的进度反馈通过 `CliToolExecutor` 的 `emit_output` 控制，在命令完全结束后一次性返回截断后的输出（参见 [`runtime/src/bash.rs`](/rust/crates/runtime/src/bash.rs)）。
 
-但这不意味着工具执行期间终端完全静止。`LiveCli::run_turn`（[`main.rs#L3470-L3476`](/rust/crates/rusty-claude-cli/src/main.rs#L3470-L3476)）在调用 `ConversationRuntime::run_turn` 之前会启动一个 `Spinner`：
+但这不意味着工具执行期间终端完全静止。`LiveCli::run_turn`（[`main.rs#L3847-L3856`](/rust/crates/rusty-claude-cli/src/main.rs#L3847-L3856)）在调用 `ConversationRuntime::run_turn` 之前会启动一个 `Spinner`：
 
 ```rust
 let mut spinner = Spinner::new();
 spinner.tick("🦀 Thinking...", TerminalRenderer::new().color_theme(), &mut stdout)?;
 ```
 
-`Spinner::tick`（[`render.rs#L75-L90`](/rust/crates/rusty-claude-cli/src/render.rs#L75-L90)）用 `crossterm` 的 `SavePosition / Clear / RestorePosition` 在终端底部显示旋转的 Unicode 点阵。当模型开始输出文本或工具调用时，spinner 会被 `finish` 或自然冲刷掉，流式内容接管光标。
+`Spinner::tick`（[`render.rs#L60-L78`](/rust/crates/rusty-claude-cli/src/render.rs#L60-L78)）用 `crossterm` 的 `SavePosition / Clear / RestorePosition` 在终端底部显示旋转的 Unicode 点阵。当模型开始输出文本或工具调用时，spinner 会被 `finish` 或自然冲刷掉，流式内容接管光标。
 
 ---
 
@@ -378,7 +378,7 @@ pub enum ProviderClient {
 2. 若前缀无法识别，按环境变量嗅探：`ANTHROPIC_API_KEY` → Anthropic，`OPENAI_API_KEY` → OpenAI，`XAI_API_KEY` → xAI
 3. 默认 fallback 到 Anthropic
 
-`main.rs` 的 `AnthropicRuntimeClient::new`（[`main.rs#L6395-L6448`](/rust/crates/rusty-claude-cli/src/main.rs#L6395-L6448)）在构建时就会完成 Provider 分派，并把结果固化到 `client` 字段。这意味着一次会话一旦启动，不会在中途切换 Provider。
+`main.rs` 的 `AnthropicRuntimeClient::new`（[`main.rs#L6908-L6945`](/rust/crates/rusty-claude-cli/src/main.rs#L6908-L6945)）在构建时就会完成 Provider 分派，并把结果固化到 `client` 字段。这意味着一次会话一旦启动，不会在中途切换 Provider。
 
 ### OpenAI 兼容层的协议归一化
 
@@ -387,7 +387,7 @@ pub enum ProviderClient {
 1. **请求翻译**：`build_chat_completion_request`（[`api/src/providers/openai_compat.rs#L747-L810`](/rust/crates/api/src/providers/openai_compat.rs#L747-L810)）把 `MessageRequest` 转成 OpenAI `/chat/completions` 格式，包括消息角色展平（[`translate_message`](/rust/crates/api/src/providers/openai_compat.rs#L821-L860)）、工具定义转换（[`openai_tool_definition`](/rust/crates/api/src/providers/openai_compat.rs#L915-L926)）、stream usage 选项等。
 2. **响应归一化**：`normalize_response`（[`api/src/providers/openai_compat.rs#L943-L990`](/rust/crates/api/src/providers/openai_compat.rs#L943-L990)）把 ChatCompletionResponse 转回 `MessageResponse`；`StreamState::ingest_chunk`（[`api/src/providers/openai_compat.rs#L420-L490`](/rust/crates/api/src/providers/openai_compat.rs#L420-L489)）把 SSE chunk 转回 `StreamEvent`。
 
-一个细节：`normalize_finish_reason`（[`api/src/providers/openai_compat.rs#L1112-L1124`](/rust/crates/api/src/providers/openai_compat.rs#L1112-L1123)）把 OpenAI 的 `"stop"` 映射为 `"end_turn"`，`"tool_calls"` 映射为 `"tool_use"`，从而让 `ConversationRuntime` 无需关心 Provider 差异。
+一个细节：`normalize_finish_reason`（[`api/src/providers/openai_compat.rs#L1267-L1275`](/rust/crates/api/src/providers/openai_compat.rs#L1267-L1275)）把 OpenAI 的 `"stop"` 映射为 `"end_turn"`，`"tool_calls"` 映射为 `"tool_use"`，从而让 `ConversationRuntime` 无需关心 Provider 差异。
 
 ---
 
