@@ -243,7 +243,7 @@ fn validate_workspace_boundary(resolved: &Path, workspace_root: &Path) -> io::Re
 ## 它不是什么
 
 * **不是 IDE 插件**：没有图形界面，不依赖 VS Code 或任何 IDE
-  * 在 Rust 实现中，这意味着 UI 完全由 TUI（Terminal UI）渲染。CLI 通过 `crossterm` 控制光标、颜色和清屏，通过 `pulldown-cmark` + `syntect` 将模型返回的 Markdown 实时渲染为 ANSI 彩色文本。参见 [`rusty-claude-cli/src/render.rs#L602-L607`](/rust/crates/rusty-claude-cli/src/render.rs#L602-L606) 的 `MarkdownStreamState::push`。
+  * 在 Rust 实现中，这意味着 UI 完全由 TUI（Terminal UI）渲染。CLI 通过 `crossterm` 控制光标、颜色和清屏，通过 `pulldown-cmark` + `syntect` 将模型返回的 Markdown 实时渲染为 ANSI 彩色文本。参见 [`rusty-claude-cli/src/render.rs#L607-L613`](/rust/crates/rusty-claude-cli/src/render.rs#L607-L613) 的 `MarkdownStreamState::push`。
 * **不是 API wrapper**：它有自己的工具系统、权限模型、上下文工程、会话管理
   * 这些能力全部内建在 `runtime` crate 中，而不是简单转发 OpenAI/Anthropic SDK 的调用。
 * **不是聊天机器人**：输出不是纯文本，而是实际的文件修改、命令执行
