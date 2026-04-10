@@ -199,7 +199,7 @@ rust/crates/runtime/src/
 | `validate_mode` | `validate_mode()` | #L284-L303 | 权限模式验证 |
 | `validate_sed` | `validate_sed()` | #L336-L350 | sed 表达式验证 |
 | `validate_paths` | `validate_paths()` | #L360-L382 | 路径遍历检测 |
-| `classify_command` | `classify_command()` | #L533-L584 | 命令语义分类 |
+| `classify_command` | `classify_command()` | #L533-L588 | 命令语义分类 |
 | `validate_command` | `validate_command()` | #L594-L615 | 完整验证管道 |
 
 ### 7.3 命令意图分类
@@ -247,7 +247,7 @@ pub fn validate_command(command: &str, mode: PermissionMode, workspace: &Path) -
 权限策略引擎 `permissions.rs` 集成 Bash 验证：
 
 - **PermissionMode** 枚举（#L8-L14）：`ReadOnly`、`WorkspaceWrite`、`DangerFullAccess`、`Prompt`、`Allow`
-- **PermissionPolicy::authorize_with_context()**（#L173-L292）：执行规则匹配与权限升级判定
+- **PermissionPolicy::authorize_with_context()**（#L176-L292）：执行规则匹配与权限升级判定
 - 工具需求映射（#L119-L162）：`with_tool_requirement` 注册各工具所需权限级别
 
 示例（#L576-L584）：
@@ -283,7 +283,7 @@ assert_eq!(
 - `rust/crates/runtime/src/bash.rs:#L70-L103` — Bash 执行入口
 - `rust/crates/runtime/src/bash_validation.rs:#L103-L160` — 只读验证
 - `rust/crates/runtime/src/bash_validation.rs:#L241-L274` — 危险命令检测
-- `rust/crates/runtime/src/bash_validation.rs:#L533-L584` — 命令分类
+- `rust/crates/runtime/src/bash_validation.rs:#L533-L588` — 命令分类
 - `rust/crates/runtime/src/bash_validation.rs:#L594-L615` — 完整验证管道
 - `rust/crates/runtime/src/permissions.rs:#L9-L14` — 权限模式定义
-- `rust/crates/runtime/src/permissions.rs:#L175-L292` — 权限授权逻辑
+- `rust/crates/runtime/src/permissions.rs:#L176-L292` — 权限授权逻辑

@@ -137,7 +137,7 @@ export function initSentry(): void {
 - `rust/Cargo.toml` 及所有子 crate 未引入 `sentry` 依赖
 - Rust 运行时无 `SENTRY_DSN` 环境变量读取
 - 错误通过 `Result<T, E>` 链传播至顶层渲染，无外部上报管道
-- Rust 生态更倾向 `tracing` + OpenTelemetry（已由 [`telemetry` crate](/rust/crates/telemetry/src/lib.rs) 实现）
+- Rust 生态更倾向 `tracing` + OpenTelemetry（`telemetry` crate 已实现基础 JSONL/内存遥测，但未集成 OpenTelemetry）
 
 若未来需要在 Rust CLI 中支持 Sentry，建议：
 1. 在 `main.rs` 入口读取 `SENTRY_DSN` 并初始化 `sentry` crate

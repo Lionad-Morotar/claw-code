@@ -52,7 +52,7 @@ pub enum HookEvent {
 1. **PreToolUse Hook**（[`conversation.rs#L370-L371`](/rust/crates/runtime/src/conversation.rs#L370-L371)）
 2. 权限检查（`permission_policy.authorize_with_context`）
 3. 工具实际执行（`tool_executor.execute`）
-4. **PostToolUse Hook 或 PostToolUseFailure Hook**（[`conversation.rs#L371-L375`](/rust/crates/runtime/src/conversation.rs#L371-L375)）
+4. **PostToolUse Hook 或 PostToolUseFailure Hook**（[`conversation.rs#L427-L439`](/rust/crates/runtime/src/conversation.rs#L427-L439)）
 
 ### 详细调用链
 
@@ -78,7 +78,8 @@ let permission_context = PermissionContext::new(
 1. `is_cancelled()` → `PermissionOutcome::Deny`
 2. `is_failed()` → `PermissionOutcome::Deny`
 3. `is_denied()` → `PermissionOutcome::Deny`
-4. 否则进入正常权限策略检查（Prompt 模式会弹窗确认）
+4. 若配置了 `prompter`（Prompt 模式），则进入 `authorize_with_context` 弹窗确认流程
+5. 否则进入正常权限策略检查
 
 这意味着：即使把权限模式设为 `Allow`，一个返回 `deny` 的 PreHook 仍然可以**强制拦截**工具调用。
 
@@ -221,7 +222,7 @@ fn parse_optional_hooks_config_object(
 }
 ```
 
-用户级配置与项目级配置会**深度合并**，同一阶段的命令列表采用去重追加策略（`extend_unique`），见 [`config.rs#L598-L605`](/rust/crates/runtime/src/config.rs#L598-L605)。
+用户级配置与项目级配置会通过 `RuntimeHookConfig::extend` 合并，同一阶段的命令列表采用去重追加策略，见 [`config.rs#L598-L605`](/rust/crates/runtime/src/config.rs#L598-L605)。
 
 ---
 

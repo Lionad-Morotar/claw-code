@@ -546,7 +546,7 @@ fn build_agent_system_prompt(subagent_type: &str) -> Result<Vec<String>, String>
 ### 9.1 输出文件结构
 
 ```rust
-// rust/crates/tools/src/lib.rs L3320-3334
+// rust/crates/tools/src/lib.rs L3318-L3332
 let output_contents = format!(
     "# Agent Task
 
@@ -568,7 +568,7 @@ std::fs::write(&output_file, output_contents).map_err(|error| error.to_string())
 ### 9.2 Manifest JSON 结构
 
 ```rust
-// rust/crates/tools/src/lib.rs L3539-3548
+// rust/crates/tools/src/lib.rs L3539-L3548
 fn write_agent_manifest(manifest: &AgentOutput) -> Result<(), String> {
     let mut normalized = manifest.clone();
     normalized.lane_events = dedupe_superseded_commit_events(&normalized.lane_events);
@@ -671,14 +671,14 @@ fn agent_store_dir() -> Result<std::path::PathBuf, String> {
 | run_agent | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L1996-L1998](rust/crates/tools/src/lib.rs#L1996-L1998) | 工具执行入口 |
 | execute_agent | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L3286-L3367](rust/crates/tools/src/lib.rs#L3286-L3367) | 核心执行逻辑 |
 | spawn_agent_job | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L3370-L3397](rust/crates/tools/src/lib.rs#L3370-L3397) | 线程创建 |
-| run_agent_job | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L3399-L3404](rust/crates/tools/src/lib.rs#L3399-L3404) | 子 Agent 运行 |
+| run_agent_job | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L3397-L3405](rust/crates/tools/src/lib.rs#L3397-L3405) | 子 Agent 运行 |
 | SubagentToolExecutor | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L3951-L3980](rust/crates/tools/src/lib.rs#L3951-L3980) | 工具执行器 |
 | allowed_tools_for_subagent | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L3458-L3530](rust/crates/tools/src/lib.rs#L3458-L3530) | 工具子集映射 |
-| build_agent_runtime | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L3403-L3428](rust/crates/tools/src/lib.rs#L3403-L3428) | 运行时构建 |
-| build_agent_system_prompt | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L3436-L3447](rust/crates/tools/src/lib.rs#L3436-L3447) | 系统提示构建 |
-| Session.workspace_root | [`session.rs`](rust/crates/runtime/src/session.rs) | [L90](rust/crates/runtime/src/session.rs#L90) | Worktree 绑定字段 |
-| Session::with_workspace_root | [`session.rs`](rust/crates/runtime/src/session.rs) | [L176-L183](rust/crates/runtime/src/session.rs#L176-L183) | Worktree 绑定方法 |
-| Session::fork | [`session.rs`](rust/crates/runtime/src/session.rs) | [L251-L268](rust/crates/runtime/src/session.rs#L251-L268) | 会话 Fork 继承 Worktree |
+| build_agent_runtime | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L3406-L3426](rust/crates/tools/src/lib.rs#L3406-L3426) | 运行时构建 |
+| build_agent_system_prompt | [`lib.rs`](rust/crates/tools/src/lib.rs) | [L3428-L3437](rust/crates/tools/src/lib.rs#L3428-L3437) | 系统提示构建 |
+| Session.workspace_root | [`session.rs`](rust/crates/runtime/src/session.rs) | [L98](rust/crates/runtime/src/session.rs#L98) | Worktree 绑定字段 |
+| Session::with_workspace_root | [`session.rs`](rust/crates/runtime/src/session.rs) | [L178-L187](rust/crates/runtime/src/session.rs#L178-L187) | Worktree 绑定方法 |
+| Session::fork | [`session.rs`](rust/crates/runtime/src/session.rs) | [L254-L273](rust/crates/runtime/src/session.rs#L254-L273) | 会话 Fork 继承 Worktree |
 | SessionStore | [`session_control.rs`](rust/crates/runtime/src/session_control.rs) | [L20-L27](rust/crates/runtime/src/session_control.rs#L20-L27) | 会话存储结构 |
 | SessionStore::from_data_dir | [`session_control.rs`](rust/crates/runtime/src/session_control.rs) | [L49-L64](rust/crates/runtime/src/session_control.rs#L49-L64) | 按 Worktree 隔离 |
 | ProviderClient::from_model | [`client.rs`](rust/crates/api/src/client.rs) | [L17-L49](rust/crates/api/src/client.rs#L17-L49) | 模型路由 |
