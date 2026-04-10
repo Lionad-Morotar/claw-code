@@ -157,7 +157,7 @@ FEATURE_BASH_CLASSIFIER=1 FEATURE_TREE_SITTER_BASH=1 bun run dev
 | `PermissionMode` | L9 | 权限模式枚举（ReadOnly, WorkspaceWrite, DangerFullAccess, Prompt, Allow） |
 | `PermissionPolicy` | L99 | 权限策略评估器 |
 | `PermissionOutcome` | L92 | 授权结果（Allow/Deny） |
-| `authorize_with_context()` | [`#L175`](rust/crates/runtime/src/bash_validation.rs#L175) | 带上下文的授权决策 |
+| `authorize_with_context()` | [`#L175`](rust/crates/runtime/src/permissions.rs#L175) | 带上下文的授权决策 |
 
 #### [`bash.rs`](/rust/crates/runtime/src/bash.rs)
 

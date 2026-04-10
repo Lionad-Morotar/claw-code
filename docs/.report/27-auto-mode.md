@@ -196,7 +196,7 @@ pub enum CommandIntent {
 - `rm`、`shred` → `Destructive`
 - `curl`、`wget`、`ssh` → `Network`
 
-代码在 [`bash_validation.rs#L558-L580`](/rust/crates/runtime/src/bash_validation.rs#L558-L580)。配合 `is_read_only_command` 的启发式判断（[`permission_enforcer.rs#L158-L210`](/rust/crates/runtime/src/permission_enforcer.rs#L158-L210)），ReadOnly 模式下也能放行 `cargo`、`git`、`python3` 等开发常用命令——只要它们不包含重定向或 `-i`/`--in-place` 标志。
+代码在 [`bash_validation.rs#L533-L580`](/rust/crates/runtime/src/bash_validation.rs#L533-L580)。配合 `is_read_only_command` 的启发式判断（[`permission_enforcer.rs#L158-L210`](/rust/crates/runtime/src/permission_enforcer.rs#L158-L210)），ReadOnly 模式下也能放行 `cargo`、`git`、`python3` 等开发常用命令——只要它们不包含重定向或 `-i`/`--in-place` 标志。
 
 ---
 

@@ -19,42 +19,76 @@
 Agent 定义文件的发现由 `discover_definition_roots()` 函数执行，按优先级扫描以下路径：
 
 ```rust
-// rust/crates/commands/src/lib.rs:L2586-L2652
+// rust/crates/commands/src/lib.rs:L2700-L2763
 fn discover_definition_roots(cwd: &Path, leaf: &str) -> Vec<(DefinitionSource, PathBuf)> {
     let mut roots = Vec::new();
 
-    // 1. 项目级 (从 cwd 向上遍历祖先目录)
     for ancestor in cwd.ancestors() {
-        push_unique_root(&mut roots, DefinitionSource::ProjectClaw,
-            ancestor.join(".claw").join(leaf));
-        push_unique_root(&mut roots, DefinitionSource::ProjectCodex,
-            ancestor.join(".codex").join(leaf));
-        push_unique_root(&mut roots, DefinitionSource::ProjectClaude,
-            ancestor.join(".claude").join(leaf));
+        push_unique_root(
+            &mut roots,
+            DefinitionSource::ProjectClaw,
+            ancestor.join(".claw").join(leaf),
+        );
+        push_unique_root(
+            &mut roots,
+            DefinitionSource::ProjectCodex,
+            ancestor.join(".codex").join(leaf),
+        );
+        push_unique_root(
+            &mut roots,
+            DefinitionSource::ProjectClaude,
+            ancestor.join(".claude").join(leaf),
+        );
     }
 
-    // 2. 用户配置级 (环境变量)
     if let Ok(claw_config_home) = env::var("CLAW_CONFIG_HOME") {
-        push_unique_root(&mut roots, DefinitionSource::UserClawConfigHome,
-            PathBuf::from(claw_config_home).join(leaf));
+        push_unique_root(
+            &mut roots,
+            DefinitionSource::UserClawConfigHome,
+            PathBuf::from(claw_config_home).join(leaf),
+        );
     }
 
-    // 3. 用户家目录级
+    if let Ok(codex_home) = env::var("CODEX_HOME") {
+        push_unique_root(
+            &mut roots,
+            DefinitionSource::UserCodexHome,
+            PathBuf::from(codex_home).join(leaf),
+        );
+    }
+
+    if let Ok(claude_config_dir) = env::var("CLAUDE_CONFIG_DIR") {
+        push_unique_root(
+            &mut roots,
+            DefinitionSource::UserClaude,
+            PathBuf::from(claude_config_dir).join(leaf),
+        );
+    }
+
     if let Some(home) = env::var_os("HOME") {
         let home = PathBuf::from(home);
-        push_unique_root(&mut roots, DefinitionSource::UserClaw,
-            home.join(".claw").join(leaf));
-        push_unique_root(&mut roots, DefinitionSource::UserCodex,
-            home.join(".codex").join(leaf));
-        push_unique_root(&mut roots, DefinitionSource::UserClaude,
-            home.join(".claude").join(leaf));
+        push_unique_root(
+            &mut roots,
+            DefinitionSource::UserClaw,
+            home.join(".claw").join(leaf),
+        );
+        push_unique_root(
+            &mut roots,
+            DefinitionSource::UserCodex,
+            home.join(".codex").join(leaf),
+        );
+        push_unique_root(
+            &mut roots,
+            DefinitionSource::UserClaude,
+            home.join(".claude").join(leaf),
+        );
     }
 
     roots
 }
 ```
 
-**调用点**：`handle_agents_slash_command()` → `L2216` / `L2237`
+**调用点**：`handle_agents_slash_command()` → `L2318` / `L2339`
 
 ### 1.2 定义文件格式：TOML 而非 Markdown
 
@@ -71,7 +105,7 @@ model_reasoning_effort = "high"
 加载逻辑见 `load_agents_from_roots()`：
 
 ```rust
-// rust/crates/commands/src/lib.rs:L3042-L3083
+// rust/crates/commands/src/lib.rs:L3156-L3198
 fn load_agents_from_roots(
     roots: &[(DefinitionSource, PathBuf)],
 ) -> std::io::Result<Vec<AgentSummary>> {
@@ -82,7 +116,6 @@ fn load_agents_from_roots(
         let mut root_agents = Vec::new();
         for entry in fs::read_dir(root)? {
             let entry = entry?;
-            // 仅处理 .toml 文件
             if entry.path().extension().is_none_or(|ext| ext != "toml") {
                 continue;
             }
@@ -102,7 +135,6 @@ fn load_agents_from_roots(
         }
         root_agents.sort_by(|left, right| left.name.cmp(&right.name));
 
-        // 按名称去重，后者覆盖前者 (shadowing)
         for mut agent in root_agents {
             let key = agent.name.to_ascii_lowercase();
             if let Some(existing) = active_sources.get(&key) {
@@ -121,7 +153,7 @@ fn load_agents_from_roots(
 ### 1.3 AgentSummary 数据结构
 
 ```rust
-// rust/crates/commands/src/lib.rs:L2036-L2044
+// rust/crates/commands/src/lib.rs:L2151-L2159
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct AgentSummary {
     name: String,
@@ -136,7 +168,7 @@ struct AgentSummary {
 ### 1.4 DefinitionSource 枚举
 
 ```rust
-// rust/crates/commands/src/lib.rs:L1992-L2001
+// rust/crates/commands/src/lib.rs:L2106-L2115
 enum DefinitionSource {
     ProjectClaw,      // .claw/
     ProjectCodex,     // .codex/
@@ -538,11 +570,11 @@ claw agents help
 
 | 组件 | 文件 | 行号 |
 |------|------|------|
-| `discover_definition_roots()` | `rust/crates/commands/src/lib.rs` | L2586-L2652 |
-| `load_agents_from_roots()` | `rust/crates/commands/src/lib.rs` | L3042-L3083 |
-| `AgentSummary` | `rust/crates/commands/src/lib.rs` | L2036-L2044 |
-| `DefinitionSource` | `rust/crates/commands/src/lib.rs` | L1992-L2001 |
-| `render_agents_report()` | `rust/crates/commands/src/lib.rs` | L3231-L3271 |
+| `discover_definition_roots()` | `rust/crates/commands/src/lib.rs` | L2700-L2763 |
+| `load_agents_from_roots()` | `rust/crates/commands/src/lib.rs` | L3156-L3198 |
+| `AgentSummary` | `rust/crates/commands/src/lib.rs` | L2151-L2159 |
+| `DefinitionSource` | `rust/crates/commands/src/lib.rs` | L2106-L2115 |
+| `render_agents_report()` | `rust/crates/commands/src/lib.rs` | L3345-L3389 (text), L3391-L3420 (json) |
 | `execute_agent()` | `rust/crates/tools/src/lib.rs` | L3290-L3336 |
 | `spawn_agent_job()` | `rust/crates/tools/src/lib.rs` | L3370-L3395 |
 | `allowed_tools_for_subagent()` | `rust/crates/tools/src/lib.rs` | L3451-L3530 |

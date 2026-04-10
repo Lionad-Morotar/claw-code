@@ -1,6 +1,7 @@
 # Unit 39: Daemon — 后台守护进程技术报告
 
 > **源码映射说明**：Daemon 后台守护进程全部基于 `packages/ccb`（Claude Code 上游 TypeScript 实现）。`claw-code`（Rust 重写版）目前尚未实现此功能。本报告引用的 `packages/ccb/src/...` 路径在上游实现中存在，但在当前仓库中**不存在对应源码文件**。阅读时请注意区分上游与 Rust 实现的覆盖范围。
+
 ## 一、功能概述
 
 **Feature Flag**: `FEATURE_DAEMON=1`（通常与 `FEATURE_BRIDGE_MODE=1` 组合使用）
